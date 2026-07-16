@@ -90,13 +90,17 @@ const Account = {
             return { success: false, message: 'Authentication service not available.' };
         }
 
+        const trimmedPhone = phone ? phone.trim() : '';
+        const trimmedName = fullName.trim();
+        const trimmedEmail = email.trim().toLowerCase();
+
         const { data, error } = await client.auth.signUp({
-            email: email.trim().toLowerCase(),
+            email: trimmedEmail,
             password: password,
             options: {
                 data: {
-                    full_name: fullName.trim(),
-                    phone: phone ? phone.trim() : ''
+                    full_name: trimmedName,
+                    phone: trimmedPhone
                 }
             }
         });
@@ -111,18 +115,27 @@ const Account = {
             return { success: false, message: error.message };
         }
 
+        // FIX: Always try to upsert profile immediately after signUp.
+        // If email confirmation is required, the user won't have a session yet,
+        // so we use the service role key approach OR we rely on a database trigger.
+        // Since we can't use service role from client, we try with current auth context.
+        // If it fails (RLS), the data is still in user_metadata as fallback.
         if (data.user) {
-            // Explicitly update profiles table with phone (trigger may not handle it)
+            const profileData = {
+                id: data.user.id,
+                full_name: trimmedName,
+                phone: trimmedPhone
+            };
+
+            // Attempt 1: Direct upsert (works if user is auto-confirmed or RLS allows)
             const { error: profileErr } = await client
                 .from(CONFIG.TABLES.PROFILES)
-                .upsert({
-                    id: data.user.id,
-                    full_name: fullName.trim(),
-                    phone: phone ? phone.trim() : ''
-                }, { onConflict: 'id' });
+                .upsert(profileData, { onConflict: 'id' });
 
             if (profileErr) {
-                console.warn('Profile insert warning:', profileErr);
+                console.warn('Profile upsert warning (may need email confirm first):', profileErr);
+                // The profile might be created by a database trigger instead.
+                // We'll sync phone on next login via getProfile's user_metadata fallback.
             }
         }
 
@@ -161,11 +174,65 @@ const Account = {
         if (data.session) {
             this._currentUser = data.user;
             localStorage.setItem(CONFIG.CUSTOMER_SESSION_KEY, 'active');
+
+            // FIX: After login, sync user_metadata (phone) to profiles table
+            // in case the profile was created by trigger without phone
+            await this._syncPhoneToProfile();
+
             this._updateAuthUI();
             return { success: true, message: 'Logged in successfully!' };
         }
 
         return { success: false, message: 'Login failed. Please try again.' };
+    },
+
+    // FIX: New helper to sync phone from user_metadata to profiles table
+    async _syncPhoneToProfile() {
+        const user = this._currentUser;
+        if (!user) return;
+
+        const phoneFromMeta = user.user_metadata?.phone || '';
+        const nameFromMeta = user.user_metadata?.full_name || '';
+        if (!phoneFromMeta && !nameFromMeta) return;
+
+        const client = await this._getClient();
+        if (!client) return;
+
+        // Check current profile
+        const { data: profile, error: fetchErr } = await client
+            .from(CONFIG.TABLES.PROFILES)
+            .select('id, full_name, phone')
+            .eq('id', user.id)
+            .single();
+
+        if (fetchErr && fetchErr.code !== 'PGRST116') {
+            console.warn('Profile fetch during sync:', fetchErr);
+            return;
+        }
+
+        const updates = {};
+        if (phoneFromMeta && (!profile || !profile.phone)) {
+            updates.phone = phoneFromMeta;
+        }
+        if (nameFromMeta && (!profile || !profile.full_name)) {
+            updates.full_name = nameFromMeta;
+        }
+
+        if (Object.keys(updates).length === 0) return;
+
+        const { error: updErr } = await client
+            .from(CONFIG.TABLES.PROFILES)
+            .upsert({
+                id: user.id,
+                ...updates
+            }, { onConflict: 'id' });
+
+        if (updErr) {
+            console.warn('Profile sync warning:', updErr);
+        } else {
+            // Clear cached profile so next getProfile() fetches fresh data
+            this._currentProfile = null;
+        }
     },
 
     // --- LOG OUT ---
@@ -202,6 +269,10 @@ const Account = {
         const user = await this.getCurrentUser();
         if (!user) return null;
 
+        // FIX: Don't return stale cached profile if phone might be missing
+        // Always re-fetch to ensure phone from user_metadata is synced
+        this._currentProfile = null;
+
         if (this._currentProfile) return this._currentProfile;
 
         const client = await this._getClient();
@@ -233,6 +304,27 @@ const Account = {
                 console.warn('Auto-create profile failed:', createErr);
             }
             return null;
+        }
+
+        // FIX: If profile exists but phone is empty, sync from user_metadata
+        const phoneFromMeta = user.user_metadata?.phone || '';
+        const nameFromMeta = user.user_metadata?.full_name || '';
+        if ((!data.phone && phoneFromMeta) || (!data.full_name && nameFromMeta)) {
+            const updates = {};
+            if (!data.phone && phoneFromMeta) updates.phone = phoneFromMeta;
+            if (!data.full_name && nameFromMeta) updates.full_name = nameFromMeta;
+
+            const { data: updated, error: updErr } = await client
+                .from(CONFIG.TABLES.PROFILES)
+                .update(updates)
+                .eq('id', user.id)
+                .select()
+                .single();
+
+            if (!updErr && updated) {
+                this._currentProfile = updated;
+                return updated;
+            }
         }
 
         this._currentProfile = data;
@@ -524,7 +616,7 @@ function switchAuthTab(tab) {
         signupFields?.classList.remove('active');
         if (authSubmitBtn) authSubmitBtn.textContent = 'Log In';
         if (authToggleText) {
-            authToggleText.innerHTML = "Don\'t have an account? <a href=\"#\" onclick=\"switchAuthTab(\'signup\'); return false;\">Sign Up</a>";
+            authToggleText.innerHTML = "Don't have an account? <a href="#" onclick="switchAuthTab('signup'); return false;">Sign Up</a>";
         }
     } else {
         signupTab?.classList.add('active');
@@ -533,7 +625,7 @@ function switchAuthTab(tab) {
         loginFields?.classList.remove('active');
         if (authSubmitBtn) authSubmitBtn.textContent = 'Sign Up';
         if (authToggleText) {
-            authToggleText.innerHTML = "Already have an account? <a href=\"#\" onclick=\"switchAuthTab(\'login\'); return false;\">Log In</a>";
+            authToggleText.innerHTML = "Already have an account? <a href="#" onclick="switchAuthTab('login'); return false;">Log In</a>";
         }
     }
     hideAuthError();
