@@ -210,28 +210,50 @@ const Account = {
             return;
         }
 
+        // If profile doesn't exist at all, create it with all data from user_metadata
+        if (!profile) {
+            const { data: created, error: createErr } = await client
+                .from(CONFIG.TABLES.PROFILES)
+                .insert({
+                    id: user.id,
+                    full_name: nameFromMeta || user.email?.split('@')[0] || '',
+                    phone: phoneFromMeta
+                })
+                .select()
+                .single();
+
+            if (createErr) {
+                console.warn('Profile create during sync failed:', createErr);
+            } else {
+                console.log('Profile created with phone from user_metadata');
+                this._currentProfile = created;
+            }
+            return;
+        }
+
+        // Profile exists but missing phone/full_name - update it
         const updates = {};
-        if (phoneFromMeta && (!profile || !profile.phone)) {
+        if (phoneFromMeta && !profile.phone) {
             updates.phone = phoneFromMeta;
         }
-        if (nameFromMeta && (!profile || !profile.full_name)) {
+        if (nameFromMeta && !profile.full_name) {
             updates.full_name = nameFromMeta;
         }
 
         if (Object.keys(updates).length === 0) return;
 
-        const { error: updErr } = await client
+        const { data: updated, error: updErr } = await client
             .from(CONFIG.TABLES.PROFILES)
-            .upsert({
-                id: user.id,
-                ...updates
-            }, { onConflict: 'id' });
+            .update(updates)
+            .eq('id', user.id)
+            .select()
+            .single();
 
         if (updErr) {
             console.warn('Profile sync warning:', updErr);
         } else {
-            // Clear cached profile so next getProfile() fetches fresh data
-            this._currentProfile = null;
+            console.log('Profile synced with phone from user_metadata');
+            this._currentProfile = updated;
         }
     },
 
@@ -268,10 +290,6 @@ const Account = {
     async getProfile() {
         const user = await this.getCurrentUser();
         if (!user) return null;
-
-        // FIX: Don't return stale cached profile if phone might be missing
-        // Always re-fetch to ensure phone from user_metadata is synced
-        this._currentProfile = null;
 
         if (this._currentProfile) return this._currentProfile;
 
