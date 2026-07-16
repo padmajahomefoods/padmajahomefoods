@@ -213,6 +213,25 @@ const Account = {
 
         if (error) {
             console.warn('Profile fetch error:', error);
+            // If profile row doesn't exist, auto-create from user_metadata so phone persists
+            if (error.code === 'PGRST116' || error.message?.includes('0 rows') || error.message?.includes('Results contain 0 rows')) {
+                const fallbackPhone = user.user_metadata?.phone || '';
+                const fallbackName = user.user_metadata?.full_name || '';
+                const { data: created, error: createErr } = await client
+                    .from(CONFIG.TABLES.PROFILES)
+                    .insert({
+                        id: user.id,
+                        full_name: fallbackName,
+                        phone: fallbackPhone
+                    })
+                    .select()
+                    .single();
+                if (!createErr && created) {
+                    this._currentProfile = created;
+                    return created;
+                }
+                console.warn('Auto-create profile failed:', createErr);
+            }
             return null;
         }
 
@@ -225,6 +244,18 @@ const Account = {
         if (!user) return { success: false, message: 'Not logged in' };
 
         const client = await this._getClient();
+
+        // Sync phone and name to user_metadata as well (reliable fallback storage)
+        const { error: metaErr } = await client.auth.updateUser({
+            data: {
+                full_name: updates.full_name,
+                phone: updates.phone
+            }
+        });
+        if (metaErr) {
+            console.warn('Failed to sync profile to user_metadata:', metaErr);
+        }
+
         const { data, error } = await client
             .from(CONFIG.TABLES.PROFILES)
             .update({
@@ -665,13 +696,16 @@ async function loadProfileTab() {
     const user = await Account.getCurrentUser();
     const profile = await Account.getProfile();
 
+    // FALLBACK: if profiles table is missing phone, read from user_metadata (always reliable)
+    const phone = profile?.phone || user?.user_metadata?.phone || '';
+
     container.innerHTML = `
         <div class="account-section">
             <h4><i class="fas fa-user"></i> Profile Information</h4>
             <form id="profileForm" onsubmit="handleProfileUpdate(event)">
                 <div class="form-group">
                     <label>Full Name</label>
-                    <input type="text" id="profileFullName" value="${profile?.full_name || ''}" placeholder="Your full name" required>
+                    <input type="text" id="profileFullName" value="${profile?.full_name || user?.user_metadata?.full_name || ''}" placeholder="Your full name" required>
                 </div>
                 <div class="form-group">
                     <label>Email</label>
@@ -680,7 +714,7 @@ async function loadProfileTab() {
                 </div>
                 <div class="form-group">
                     <label>Phone Number</label>
-                    <input type="tel" id="profilePhone" value="${profile?.phone || ''}" placeholder="Your phone number" maxlength="10">
+                    <input type="tel" id="profilePhone" value="${phone}" placeholder="Your phone number" maxlength="10">
                 </div>
                 <button type="submit" class="btn-primary" style="width: auto; padding: 12px 28px;">
                     <i class="fas fa-save"></i> Save Changes
