@@ -616,7 +616,7 @@ function switchAuthTab(tab) {
         signupFields?.classList.remove('active');
         if (authSubmitBtn) authSubmitBtn.textContent = 'Log In';
         if (authToggleText) {
-            authToggleText.innerHTML = "Don't have an account? <a href="#" onclick="switchAuthTab('signup'); return false;">Sign Up</a>";
+            authToggleText.innerHTML = 'Don\'t have an account? <a href="#" onclick="switchAuthTab(\'signup\'); return false;">Sign Up</a>';
         }
     } else {
         signupTab?.classList.add('active');
@@ -625,7 +625,7 @@ function switchAuthTab(tab) {
         loginFields?.classList.remove('active');
         if (authSubmitBtn) authSubmitBtn.textContent = 'Sign Up';
         if (authToggleText) {
-            authToggleText.innerHTML = "Already have an account? <a href="#" onclick="switchAuthTab('login'); return false;">Log In</a>";
+            authToggleText.innerHTML = 'Already have an account? <a href="#" onclick="switchAuthTab(\'login\'); return false;">Log In</a>';
         }
     }
     hideAuthError();
