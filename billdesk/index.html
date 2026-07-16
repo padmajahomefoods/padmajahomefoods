@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill Desk | Padmaja Home Foods</title>
+    <meta name="description" content="Billing panel for Padmaja Home Foods - Generate professional bills">
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="../favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../favicons/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="../favicons/apple-touch-icon.png">
+    <link rel="manifest" href="../favicons/site.webmanifest">
+    <link rel="shortcut icon" href="../favicons/favicon.ico">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="billdesk.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="bill-header">
+        <h1><i class="fas fa-receipt"></i> Bill Desk</h1>
+        <p>Padmaja Home Foods - Authentic Guntur Spices & Pickles</p>
+    </header>
+
+    <!-- Customer Name -->
+    <div class="customer-section">
+        <label for="customerName"><i class="fas fa-user"></i> Customer Name</label>
+        <input type="text" id="customerName" placeholder="Enter customer name..." autocomplete="off">
+    </div>
+
+    <!-- Delivery Charge -->
+    <div class="customer-section">
+        <label for="deliveryCharge"><i class="fas fa-truck"></i> Delivery Charge</label>
+        <input type="number" id="deliveryCharge" value="0" min="0" step="0.01" placeholder="Enter delivery charge...">
+    </div>
+
+    <!-- Products -->
+    <div id="productsContainer"></div>
+
+    <!-- Bottom Spacer for sticky bar -->
+    <div class="bottom-spacer"></div>
+
+    <!-- Sticky Cart Bar -->
+    <div class="sticky-cart-bar" id="stickyCartBar">
+        <div class="sticky-cart-content">
+            <div class="sticky-cart-info">
+                <div class="sticky-cart-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="sticky-cart-badge" id="stickyCartBadge">0</span>
+                </div>
+                <div class="sticky-cart-text">
+                    <span class="sticky-cart-items" id="stickyCartItems">0 items</span>
+                    <span class="sticky-cart-total" id="stickyCartTotal">₹0</span>
+                </div>
+            </div>
+            <button class="sticky-cart-btn" id="stickyCartBtn" onclick="openCartSheet()">
+                <span>View Bill</span>
+                <i class="fas fa-chevron-up"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Cart Bottom Sheet -->
+    <div class="cart-sheet-overlay" id="cartSheetOverlay" onclick="closeCartSheet()"></div>
+    <div class="cart-sheet" id="cartSheet">
+        <div class="cart-sheet-header">
+            <div class="cart-sheet-handle"></div>
+            <h3><i class="fas fa-shopping-cart"></i> Bill Summary</h3>
+            <button class="cart-sheet-close" onclick="closeCartSheet()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="cart-sheet-body">
+            <div class="cart-sheet-items" id="cartSheetItems">
+                <!-- Items injected here -->
+            </div>
+
+            <div class="cart-sheet-empty" id="cartSheetEmpty">
+                <div class="empty-icon">🧺</div>
+                <p>Your cart is empty</p>
+                <span>Add products to generate a bill</span>
+            </div>
+        </div>
+
+        <div class="cart-sheet-footer">
+            <div class="cart-sheet-breakdown">
+                <div class="breakdown-row">
+                    <span>Products Total</span>
+                    <span id="sheetProductsTotal">₹0</span>
+                </div>
+                <div class="breakdown-row">
+                    <span>Delivery Charge</span>
+                    <span id="sheetDeliveryCharge">₹0</span>
+                </div>
+                <div class="breakdown-row grand">
+                    <span>Grand Total</span>
+                    <span id="sheetGrandTotal">₹0</span>
+                </div>
+            </div>
+            <button class="sheet-show-bill-btn" id="sheetShowBillBtn" onclick="showBill()" disabled>
+                <i class="fas fa-file-invoice"></i> Show Bill
+            </button>
+        </div>
+    </div>
+
+    <!-- Bill Modal -->
+    <div class="bill-modal" id="billModal">
+        <div class="bill-content">
+            <div class="bill-header-section">
+                <h2><i class="fas fa-receipt"></i> Padmaja Home Foods</h2>
+                <p>Authentic Guntur Spices & Pickles</p>
+                <p style="margin-top:8px;font-size:0.8rem;" id="billDate"></p>
+            </div>
+
+            <div class="bill-customer" id="billCustomer"></div>
+
+            <div class="bill-items" id="billItems"></div>
+
+            <div class="bill-total-section">
+                <div class="bill-breakdown-row">
+                    <span>Products Total:</span>
+                    <span id="billProductsTotal">₹0</span>
+                </div>
+                <div class="bill-breakdown-row">
+                    <span>Delivery Charge:</span>
+                    <span id="billDeliveryCharge">₹0</span>
+                </div>
+                <div class="bill-total-row">
+                    <span>Grand Total:</span>
+                    <span id="billTotalAmount">₹0</span>
+                </div>
+            </div>
+
+            <div class="bill-footer">
+                <div class="bill-contact">
+                    <p><i class="fas fa-phone"></i> +91 93813 11511</p>
+                    <p><i class="fas fa-envelope"></i> contactpadmajahomefoods@gmail.com</p>
+                </div>
+                <p class="bill-thankyou">Thank you for choosing Padmaja Home Foods ❤️</p>
+            </div>
+
+            <div class="bill-actions">
+                <button class="print-btn" onclick="printBill()">
+                    <i class="fas fa-print"></i> Print
+                </button>
+                <button class="share-btn" onclick="shareBill()">
+                    <i class="fab fa-whatsapp"></i> Share
+                </button>
+                <button class="close-btn" onclick="closeBill()">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="billdesk.js"></script>
+</body>
+</html>

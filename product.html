@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>Product | Padmaja Home Foods</title>
+    <meta name="description" content="Order authentic Guntur spices and pickles from Padmaja Home Foods. Homemade, 100% natural, delivered across India.">
+    <meta name="theme-color" content="#FFF8E1">
+
+    <meta property="og:title" content="Padmaja Home Foods — Authentic Guntur Product">
+    <meta property="og:description" content="Hand-crafted pickles, masalas, and sweets from Guntur.">
+    <meta property="og:image" content="/logo.png">
+    <meta property="og:type" content="product">
+
+    <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-touch-icon.png">
+    <link rel="manifest" href="favicons/site.webmanifest">
+    <link rel="shortcut icon" href="favicons/favicon.ico">
+    <meta name="msapplication-TileColor" content="#da532c">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ERJ64KPYVV"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-ERJ64KPYVV');
+    </script>
+
+    <script type="application/ld+json" id="productSchema">
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "Padmaja Home Foods",
+      "brand": {"@type": "Brand", "name": "Padmaja Home Foods"},
+      "image": "/logo.png",
+      "description": "Authentic homemade Guntur spices, pickles, and sweets.",
+      "offers": {
+        "@type": "Offer",
+        "priceCurrency": "INR",
+        "availability": "https://schema.org/InStock",
+        "url": "/"
+      }
+    }
+    </script>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav id="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo-section">
+                <img src="logo.png" alt="Padmaja Home Foods" width="42" height="42">
+                <div class="brand-text">
+                    <h1>Padmaja Home Foods</h1>
+                    <span>Authentic Guntur Taste</span>
+                </div>
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html">Shop</a></li>
+                <li><a href="home.html">Home</a></li>
+                <li><a href="home.html#trust">About</a></li>
+                <li><a href="home.html#contact">Contact</a></li>
+                <li>
+                    <div class="nav-cart" onclick="toggleCart()" role="button" aria-label="Open cart">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-badge" id="cartBadge">0</span>
+                    </div>
+                </li>
+                <li>
+                    <button class="nav-auth" id="authBtn" onclick="openAuthModal()">
+                        <i class="fas fa-user"></i> <span>Login</span>
+                    </button>
+                    <div class="account-menu" id="accountMenu">
+                        <a href="#" onclick="openAccountPage(); return false;"><i class="fas fa-user-circle"></i> My Account</a>
+                        <a href="#" onclick="handleLogout(); return false;"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </li>
+            </ul>
+            <div class="mobile-menu" onclick="openMobileMenu()" role="button" aria-label="Open menu">
+                <i class="fas fa-bars"></i>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileMenu()">
+        <i class="fas fa-times close-mobile" onclick="closeMobileMenu()"></i>
+        <div class="mobile-nav">
+            <ul>
+                <li><a href="index.html" onclick="closeMobileMenu()">Shop</a></li>
+                <li><a href="home.html" onclick="closeMobileMenu()">Home</a></li>
+                <li><a href="home.html#trust" onclick="closeMobileMenu()">About</a></li>
+                <li><a href="home.html#contact" onclick="closeMobileMenu()">Contact</a></li>
+                <li>
+                    <a href="#" id="mobileAuthLink" onclick="openAuthModal(); closeMobileMenu(); return false;">
+                        <i class="fas fa-user"></i> Login / Sign Up
+                    </a>
+                </li>
+                <li>
+                <li>
+                    <a href="https://wa.me/919381311511?text=Hi%20Padmaja%20Home%20Foods!" style="background: #1DA851; color: white;" target="_blank" rel="noopener">
+                        <i class="fab fa-whatsapp"></i> Order on WhatsApp
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3><i class="fas fa-shopping-cart"></i> Your Cart</h3>
+            <i class="fas fa-times cart-close" onclick="toggleCart()" role="button" aria-label="Close cart"></i>
+        </div>
+        <div class="cart-items" id="cartItems">
+            <div class="cart-empty">
+                <div class="cart-empty-icon">🌶️</div>
+                <h4>Your spice box is empty</h4>
+                <p>Add authentic Guntur flavors to get started</p>
+            </div>
+        </div>
+        <div class="cart-footer">
+            <div class="cart-delivery-note">
+                <i class="fas fa-info-circle"></i>
+                <span>Delivery charges extra. Estimated shipping: 2-5 business days. Pan India delivery.</span>
+            </div>
+            <div class="cart-total">
+                <span>Total:</span>
+                <span id="cartTotal">₹0</span>
+            </div>
+            <button class="cart-order-btn" onclick="placeOrder()">
+                <i class="fab fa-whatsapp"></i> Place Order on WhatsApp
+            </button>
+        </div>
+    </div>
+
+    <!-- Product Detail Page -->
+    <div class="product-detail-page">
+        <div class="pdp-container">
+            <!-- Breadcrumb -->
+            <div class="pdp-breadcrumb">
+                <a href="index.html">Shop</a>
+                <i class="fas fa-chevron-right" style="font-size:0.6rem;"></i>
+                <a href="index.html" id="pdpBreadcrumbCategory">Category</a>
+                <i class="fas fa-chevron-right" style="font-size:0.6rem;"></i>
+                <span class="current" id="pdpBreadcrumbName">Product</span>
+            </div>
+
+            <div class="pdp-grid">
+                <!-- Image Section -->
+                <div class="pdp-image-section">
+                    <div class="pdp-main-image">
+                        <img src="" alt="" id="pdpImage" onerror="this.onerror=null;this.src='logo.png';this.style.objectFit='contain';this.style.padding='30px'">
+                    </div>
+                </div>
+
+                <!-- Info Section -->
+                <div class="pdp-info-section">
+                    <div class="pdp-badges" id="pdpBadges"></div>
+                    <h1 class="pdp-title" id="pdpTitle">Product Name</h1>
+                    <p class="pdp-subtitle" id="pdpSubtitle">Product description</p>
+
+                    <div class="pdp-price-block">
+                        <div class="pdp-price-row">
+                            <div class="pdp-price" id="pdpPrice">₹0</div>
+                        </div>
+                        <div class="pdp-tax-note">Price varies by weight. Delivery charges extra.</div>
+
+                        <div class="pdp-weight-section">
+                            <span class="pdp-weight-label">Select Weight:</span>
+                            <div class="pdp-weight-options" id="pdpWeightOptions"></div>
+                        </div>
+
+                        <div class="pdp-actions">
+                            <button class="btn-whatsapp" id="pdpOrderBtn">
+                                <i class="fab fa-whatsapp"></i> Order on WhatsApp
+                            </button>
+                            <button class="btn-cart" id="pdpCartBtn">
+                                <i class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                        </div>
+
+                        <div class="pdp-delivery-info">
+                            <div class="pdp-delivery-row">
+                                <i class="fas fa-truck"></i>
+                                <span>Pan India delivery — 2 to 5 business days</span>
+                            </div>
+                            <div class="pdp-delivery-row">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Secure packaging — no spillage guaranteed</span>
+                            </div>
+                            <div class="pdp-delivery-row">
+                                <i class="fas fa-leaf"></i>
+                                <span>100% natural — no preservatives or artificial colors</span>
+                            </div>
+                            <div class="pdp-delivery-row">
+                                <i class="fas fa-home"></i>
+                                <span>Homemade in Guntur with traditional recipes</span>
+                            </div>
+                            <div class="pdp-delivery-row">
+                                <i class="fas fa-certificate"></i>
+                                <span>FSSAI Registered — food safety certified</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pdp-description">
+                        <h4><i class="fas fa-info-circle"></i> Product Details</h4>
+                        <p id="pdpDescription">Product description will be loaded here.</p>
+                        <ul>
+                            <li>Hand-crafted in small batches in Guntur, Andhra Pradesh</li>
+                            <li>Made with locally sourced, farm-fresh ingredients</li>
+                            <li>No artificial preservatives, colors, or additives</li>
+                            <li>Traditional recipes passed down through generations</li>
+                            <li>Carefully packed to ensure freshness during transit</li>
+                            <li>Shelf life: 3 months when stored in a cool, dry place</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Related Products -->
+            <div class="pdp-related" id="pdpRelatedSection">
+                <h3>You May Also Like</h3>
+                <div class="products-grid" id="pdpRelated"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sticky Cart Button -->
+    <div class="sticky-cart-btn" id="stickyCartBtn" onclick="toggleCart()" role="button" aria-label="Open cart">
+        <i class="fas fa-shopping-cart"></i>
+        <span class="sticky-cart-count" id="stickyCartCount">0</span>
+        <span class="sticky-cart-total" id="stickyCartTotal">₹0</span>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-logo">
+                <img src="logo.png" alt="Padmaja Home Foods" width="80" height="80">
+                <h4>Padmaja Home Foods</h4>
+                <p>Authentic Guntur Based Spices & Pickles</p>
+            </div>
+            <div class="footer-links">
+                <a href="index.html">Shop</a>
+                <a href="home.html">Home</a>
+                <a href="home.html#trust">About</a>
+                <a href="home.html#contact">Contact</a>
+            </div>
+            <div class="social-links">
+                <a href="https://wa.me/919381311511" target="_blank" rel="noopener" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+                <a href="https://www.instagram.com/padmajahomefoods/" target="_blank" rel="noopener" title="Instagram"><i class="fab fa-instagram"></i></a>
+                <a href="https://www.youtube.com/@PadmajaHomeFoods" target="_blank" rel="noopener" title="YouTube"><i class="fab fa-youtube"></i></a>
+                <a href="tel:+919381311511" title="Call Us"><i class="fas fa-phone"></i></a>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Padmaja Home Foods. All rights reserved. | Delivery Charges Extra</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="db.js"></script>
+    <script src="script.js"></script>
+
+    <!-- Auth Modal (Login / Signup) -->
+    <div class="auth-modal-overlay" id="authModal" onclick="if(event.target===this)closeAuthModal()">
+        <div class="auth-modal">
+            <button class="auth-modal-close" onclick="closeAuthModal()" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="auth-modal-header">
+                <img src="logo.png" alt="Padmaja Home Foods" width="48" height="48">
+                <h3>Welcome Back</h3>
+                <p>Log in or create an account to save your orders</p>
+            </div>
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="loginTab" onclick="switchAuthTab('login')">Log In</button>
+                <button class="auth-tab" id="signupTab" onclick="switchAuthTab('signup')">Sign Up</button>
+            </div>
+            <form id="authForm" onsubmit="handleAuthSubmit(event)">
+                <div id="authError" class="auth-error" style="display:none;"></div>
+                <div id="authSuccess" class="auth-success" style="display:none;"></div>
+                <div class="auth-fields active" id="loginFields">
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="authEmail" placeholder="you@example.com" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="authPassword" placeholder="Enter your password" required autocomplete="current-password">
+                    </div>
+                </div>
+                <div class="auth-fields" id="signupFields">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="authFullName" placeholder="Your full name" autocomplete="name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="authEmailSignup" placeholder="you@example.com" autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="authPhone" placeholder="10-digit mobile number" maxlength="10" autocomplete="tel">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="authPasswordSignup" placeholder="Min 6 characters" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="authConfirmPassword" placeholder="Confirm password" autocomplete="new-password">
+                    </div>
+                </div>
+                <button type="submit" class="auth-submit-btn" id="authSubmitBtn">Log In</button>
+            </form>
+            <p class="auth-toggle" id="authToggleText">Don't have an account? <a href="#" onclick="switchAuthTab('signup'); return false;">Sign Up</a></p>
+        </div>
+    </div>
+
+    <!-- Account Page (My Account) -->
+    <div class="account-page" id="accountPage">
+        <div class="account-page-overlay" onclick="closeAccountPage()"></div>
+        <div class="account-page-sidebar">
+            <div class="account-page-header">
+                <h3><i class="fas fa-user-circle"></i> My Account</h3>
+                <button class="account-page-close" onclick="closeAccountPage()" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="account-tabs">
+                <button class="account-tab-btn active" data-tab="profile" onclick="switchAccountTab('profile')">
+                    <i class="fas fa-user"></i> Profile
+                </button>
+                <button class="account-tab-btn" data-tab="addresses" onclick="switchAccountTab('addresses')">
+                    <i class="fas fa-map-marker-alt"></i> Addresses
+                </button>
+                <button class="account-tab-btn" data-tab="orders" onclick="switchAccountTab('orders')">
+                    <i class="fas fa-box"></i> Orders
+                </button>
+            </div>
+            <div class="account-page-content">
+                <div class="account-tab-content active" id="tab-profile"></div>
+                <div class="account-tab-content" id="tab-addresses"></div>
+                <div class="account-tab-content" id="tab-orders"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="db.js"></script>
+    <script src="account.js"></script>
+    <script src="script.js"></script>
+
+</body>
+</html>
