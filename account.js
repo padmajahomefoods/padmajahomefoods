@@ -50,17 +50,53 @@ const Account = {
     initAuthListener() {
         this._initClient().then(client => {
             client.auth.onAuthStateChange((event, session) => {
+                console.log('[Account.initAuthListener] Auth state change:', event, 'session:', !!session);
                 if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
                     this._currentUser = session?.user || null;
                     localStorage.setItem(CONFIG.CUSTOMER_SESSION_KEY, 'active');
                     this._updateAuthUI();
+                    
+                    // FIX: Dispatch userLoggedIn for email-verification logins
+                    // This catches the case where user clicks email verification link
+                    // and Supabase establishes a session via onAuthStateChange
+                    const userId = session?.user?.id;
+                    if (userId && this._lastNotifiedUserId !== userId) {
+                        console.log('[Account.initAuthListener] New session detected for user:', userId, 'dispatching userLoggedIn');
+                        this._lastNotifiedUserId = userId;
+                        window.dispatchEvent(new CustomEvent('userLoggedIn'));
+                    } else if (userId) {
+                        console.log('[Account.initAuthListener] Already notified for user:', userId, 'skipping duplicate');
+                    }
                 } else if (event === 'SIGNED_OUT') {
                     this._currentUser = null;
                     this._currentProfile = null;
+                    this._lastNotifiedUserId = null;
                     localStorage.removeItem(CONFIG.CUSTOMER_SESSION_KEY);
                     this._updateAuthUI();
                 }
             });
+        });
+    },
+
+    // --- CROSS-TAB SESSION DETECTION ---
+    // Listen for storage changes from other tabs (e.g., email verification in new tab)
+    _initCrossTabListener() {
+        window.addEventListener('storage', async (e) => {
+            if (e.key === CONFIG.CUSTOMER_SESSION_KEY) {
+                if (e.newValue === 'active' && !this.isLoggedIn()) {
+                    console.log('[Account._initCrossTabListener] Session detected in another tab, refreshing...');
+                    await this.checkSession();
+                    // Close auth modal if it's still open
+                    const modal = document.getElementById('authModal');
+                    if (modal && modal.classList.contains('active')) {
+                        closeAuthModal();
+                        showToast('Email verified! You are now logged in.', 'success');
+                    }
+                } else if (e.newValue === null && this.isLoggedIn()) {
+                    console.log('[Account._initCrossTabListener] Session removed in another tab, logging out...');
+                    await this.logOut();
+                }
+            }
         });
     },
 
@@ -73,6 +109,7 @@ const Account = {
         if (error || !data.session) {
             localStorage.removeItem(CONFIG.CUSTOMER_SESSION_KEY);
             this._currentUser = null;
+            this._lastNotifiedUserId = null;
             this._updateAuthUI();
             return false;
         }
@@ -80,6 +117,16 @@ const Account = {
         this._currentUser = data.session.user;
         localStorage.setItem(CONFIG.CUSTOMER_SESSION_KEY, 'active');
         this._updateAuthUI();
+        
+        // FIX: If we have a valid session on page load but haven't notified cart yet,
+        // dispatch userLoggedIn. This handles page refreshes after email verification.
+        const userId = data.session.user?.id;
+        if (userId && this._lastNotifiedUserId !== userId) {
+            console.log('[Account.checkSession] Existing session found for user:', userId, 'dispatching userLoggedIn');
+            this._lastNotifiedUserId = userId;
+            window.dispatchEvent(new CustomEvent('userLoggedIn'));
+        }
+        
         return true;
     },
 
@@ -171,16 +218,27 @@ const Account = {
             return { success: false, message: error.message };
         }
 
-        if (data.session) {
+            if (data.session) {
             this._currentUser = data.user;
             localStorage.setItem(CONFIG.CUSTOMER_SESSION_KEY, 'active');
 
             // FIX: After login, sync user_metadata (phone) to profiles table
-            // in case the profile was created by trigger without phone
             await this._syncPhoneToProfile();
 
+            // CRITICAL FIX: Ensure Supabase session is fully persisted before notifying cart
+            // Force a small delay to let localStorage write complete
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             // Notify cart service to migrate guest cart
-            window.dispatchEvent(new CustomEvent('userLoggedIn'));
+            // Use _lastNotifiedUserId to prevent duplicate notifications
+            const userId = data.user?.id;
+            if (userId && this._lastNotifiedUserId !== userId) {
+                console.log('[Account.logIn] Dispatching userLoggedIn event for user:', userId);
+                this._lastNotifiedUserId = userId;
+                window.dispatchEvent(new CustomEvent('userLoggedIn'));
+            } else {
+                console.log('[Account.logIn] userLoggedIn already dispatched for user:', userId, 'skipping');
+            }
 
             this._updateAuthUI();
             return { success: true, message: 'Logged in successfully!' };
@@ -271,6 +329,7 @@ const Account = {
         }
         this._currentUser = null;
         this._currentProfile = null;
+        this._lastNotifiedUserId = null;
         localStorage.removeItem(CONFIG.CUSTOMER_SESSION_KEY);
         this._updateAuthUI();
         return { success: true };
@@ -597,6 +656,7 @@ const Account = {
     // --- INIT ---
     async init() {
         this.initAuthListener();
+        this._initCrossTabListener();
         await this.checkSession();
     }
 };
@@ -1102,4 +1162,12 @@ document.addEventListener('click', function(e) {
 // Initialize account module on load
 document.addEventListener('DOMContentLoaded', function() {
     Account.init();
+});
+
+// Backup: check session when user returns to this tab after verifying in another tab
+document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && typeof Account !== 'undefined' && !Account.isLoggedIn()) {
+        console.log('[Account] Tab became visible, checking session...');
+        await Account.checkSession();
+    }
 });

@@ -10,6 +10,7 @@ const CartService = {
     _supabaseCart: [],
     _isSyncing: false,
     _syncQueue: [],
+    _supabaseCartLoaded: false,
 
     // --- Constants ---
     STORAGE_KEY: CONFIG.CART_STORAGE_KEY || 'padmaja_cart',
@@ -128,7 +129,14 @@ const CartService = {
                 console.error('[CartService._initSupabaseCart] Migration FAILED. Keeping local cart as fallback.');
                 // CRITICAL FIX: If migration fails, don't treat as empty
                 // Keep local cart in memory so user doesn't lose items
+                if (this._localCart.length === 0) {
+                    this._supabaseCartLoaded = true;
+                }
+                return;
             }
+        }
+
+        this._supabaseCartLoaded = true;
         } else {
             console.log('[CartService._initSupabaseCart] No local items to migrate');
         }
@@ -553,6 +561,7 @@ const CartService = {
     async onLogout() {
         console.log('[CartService.onLogout] ====== LOGOUT DETECTED ======');
         this._supabaseCart = [];
+        this._supabaseCartLoaded = false;
         this._loadLocalCart();
         this._notifyUpdate();
         console.log('[CartService.onLogout] ====== LOGOUT HANDLING COMPLETE ======');
@@ -563,6 +572,12 @@ const CartService = {
     // ============================================
     getItems() {
         const isLoggedIn = this._isLoggedIn();
+        // FIX: If logged in but Supabase cart hasn't loaded successfully yet,
+        // fall back to local cart so guest items remain visible during migration
+        if (isLoggedIn && !this._supabaseCartLoaded && this._localCart.length > 0) {
+            console.log('[CartService.getItems] Supabase cart not loaded yet, returning local cart');
+            return this._localCart;
+        }
         const items = isLoggedIn ? this._supabaseCart : this._localCart;
         // Debug log for troubleshooting
         if (isLoggedIn && this._localCart.length > 0 && this._supabaseCart.length === 0) {
