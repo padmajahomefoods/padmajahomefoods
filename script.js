@@ -114,7 +114,7 @@ async function buyNow(btn, productId, basePrice) {
     
     let weight;
     if (activeBtn) {
-        weight = activeBtn.textContent;
+        weight = activeBtn.dataset.weight || activeBtn.textContent.trim();
     } else {
         const products = await DB.getProducts();
         const p = products.find(p => String(p.id) === String(productId));
@@ -132,7 +132,7 @@ async function buyNow(btn, productId, basePrice) {
         }
     } else {
         // Empty cart, go straight to checkout
-        window.location.href = `checkout.html?buy_now_product_id=${encodeURIComponent(productId)}&weight=${encodeURIComponent(weight)}`;
+        window.location.assign(`checkout.html?buy_now_product_id=${encodeURIComponent(productId)}&weight=${encodeURIComponent(weight)}`);
     }
     return false;
 }
@@ -169,12 +169,12 @@ function proceedToCheckoutSingleItem() {
     closeBuyNowConflictModal();
     const pending = window.pendingSingleCheckout;
     if (pending) {
-        window.location.href = `checkout.html?buy_now_product_id=${encodeURIComponent(pending.productId)}&weight=${encodeURIComponent(pending.weight)}`;
+        window.location.assign(`checkout.html?buy_now_product_id=${encodeURIComponent(pending.productId)}&weight=${encodeURIComponent(pending.weight)}`);
     }
 }
 
 function goToCheckout() {
-    window.location.href = 'checkout.html';
+    window.location.assign('checkout.html');
 }
 
 // ============================================
@@ -524,7 +524,9 @@ function updatePDPButtons(product, weight, price) {
     const cartBtn = document.getElementById('pdpCartBtn');
 
     if (orderBtn) {
-        orderBtn.onclick = function() {
+        orderBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             buyNow(orderBtn, product.id, product.price1000 || 0);
         };
     }
@@ -599,7 +601,7 @@ function createProductCard(product, isPriority) {
                 </a>
                 <div class="weight-options">${weightButtons}</div>
                 <div class="product-actions">
-                    <button class="btn-buy-now" onclick="buyNow(this, '${product.id}', ${product.price1000 || 0})">
+                    <button class="btn-buy-now" onclick="event.preventDefault(); event.stopPropagation(); buyNow(this, '${product.id}', ${product.price1000 || 0})">
                         <i class="fas fa-bolt"></i> Buy Now
                     </button>
                     <button class="btn-cart" onclick="addToCart(this, '${product.name}', ${product.price1000 || 0})">
