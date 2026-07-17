@@ -378,14 +378,15 @@ function initScrollAnimations() {
 async function initProductPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const rawProductId = urlParams.get('id');
-    const productId = isNaN(rawProductId) ? rawProductId : Number(rawProductId);
 
-    if (!productId) {
+    if (!rawProductId) {
         window.location.href = 'index.html';
         return;
     }
 
-    const product = await DB.getProductById(productId);
+    const products = await DB.getProducts();
+    const product = products.find(p => String(p.id) === String(rawProductId));
+
     if (!product) {
         window.location.href = 'index.html';
         return;
@@ -458,8 +459,8 @@ function selectPDPWeight(btn, weight, price) {
     document.getElementById('pdpPrice').textContent = '\u20B9' + price;
 
     const rawProductId = new URLSearchParams(window.location.search).get('id');
-    const productId = isNaN(rawProductId) ? rawProductId : Number(rawProductId);
-    DB.getProductById(productId).then(product => {
+    DB.getProducts().then(products => {
+        const product = products.find(p => String(p.id) === String(rawProductId));
         if (product) {
             updatePDPButtons(product, weight, price);
         }
