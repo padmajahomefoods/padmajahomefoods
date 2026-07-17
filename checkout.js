@@ -157,22 +157,45 @@ async function handleCheckoutSubmit(e) {
             // Always ensure profile has the latest contact info
             await Account.updateProfile({ full_name: fullName, phone: phone });
             
-            // Save address if the user doesn't have any addresses yet
+            // Save address if it's new (prevent duplicates)
             const addresses = await Account.getAddresses();
-            if (addresses.length === 0) {
-                await Account.addAddress({
-                    label: 'Home',
+            const addressLine1 = document.getElementById('checkoutAddress').value.trim();
+            const city = document.getElementById('checkoutCity').value.trim();
+            const state = document.getElementById('checkoutState').value.trim();
+            const pincode = document.getElementById('checkoutPincode').value.trim();
+            
+            const isDuplicate = addresses.some(addr => 
+                addr.address_line1.toLowerCase() === addressLine1.toLowerCase() &&
+                addr.city.toLowerCase() === city.toLowerCase() &&
+                addr.pincode === pincode
+            );
+            
+            if (!isDuplicate) {
+                console.log("Account.addAddress called from checkout");
+                const payload = {
+                    label: 'Checkout Address',
                     full_name: fullName,
                     phone: phone,
-                    address_line1: document.getElementById('checkoutAddress').value.trim(),
-                    city: document.getElementById('checkoutCity').value.trim(),
-                    state: document.getElementById('checkoutState').value.trim(),
-                    pincode: document.getElementById('checkoutPincode').value.trim(),
-                    is_default: true
-                });
+                    address_line1: addressLine1,
+                    city: city,
+                    state: state,
+                    pincode: pincode,
+                    is_default: addresses.length === 0 // Set as default if it's the first one
+                };
+                console.log("payload being saved:", payload);
+                const result = await Account.addAddress(payload);
+                
+                if (result.success) {
+                    console.log("success response:", result);
+                } else {
+                    console.log("error response:", result);
+                }
+            } else {
+                console.log("Address already exists, skipping save");
             }
         } catch (err) {
             console.error("Failed to save profile data:", err);
+            console.log("error response:", err);
         }
     }
 
