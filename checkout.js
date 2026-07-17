@@ -16,24 +16,40 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function preloadCustomerData() {
-    if (typeof AccountService !== 'undefined' && AccountService.isLoggedIn()) {
+    if (typeof Account !== 'undefined' && Account.isLoggedIn()) {
         try {
-            const user = await AccountService.getCurrentUser();
-            const profile = await AccountService.getProfile();
+            const user = await Account.getCurrentUser();
+            const profile = await Account.getProfile();
+            const addresses = await Account.getAddresses();
+            
+            console.log("current authenticated user:", user);
+            console.log("user id:", user ? user.id : null);
+            console.log("profile object:", profile);
+            console.log("addresses array:", addresses);
             
             if (user && user.email) {
                 const emailField = document.getElementById('checkoutEmail');
                 if (emailField && !emailField.value) emailField.value = user.email;
             }
             
-            if (profile) {
+            // Full name and phone can come from profile or metadata
+            const fullName = profile?.full_name || user?.user_metadata?.full_name || '';
+            const phone = profile?.phone || user?.user_metadata?.phone || '';
+            
+            const nameField = document.getElementById('checkoutName');
+            if (nameField && fullName && !nameField.value) nameField.value = fullName;
+            
+            const phoneField = document.getElementById('checkoutPhone');
+            if (phoneField && phone && !phoneField.value) phoneField.value = phone;
+            
+            // Address details come from the first saved address (default)
+            if (addresses && addresses.length > 0) {
+                const defaultAddress = addresses[0];
                 const fields = {
-                    'checkoutName': profile.full_name,
-                    'checkoutPhone': profile.phone,
-                    'checkoutAddress': profile.address,
-                    'checkoutCity': profile.city,
-                    'checkoutState': profile.state,
-                    'checkoutPincode': profile.pincode
+                    'checkoutAddress': defaultAddress.address_line1 + (defaultAddress.address_line2 ? ', ' + defaultAddress.address_line2 : ''),
+                    'checkoutCity': defaultAddress.city,
+                    'checkoutState': defaultAddress.state,
+                    'checkoutPincode': defaultAddress.pincode
                 };
                 
                 for (const [id, value] of Object.entries(fields)) {
@@ -45,6 +61,7 @@ async function preloadCustomerData() {
             }
         } catch (err) {
             console.error("Failed to preload customer data:", err);
+            console.log("any caught exception:", err);
         }
     }
 }
@@ -131,18 +148,29 @@ function renderSummaryItems(items) {
 async function handleCheckoutSubmit(e) {
     e.preventDefault();
     
-    // Save delivery info back to profile if logged in
-    if (typeof AccountService !== 'undefined' && AccountService.isLoggedIn()) {
+    // Save delivery info back to profile/addresses if logged in
+    if (typeof Account !== 'undefined' && Account.isLoggedIn()) {
         try {
-            const updates = {
-                full_name: document.getElementById('checkoutName').value.trim(),
-                phone: document.getElementById('checkoutPhone').value.trim(),
-                address: document.getElementById('checkoutAddress').value.trim(),
-                city: document.getElementById('checkoutCity').value.trim(),
-                state: document.getElementById('checkoutState').value.trim(),
-                pincode: document.getElementById('checkoutPincode').value.trim()
-            };
-            await AccountService.updateProfile(updates);
+            const fullName = document.getElementById('checkoutName').value.trim();
+            const phone = document.getElementById('checkoutPhone').value.trim();
+            
+            // Always ensure profile has the latest contact info
+            await Account.updateProfile({ full_name: fullName, phone: phone });
+            
+            // Save address if the user doesn't have any addresses yet
+            const addresses = await Account.getAddresses();
+            if (addresses.length === 0) {
+                await Account.addAddress({
+                    label: 'Home',
+                    full_name: fullName,
+                    phone: phone,
+                    address_line1: document.getElementById('checkoutAddress').value.trim(),
+                    city: document.getElementById('checkoutCity').value.trim(),
+                    state: document.getElementById('checkoutState').value.trim(),
+                    pincode: document.getElementById('checkoutPincode').value.trim(),
+                    is_default: true
+                });
+            }
         } catch (err) {
             console.error("Failed to save profile data:", err);
         }
