@@ -8,6 +8,7 @@ const Account = {
     _clientPromise: null,
     _currentUser: null,
     _currentProfile: null,
+    _lastNotifiedUserId: null,
 
     async _initClient() {
         if (this._client) return this._client;
@@ -83,7 +84,9 @@ const Account = {
     _initCrossTabListener() {
         window.addEventListener('storage', async (e) => {
             if (e.key === CONFIG.CUSTOMER_SESSION_KEY) {
-                if (e.newValue === 'active' && !this.isLoggedIn()) {
+                // FIX: Use e.oldValue instead of this.isLoggedIn() because within a storage event, 
+                // localStorage is already updated to e.newValue across all reads.
+                if (e.newValue === 'active' && e.oldValue !== 'active') {
                     console.log('[Account._initCrossTabListener] Session detected in another tab, refreshing...');
                     await this.checkSession();
                     // Close auth modal if it's still open
@@ -92,9 +95,16 @@ const Account = {
                         closeAuthModal();
                         showToast('Email verified! You are now logged in.', 'success');
                     }
-                } else if (e.newValue === null && this.isLoggedIn()) {
+                } else if (e.newValue === null && e.oldValue === 'active') {
                     console.log('[Account._initCrossTabListener] Session removed in another tab, logging out...');
                     await this.logOut();
+                }
+            } 
+            // Fallback: Also listen for Supabase's native token key directly
+            else if (e.key && e.key.startsWith('sb-') && e.key.endsWith('-auth-token')) {
+                if (e.newValue && !this._currentUser) {
+                    console.log('[Account._initCrossTabListener] Supabase token detected from another tab, checking session...');
+                    await this.checkSession();
                 }
             }
         });
@@ -218,7 +228,7 @@ const Account = {
             return { success: false, message: error.message };
         }
 
-            if (data.session) {
+        if (data.session) {
             this._currentUser = data.user;
             localStorage.setItem(CONFIG.CUSTOMER_SESSION_KEY, 'active');
 
@@ -1166,8 +1176,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Backup: check session when user returns to this tab after verifying in another tab
 document.addEventListener('visibilitychange', async () => {
-    if (document.visibilityState === 'visible' && typeof Account !== 'undefined' && !Account.isLoggedIn()) {
-        console.log('[Account] Tab became visible, checking session...');
-        await Account.checkSession();
+    if (document.visibilityState === 'visible' && typeof Account !== 'undefined') {
+        // FIX: The previous logic relied on Account.isLoggedIn() returning false, 
+        // but Account.isLoggedIn() reads localStorage which is instantly shared across tabs.
+        // Instead, we check if localStorage shows active, but our local memory state (_currentUser) is empty.
+        if (Account.isLoggedIn() && !Account._currentUser) {
+            console.log('[Account] Tab became visible, syncing active session from other tab...');
+            await Account.checkSession();
+            
+            const modal = document.getElementById('authModal');
+            if (modal && modal.classList.contains('active')) {
+                closeAuthModal();
+                showToast('Email verified! You are now logged in.', 'success');
+            }
+        } else if (!Account.isLoggedIn() && Account._currentUser) {
+            console.log('[Account] Tab became visible, syncing logout...');
+            await Account.logOut();
+        }
     }
 });
