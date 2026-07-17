@@ -17,22 +17,42 @@ const CartService = {
 
     // --- Initialization ---
     async init() {
+        console.log('[CartService.init] Starting initialization...');
         this._loadLocalCart();
+        console.log('[CartService.init] Local cart loaded:', this._localCart.length, 'items');
 
         // If user is logged in, load from Supabase and migrate if needed
         if (Account.isLoggedIn()) {
+            console.log('[CartService.init] User already logged in, initializing Supabase cart...');
             await this._initSupabaseCart();
+        } else {
+            console.log('[CartService.init] User is guest, using local cart only');
         }
 
         this._notifyUpdate();
+        console.log('[CartService.init] Initialization complete. Total items:', this.getTotalItems());
     },
 
     // --- Client ---
     async _getClient() {
-        if (this._client) return this._client;
+        if (this._client) {
+            // Verify the client still has a valid session before returning
+            const { data: { session } } = await this._client.auth.getSession();
+            if (session) {
+                return this._client;
+            }
+            console.log('[CartService._getClient] Cached client has no session, recreating...');
+            this._client = null;
+        }
+        
         const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm');
         const supabase = module.default || module;
         this._client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+        
+        // Log session status for debugging
+        const { data: { session } } = await this._client.auth.getSession();
+        console.log('[CartService._getClient] New client created. Session present:', !!session);
+        
         return this._client;
     },
 
@@ -50,11 +70,13 @@ const CartService = {
             if (saved) {
                 const data = JSON.parse(saved);
                 this._localCart = data.version === 2 ? (data.items || []) : [];
+                console.log('[CartService._loadLocalCart] Loaded', this._localCart.length, 'items from localStorage');
             } else {
                 this._localCart = [];
+                console.log('[CartService._loadLocalCart] No local cart found');
             }
         } catch (e) {
-            console.warn('Failed to load local cart:', e);
+            console.warn('[CartService._loadLocalCart] Failed to load local cart:', e);
             this._localCart = [];
         }
     },
@@ -65,33 +87,65 @@ const CartService = {
                 version: 2,
                 items: this._localCart
             }));
+            console.log('[CartService._saveLocalCart] Saved', this._localCart.length, 'items to localStorage');
         } catch (e) {
-            console.warn('Failed to save local cart:', e);
+            console.warn('[CartService._saveLocalCart] Failed to save local cart:', e);
         }
     },
 
     _clearLocalCart() {
+        console.log('[CartService._clearLocalCart] Clearing local cart. Items before clear:', this._localCart.length);
         this._localCart = [];
         localStorage.removeItem(this.STORAGE_KEY);
+        console.log('[CartService._clearLocalCart] Local cart cleared');
     },
 
     // ============================================
     // SUPABASE (Logged-in Mode)
     // ============================================
     async _initSupabaseCart() {
+        console.log('[CartService._initSupabaseCart] Starting Supabase cart init...');
+        
+        // DEFENSIVE: Always re-read localStorage to ensure we have latest data
+        this._loadLocalCart();
         const hasLocalItems = this._localCart.length > 0;
+        console.log('[CartService._initSupabaseCart] Has local items after reload:', hasLocalItems, 'items:', this._localCart);
+
         await this._loadSupabaseCart();
+        console.log('[CartService._initSupabaseCart] Supabase cart loaded:', this._supabaseCart.length, 'items');
 
         if (hasLocalItems) {
-            await this._migrateLocalToSupabase();
+            console.log('[CartService._initSupabaseCart] Local items detected, starting migration...');
+            const migrationSuccess = await this._migrateLocalToSupabase();
+            
+            if (migrationSuccess) {
+                console.log('[CartService._initSupabaseCart] Migration succeeded, clearing local cart');
+                this._clearLocalCart();
+                console.log('[CartService._initSupabaseCart] Reloading Supabase cart after migration...');
+                await this._loadSupabaseCart();
+                console.log('[CartService._initSupabaseCart] Post-migration Supabase cart:', this._supabaseCart.length, 'items');
+            } else {
+                console.error('[CartService._initSupabaseCart] Migration FAILED. Keeping local cart as fallback.');
+                // CRITICAL FIX: If migration fails, don't treat as empty
+                // Keep local cart in memory so user doesn't lose items
+            }
+        } else {
+            console.log('[CartService._initSupabaseCart] No local items to migrate');
         }
+        
+        console.log('[CartService._initSupabaseCart] Final state - Supabase:', this._supabaseCart.length, 'Local:', this._localCart.length);
     },
 
     async _loadSupabaseCart() {
+        console.log('[CartService._loadSupabaseCart] Loading from Supabase...');
         try {
             const client = await this._getClient();
             const user = await Account.getCurrentUser();
+            
+            console.log('[CartService._loadSupabaseCart] Current user:', user ? user.id : 'null');
+            
             if (!user) {
+                console.warn('[CartService._loadSupabaseCart] No user, clearing Supabase cart');
                 this._supabaseCart = [];
                 return;
             }
@@ -103,37 +157,56 @@ const CartService = {
                 .order('created_at', { ascending: false });
 
             if (error) {
-                console.warn('Failed to load Supabase cart:', error);
+                console.warn('[CartService._loadSupabaseCart] Failed to load Supabase cart:', error);
                 this._supabaseCart = [];
                 return;
             }
 
             this._supabaseCart = (data || []).map(row => this._rowToItem(row));
+            console.log('[CartService._loadSupabaseCart] Loaded', this._supabaseCart.length, 'items from Supabase');
         } catch (e) {
-            console.warn('Error loading Supabase cart:', e);
+            console.warn('[CartService._loadSupabaseCart] Error loading Supabase cart:', e);
             this._supabaseCart = [];
         }
     },
 
     async _migrateLocalToSupabase() {
+        console.log('[CartService._migrateLocalToSupabase] Starting migration...');
+        console.log('[CartService._migrateLocalToSupabase] Local items to migrate:', this._localCart);
+        
         try {
             const client = await this._getClient();
             const user = await Account.getCurrentUser();
-            if (!user || this._localCart.length === 0) return;
+            
+            console.log('[CartService._migrateLocalToSupabase] User:', user ? user.id : 'null');
+            console.log('[CartService._migrateLocalToSupabase] Local cart length:', this._localCart.length);
+            
+            if (!user) {
+                console.error('[CartService._migrateLocalToSupabase] ABORT: No user available');
+                return false;
+            }
+            if (this._localCart.length === 0) {
+                console.log('[CartService._migrateLocalToSupabase] ABORT: No local items');
+                return true; // Nothing to do, not a failure
+            }
 
+            // Check existing items in Supabase
+            console.log('[CartService._migrateLocalToSupabase] Checking existing Supabase items...');
             const { data: existingItems, error: countErr } = await client
                 .from('cart_items')
                 .select('product_id, weight, quantity')
                 .eq('user_id', user.id);
 
             if (countErr) {
-                console.warn('Failed to check existing cart:', countErr);
-                return;
+                console.error('[CartService._migrateLocalToSupabase] Failed to check existing cart:', countErr);
+                return false;
             }
 
             const hasExistingItems = (existingItems || []).length > 0;
+            console.log('[CartService._migrateLocalToSupabase] Existing Supabase items:', hasExistingItems ? existingItems.length : 0);
 
             if (hasExistingItems) {
+                console.log('[CartService._migrateLocalToSupabase] Using merge_user_cart RPC...');
                 const itemsJson = JSON.stringify(this._localCart.map(item => ({
                     product_id: this._slugify(item.name),
                     product_name: item.name,
@@ -144,65 +217,123 @@ const CartService = {
                     quantity: item.quantity
                 })));
 
+                console.log('[CartService._migrateLocalToSupabase] RPC payload:', itemsJson);
+
                 const { error: mergeErr } = await client.rpc('merge_user_cart', {
                     p_user_id: user.id,
                     p_items: itemsJson
                 });
 
                 if (mergeErr) {
-                    console.warn('Merge cart failed:', mergeErr);
-                    await this._upsertItemsIndividually(this._localCart);
+                    console.error('[CartService._migrateLocalToSupabase] merge_user_cart RPC failed:', mergeErr);
+                    console.log('[CartService._migrateLocalToSupabase] Falling back to individual upserts...');
+                    const fallbackResult = await this._upsertItemsIndividually(this._localCart);
+                    if (!fallbackResult) {
+                        console.error('[CartService._migrateLocalToSupabase] Fallback upserts also failed');
+                        return false;
+                    }
+                } else {
+                    console.log('[CartService._migrateLocalToSupabase] RPC succeeded');
                 }
             } else {
-                await this._upsertItemsIndividually(this._localCart);
+                console.log('[CartService._migrateLocalToSupabase] No existing items, using individual inserts...');
+                const insertResult = await this._upsertItemsIndividually(this._localCart);
+                if (!insertResult) {
+                    console.error('[CartService._migrateLocalToSupabase] Individual inserts failed');
+                    return false;
+                }
             }
 
-            this._clearLocalCart();
-            await this._loadSupabaseCart();
+            console.log('[CartService._migrateLocalToSupabase] Migration completed successfully');
             showToast('Cart synced to your account', 'success');
+            return true;
         } catch (e) {
-            console.warn('Cart migration error:', e);
+            console.error('[CartService._migrateLocalToSupabase] Migration error:', e);
+            return false;
         }
     },
 
     async _upsertItemsIndividually(items) {
+        console.log('[CartService._upsertItemsIndividually] Starting upsert for', items.length, 'items');
+        
         const client = await this._getClient();
         const user = await Account.getCurrentUser();
-        if (!user) return;
+        
+        if (!user) {
+            console.error('[CartService._upsertItemsIndividually] No user available');
+            return false;
+        }
+
+        let successCount = 0;
+        let failCount = 0;
 
         for (const item of items) {
             const productId = this._slugify(item.name);
             const weightInGrams = item.weightInGrams || parseWeight(item.weight);
+            
+            console.log('[CartService._upsertItemsIndividually] Processing:', item.name, '-', item.weight);
 
-            const { data: existing } = await client
-                .from('cart_items')
-                .select('id, quantity')
-                .eq('user_id', user.id)
-                .eq('product_id', productId)
-                .eq('weight', item.weight)
-                .single();
+            try {
+                const { data: existing, error: findErr } = await client
+                    .from('cart_items')
+                    .select('id, quantity')
+                    .eq('user_id', user.id)
+                    .eq('product_id', productId)
+                    .eq('weight', item.weight)
+                    .single();
 
-            if (existing) {
-                const newQty = Math.min(existing.quantity + item.quantity, this.MAX_QTY);
-                await client
-                    .from('cart_items')
-                    .update({ quantity: newQty })
-                    .eq('id', existing.id);
-            } else {
-                await client
-                    .from('cart_items')
-                    .insert({
-                        user_id: user.id,
-                        product_id: productId,
-                        product_name: item.name,
-                        weight: item.weight,
-                        weight_in_grams: weightInGrams,
-                        price: item.price,
-                        base_price: item.basePrice || item.price,
-                        quantity: Math.min(item.quantity, this.MAX_QTY)
-                    });
+                if (findErr && findErr.code !== 'PGRST116') { // PGRST116 = no rows returned
+                    console.error('[CartService._upsertItemsIndividually] Find error for', item.name, ':', findErr);
+                    failCount++;
+                    continue;
+                }
+
+                if (existing) {
+                    const newQty = Math.min(existing.quantity + item.quantity, this.MAX_QTY);
+                    console.log('[CartService._upsertItemsIndividually] Updating existing:', item.name, 'qty:', existing.quantity, '->', newQty);
+                    
+                    const { error: updErr } = await client
+                        .from('cart_items')
+                        .update({ quantity: newQty })
+                        .eq('id', existing.id);
+                        
+                    if (updErr) {
+                        console.error('[CartService._upsertItemsIndividually] Update failed:', updErr);
+                        failCount++;
+                    } else {
+                        successCount++;
+                    }
+                } else {
+                    console.log('[CartService._upsertItemsIndividually] Inserting new:', item.name);
+                    
+                    const { error: insErr } = await client
+                        .from('cart_items')
+                        .insert({
+                            user_id: user.id,
+                            product_id: productId,
+                            product_name: item.name,
+                            weight: item.weight,
+                            weight_in_grams: weightInGrams,
+                            price: item.price,
+                            base_price: item.basePrice || item.price,
+                            quantity: Math.min(item.quantity, this.MAX_QTY)
+                        });
+                        
+                    if (insErr) {
+                        console.error('[CartService._upsertItemsIndividually] Insert failed:', insErr);
+                        failCount++;
+                    } else {
+                        successCount++;
+                    }
+                }
+            } catch (e) {
+                console.error('[CartService._upsertItemsIndividually] Exception for', item.name, ':', e);
+                failCount++;
             }
         }
+
+        console.log('[CartService._upsertItemsIndividually] Complete. Success:', successCount, 'Failed:', failCount);
+        return failCount === 0; // Return true only if all succeeded
     },
 
     // ============================================
@@ -210,6 +341,7 @@ const CartService = {
     // ============================================
 
     async addItem(item) {
+        console.log('[CartService.addItem] Adding:', item.name, item.weight, 'qty:', item.quantity);
         if (this._isLoggedIn()) {
             await this._addToSupabase(item);
         } else {
@@ -219,6 +351,7 @@ const CartService = {
     },
 
     async removeItem(indexOrId) {
+        console.log('[CartService.removeItem] Removing item at index/ID:', indexOrId);
         if (this._isLoggedIn()) {
             await this._removeFromSupabase(indexOrId);
         } else {
@@ -228,6 +361,7 @@ const CartService = {
     },
 
     async updateQuantity(indexOrId, change) {
+        console.log('[CartService.updateQuantity] Changing qty for:', indexOrId, 'by:', change);
         if (this._isLoggedIn()) {
             await this._updateSupabaseQty(indexOrId, change);
         } else {
@@ -237,6 +371,7 @@ const CartService = {
     },
 
     async clearCart() {
+        console.log('[CartService.clearCart] Clearing cart');
         if (this._isLoggedIn()) {
             await this._clearSupabaseCart();
         } else {
@@ -253,6 +388,7 @@ const CartService = {
 
         if (existing) {
             existing.quantity = Math.min(existing.quantity + (item.quantity || 1), this.MAX_QTY);
+            console.log('[CartService._addToLocal] Updated existing:', item.name, 'new qty:', existing.quantity);
         } else {
             this._localCart.push({
                 name: item.name,
@@ -262,17 +398,20 @@ const CartService = {
                 basePrice: item.basePrice || item.price,
                 quantity: Math.min(item.quantity || 1, this.MAX_QTY)
             });
+            console.log('[CartService._addToLocal] Added new:', item.name);
         }
         this._saveLocalCart();
     },
 
     _removeFromLocal(index) {
+        console.log('[CartService._removeFromLocal] Removing index:', index, 'item:', this._localCart[index]?.name);
         this._localCart.splice(index, 1);
         this._saveLocalCart();
     },
 
     _updateLocalQty(index, change) {
         this._localCart[index].quantity += change;
+        console.log('[CartService._updateLocalQty] Index:', index, 'new qty:', this._localCart[index].quantity);
         if (this._localCart[index].quantity <= 0) {
             this._localCart.splice(index, 1);
         } else if (this._localCart[index].quantity > this.MAX_QTY) {
@@ -283,10 +422,15 @@ const CartService = {
 
     // --- Supabase CRUD ---
     async _addToSupabase(item) {
+        console.log('[CartService._addToSupabase] Adding to Supabase:', item.name);
         try {
             const client = await this._getClient();
             const user = await Account.getCurrentUser();
-            if (!user) return;
+            if (!user) {
+                console.warn('[CartService._addToSupabase] No user, falling back to local');
+                this._addToLocal(item);
+                return;
+            }
 
             const productId = this._slugify(item.name);
             const weightInGrams = item.weightInGrams || parseWeight(item.weight);
@@ -305,7 +449,7 @@ const CartService = {
                     .from('cart_items')
                     .update({ quantity: newQty })
                     .eq('id', existing.id);
-                if (error) console.warn('Update cart item failed:', error);
+                if (error) console.warn('[CartService._addToSupabase] Update failed:', error);
             } else {
                 const { error } = await client
                     .from('cart_items')
@@ -319,12 +463,12 @@ const CartService = {
                         base_price: item.basePrice || item.price,
                         quantity: Math.min(item.quantity || 1, this.MAX_QTY)
                     });
-                if (error) console.warn('Insert cart item failed:', error);
+                if (error) console.warn('[CartService._addToSupabase] Insert failed:', error);
             }
 
             await this._loadSupabaseCart();
         } catch (e) {
-            console.warn('Add to Supabase cart failed:', e);
+            console.warn('[CartService._addToSupabase] Failed:', e);
         }
     },
 
@@ -396,21 +540,35 @@ const CartService = {
     // Auth State Handlers
     // ============================================
     async onLogin() {
+        console.log('[CartService.onLogin] ====== LOGIN DETECTED ======');
+        console.log('[CartService.onLogin] Pre-login state - Local:', this._localCart.length, 'Supabase:', this._supabaseCart.length);
+        
         await this._initSupabaseCart();
+        
+        console.log('[CartService.onLogin] Post-init state - Local:', this._localCart.length, 'Supabase:', this._supabaseCart.length);
         this._notifyUpdate();
+        console.log('[CartService.onLogin] ====== LOGIN HANDLING COMPLETE ======');
     },
 
     async onLogout() {
+        console.log('[CartService.onLogout] ====== LOGOUT DETECTED ======');
         this._supabaseCart = [];
         this._loadLocalCart();
         this._notifyUpdate();
+        console.log('[CartService.onLogout] ====== LOGOUT HANDLING COMPLETE ======');
     },
 
     // ============================================
     // Getters (Unified)
     // ============================================
     getItems() {
-        return this._isLoggedIn() ? this._supabaseCart : this._localCart;
+        const isLoggedIn = this._isLoggedIn();
+        const items = isLoggedIn ? this._supabaseCart : this._localCart;
+        // Debug log for troubleshooting
+        if (isLoggedIn && this._localCart.length > 0 && this._supabaseCart.length === 0) {
+            console.warn('[CartService.getItems] WARNING: Logged in but Supabase cart empty while local cart has', this._localCart.length, 'items. Migration may have failed.');
+        }
+        return items;
     },
 
     getTotalItems() {
@@ -450,6 +608,7 @@ const CartService = {
     },
 
     _notifyUpdate() {
+        console.log('[CartService._notifyUpdate] Notifying UI update. Items:', this.getItems().length, 'Total:', this.getTotalItems());
         window.dispatchEvent(new CustomEvent('cartUpdated', {
             detail: {
                 items: this.getItems(),
@@ -462,31 +621,28 @@ const CartService = {
 
 // ============================================
 // BACKWARD COMPATIBILITY WRAPPERS
-// These wrap the new CartService to keep existing UI code working
 // ============================================
 
-// Legacy: saveCart() - no-op for Supabase, saves for local
 function saveCart() {
     if (!CartService._isLoggedIn()) {
         CartService._saveLocalCart();
     }
 }
 
-// Legacy: loadCart() - handled by CartService.init()
 function loadCart() {
     CartService._loadLocalCart();
 }
 
-// Legacy: clearSavedCart()
 function clearSavedCart() {
     CartService._clearLocalCart();
 }
 
-// Legacy: updateCartUI() - now listens to cartUpdated event
 function updateCartUI() {
     const items = CartService.getItems();
     const totalItems = CartService.getTotalItems();
     const totalPrice = CartService.getTotalPrice();
+
+    console.log('[updateCartUI] Updating UI. Items:', items.length, 'Total:', totalItems);
 
     const cartBadge = document.getElementById('cartBadge');
     if (cartBadge) cartBadge.textContent = totalItems;
@@ -539,7 +695,6 @@ function updateCartUI() {
     `).join('');
 }
 
-// Legacy: addToCart() - now uses CartService
 async function addToCart(btn, productName, basePrice) {
     const card = btn.closest('.product-card');
     const activeBtn = card.querySelector('.weight-btn.active');
@@ -559,7 +714,6 @@ async function addToCart(btn, productName, basePrice) {
         quantity: 1
     });
 
-    // Visual feedback
     btn.innerHTML = '<i class="fas fa-check"></i> Added!';
     btn.classList.add('added');
 
@@ -578,25 +732,21 @@ async function addToCart(btn, productName, basePrice) {
     }, 1200);
 }
 
-// Legacy: updateQuantity()
 async function updateQuantity(index, change) {
     await CartService.updateQuantity(index, change);
 }
 
-// Legacy: removeFromCart()
 async function removeFromCart(index) {
     await CartService.removeItem(index);
     showToast('Item removed from cart', 'info');
 }
 
-// Legacy: placeOrder() - keep existing WhatsApp logic
 async function placeOrder() {
     if (CartService.isEmpty()) {
         showToast('Your cart is empty! Add some items first.', 'error');
         return;
     }
 
-    // Save order to account if logged in
     if (typeof Account !== 'undefined' && Account.isLoggedIn()) {
         await placeOrderWithAccount();
     }
@@ -604,7 +754,6 @@ async function placeOrder() {
     placeOrderOnWhatsApp();
 }
 
-// Keep existing WhatsApp order logic
 function placeOrderOnWhatsApp() {
     const items = CartService.getItems();
     if (items.length === 0) return;
@@ -627,7 +776,6 @@ function placeOrderOnWhatsApp() {
     showToast('Redirecting to WhatsApp...', 'success');
 }
 
-// Keep existing account order save logic
 async function placeOrderWithAccount() {
     if (typeof Account === 'undefined' || !Account.isLoggedIn()) return;
 
@@ -671,7 +819,6 @@ async function placeOrderWithAccount() {
     }
 }
 
-// Legacy: quickOrder()
 async function quickOrder(btn, productName, basePrice) {
     const card = btn.closest('.product-card');
     const activeBtn = card.querySelector('.weight-btn.active');
@@ -690,21 +837,23 @@ async function quickOrder(btn, productName, basePrice) {
 // EVENT LISTENERS
 // ============================================
 
-// Listen for cart updates from CartService
 window.addEventListener('cartUpdated', () => {
+    console.log('[Event] cartUpdated received, calling updateCartUI');
     updateCartUI();
 });
 
-// Listen for auth state changes
 window.addEventListener('userLoggedIn', async () => {
+    console.log('[Event] ====== userLoggedIn EVENT RECEIVED ======');
     await CartService.onLogin();
+    console.log('[Event] ====== userLoggedIn HANDLING COMPLETE ======');
 });
 
 window.addEventListener('userLoggedOut', async () => {
+    console.log('[Event] userLoggedOut received');
     await CartService.onLogout();
 });
 
-// Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('[Event] DOMContentLoaded - initializing CartService');
     CartService.init();
 });
