@@ -155,7 +155,8 @@ async function buyNow(btn, productId, basePrice) {
             `;
             document.body.appendChild(modal);
         }
-        modal.style.display = 'flex';
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
         // Store pending single item for checkout
         window.pendingSingleCheckout = { productId, basePrice, weight };
     } else {
@@ -167,7 +168,10 @@ async function buyNow(btn, productId, basePrice) {
 
 function closeBuyNowConflictModal() {
     const modal = document.getElementById('buyNowConflictModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
 }
 
 async function proceedToCheckoutWithCart() {
