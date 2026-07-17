@@ -106,6 +106,7 @@ const CartService = {
     // ============================================
     async _initSupabaseCart() {
         console.log('[CartService._initSupabaseCart] Starting Supabase cart init...');
+        this._supabaseCartLoaded = false;
         
         // DEFENSIVE: Always re-read localStorage to ensure we have latest data
         this._loadLocalCart();
@@ -134,13 +135,11 @@ const CartService = {
                 }
                 return;
             }
-        }
-
-        this._supabaseCartLoaded = true;
         } else {
             console.log('[CartService._initSupabaseCart] No local items to migrate');
         }
         
+        this._supabaseCartLoaded = true;
         console.log('[CartService._initSupabaseCart] Final state - Supabase:', this._supabaseCart.length, 'Local:', this._localCart.length);
     },
 
@@ -171,6 +170,7 @@ const CartService = {
             }
 
             this._supabaseCart = (data || []).map(row => this._rowToItem(row));
+            this._supabaseCartLoaded = true;
             console.log('[CartService._loadSupabaseCart] Loaded', this._supabaseCart.length, 'items from Supabase');
         } catch (e) {
             console.warn('[CartService._loadSupabaseCart] Error loading Supabase cart:', e);
@@ -579,7 +579,6 @@ const CartService = {
             return this._localCart;
         }
         const items = isLoggedIn ? this._supabaseCart : this._localCart;
-        // Debug log for troubleshooting
         if (isLoggedIn && this._localCart.length > 0 && this._supabaseCart.length === 0) {
             console.warn('[CartService.getItems] WARNING: Logged in but Supabase cart empty while local cart has', this._localCart.length, 'items. Migration may have failed.');
         }
