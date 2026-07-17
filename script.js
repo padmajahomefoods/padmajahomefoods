@@ -645,7 +645,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     const path = window.location.pathname;
 
-    if (path.includes('product.html')) {
+    // FIX: Cloudflare pages drops `.html` making path `/product`
+    if (path.includes('product.html') || path.includes('/product')) {
         const loaded = await loadProducts();
         if (!loaded) return;
         initProductPage();
