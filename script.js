@@ -377,7 +377,8 @@ function initScrollAnimations() {
 // ============================================
 async function initProductPage() {
     const urlParams = new URLSearchParams(window.location.search);
-    const productId = urlParams.get('id');
+    const rawProductId = urlParams.get('id');
+    const productId = isNaN(rawProductId) ? rawProductId : Number(rawProductId);
 
     if (!productId) {
         window.location.href = 'index.html';
@@ -456,7 +457,8 @@ function selectPDPWeight(btn, weight, price) {
 
     document.getElementById('pdpPrice').textContent = '\u20B9' + price;
 
-    const productId = new URLSearchParams(window.location.search).get('id');
+    const rawProductId = new URLSearchParams(window.location.search).get('id');
+    const productId = isNaN(rawProductId) ? rawProductId : Number(rawProductId);
     DB.getProductById(productId).then(product => {
         if (product) {
             updatePDPButtons(product, weight, price);
