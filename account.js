@@ -179,6 +179,9 @@ const Account = {
             // in case the profile was created by trigger without phone
             await this._syncPhoneToProfile();
 
+            // Notify cart service to migrate guest cart
+            window.dispatchEvent(new CustomEvent('userLoggedIn'));
+
             this._updateAuthUI();
             return { success: true, message: 'Logged in successfully!' };
         }
@@ -259,6 +262,9 @@ const Account = {
 
     // --- LOG OUT ---
     async logOut() {
+        // Notify cart service before clearing auth state
+        window.dispatchEvent(new CustomEvent('userLoggedOut'));
+
         const client = await this._getClient();
         if (client) {
             await client.auth.signOut();
