@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>Secure Checkout | Padmaja Home Foods</title>
+    <meta name="description" content="Secure checkout for Padmaja Home Foods.">
+    <meta name="theme-color" content="#FFF8E1">
+
+    <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-touch-icon.png">
+    <link rel="manifest" href="favicons/site.webmanifest">
+    <link rel="shortcut icon" href="favicons/favicon.ico">
+    <meta name="msapplication-TileColor" content="#da532c">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav id="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo-section">
+                <img src="logo.png" alt="Padmaja Home Foods" width="42" height="42">
+                <div class="brand-text">
+                    <h1>Padmaja Home Foods</h1>
+                    <span>Authentic Guntur Taste</span>
+                </div>
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html">Shop</a></li>
+                <li><a href="home.html">Home</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="checkout-page" style="padding: 120px 5% 60px; max-width: 1200px; margin: 0 auto; min-height: 80vh;">
+        <h2 style="font-family: 'Playfair Display', serif; color: var(--deep-brown); margin-bottom: 30px; border-bottom: 2px solid var(--primary-gold); padding-bottom: 10px; display: inline-block;">Secure Checkout</h2>
+        
+        <div class="checkout-grid" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 40px;">
+            <!-- Left Side: Forms -->
+            <div class="checkout-form-section">
+                <form id="checkoutForm" onsubmit="handleCheckoutSubmit(event)">
+                    
+                    <!-- Contact Details -->
+                    <div class="checkout-card" style="background: white; padding: 25px; border-radius: var(--radius-md); box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px;">
+                        <h3 style="color: var(--deep-brown); margin-bottom: 20px; font-size: 1.2rem;"><i class="fas fa-envelope"></i> Contact Information</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">Full Name *</label>
+                                <input type="text" id="checkoutName" required style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                            </div>
+                            <div class="form-group">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">Email Address *</label>
+                                <input type="email" id="checkoutEmail" required style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                            </div>
+                            <div class="form-group">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">Phone Number *</label>
+                                <input type="tel" id="checkoutPhone" required pattern="[0-9]{10}" placeholder="10-digit number" style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delivery Details -->
+                    <div class="checkout-card" style="background: white; padding: 25px; border-radius: var(--radius-md); box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px;">
+                        <h3 style="color: var(--deep-brown); margin-bottom: 20px; font-size: 1.2rem;"><i class="fas fa-truck"></i> Delivery Address</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">Street Address *</label>
+                                <textarea id="checkoutAddress" required rows="2" style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif; resize: vertical;"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">City *</label>
+                                <input type="text" id="checkoutCity" required style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                            </div>
+                            <div class="form-group">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">State *</label>
+                                <input type="text" id="checkoutState" required style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                            </div>
+                            <div class="form-group">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">Pincode *</label>
+                                <input type="text" id="checkoutPincode" required pattern="[0-9]{6}" placeholder="6-digit pincode" style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="payButton" disabled style="width: 100%; padding: 15px; background: var(--gray-300); color: var(--text-dark); border: none; border-radius: var(--radius-md); font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 1.1rem; cursor: not-allowed; transition: all 0.3s; display: flex; justify-content: center; align-items: center; gap: 10px;">
+                        <i class="fas fa-lock"></i> Pay with Razorpay (Coming Soon)
+                    </button>
+                    <p style="text-align: center; font-size: 0.85rem; color: var(--gray-500); margin-top: 15px;">Secure encrypted payment gateway.</p>
+                </form>
+            </div>
+
+            <!-- Right Side: Order Summary -->
+            <div class="checkout-summary-section">
+                <div class="checkout-card" style="background: white; padding: 25px; border-radius: var(--radius-md); box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: sticky; top: 100px;">
+                    <h3 style="color: var(--deep-brown); margin-bottom: 20px; font-size: 1.2rem; border-bottom: 1px solid var(--gray-200); padding-bottom: 15px;">Order Summary</h3>
+                    
+                    <div id="checkoutItemsList" style="margin-bottom: 20px; max-height: 300px; overflow-y: auto; padding-right: 10px;">
+                        <!-- JS injected items -->
+                        <div style="text-align: center; color: var(--gray-500); padding: 20px 0;">Loading items...</div>
+                    </div>
+
+                    <div class="checkout-totals" style="border-top: 1px dashed var(--gray-300); padding-top: 20px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.95rem; color: var(--text-dark);">
+                            <span>Subtotal</span>
+                            <span id="checkoutSubtotal">₹0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 0.95rem; color: var(--text-dark);">
+                            <span>Delivery Charges</span>
+                            <span id="checkoutDelivery">₹0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--gray-200); font-weight: 700; font-size: 1.2rem; color: var(--spice-red);">
+                            <span>Grand Total</span>
+                            <span id="checkoutGrandTotal">₹0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Responsive CSS adjustments -->
+    <style>
+        @media (max-width: 900px) {
+            .checkout-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .checkout-summary-section .checkout-card {
+                position: static !important;
+            }
+            .checkout-page {
+                padding-top: 100px !important;
+            }
+        }
+    </style>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content" style="text-align: center; padding: 40px 20px;">
+            <p>&copy; 2026 Padmaja Home Foods. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="db.js"></script>
+    <script src="account.js"></script>
+    <script src="cart.js"></script>
+    <script src="checkout.js"></script>
+
+</body>
+</html>

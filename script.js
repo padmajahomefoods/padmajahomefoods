@@ -108,21 +108,73 @@ function toggleCart(forceOpen) {
 // ============================================
 // QUICK ORDER (Single Product)
 // ============================================
-async function quickOrder(btn, productName, basePrice) {
+async function buyNow(btn, productId, basePrice) {
     const card = btn.closest('.product-card');
-    const activeBtn = card.querySelector('.weight-btn.active');
-    const weight = activeBtn ? activeBtn.textContent : await getDefaultWeight(productName);
+    const activeBtn = card ? card.querySelector('.weight-btn.active') : document.querySelector('.pdp-weight-options .pdp-weight-btn.active');
+    
+    let weight;
+    if (activeBtn) {
+        weight = activeBtn.textContent;
+    } else {
+        const products = await DB.getProducts();
+        const p = products.find(p => String(p.id) === String(productId));
+        weight = p ? p.default_weight : '1 kg';
+    }
 
-    const products = await DB.getProducts();
-    const product = products.find(p => p.name === productName);
-    const finalPrice = product ? getPriceForWeight(product, weight) : Math.round((basePrice * parseWeight(weight)) / 1000);
-
-    const message = 'Hi! I want to order *' + productName + '* - ' + weight + ' (\u20B9' + finalPrice + ')\n\nPlease share delivery details:\nName:\nAddress:\nPincode:';
-
-    window.open('https://wa.me/' + CONFIG.WHATSAPP_NUMBER + '?text=' + encodeURIComponent(message), '_blank');
-
-    showToast('Opening WhatsApp for ' + productName + '...', 'success');
+    const items = CartService.getItems();
+    if (items.length > 0) {
+        // Show conflict modal
+        const modal = document.getElementById('buyNowConflictModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            // Store pending single item for checkout
+            window.pendingSingleCheckout = { productId, basePrice, weight };
+        }
+    } else {
+        // Empty cart, go straight to checkout
+        window.location.href = `checkout.html?buy_now_product_id=${encodeURIComponent(productId)}&weight=${encodeURIComponent(weight)}`;
+    }
     return false;
+}
+
+function closeBuyNowConflictModal() {
+    const modal = document.getElementById('buyNowConflictModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function proceedToCheckoutWithCart() {
+    closeBuyNowConflictModal();
+    const pending = window.pendingSingleCheckout;
+    if (pending) {
+        const products = await DB.getProducts();
+        const p = products.find(prod => String(prod.id) === String(pending.productId));
+        if (p) {
+            // Find a temporary button to pass to addToCart, or just call CartService directly
+            const finalPrice = getPriceForWeight(p, pending.weight);
+            const weightInGrams = parseWeight(pending.weight);
+            await CartService.addItem({
+                name: p.name,
+                weight: pending.weight,
+                weightInGrams: weightInGrams,
+                price: finalPrice,
+                basePrice: pending.basePrice,
+                quantity: 1
+            });
+        }
+    }
+    goToCheckout();
+}
+
+function proceedToCheckoutSingleItem() {
+    closeBuyNowConflictModal();
+    const pending = window.pendingSingleCheckout;
+    if (pending) {
+        window.location.href = `checkout.html?buy_now_product_id=${encodeURIComponent(pending.productId)}&weight=${encodeURIComponent(pending.weight)}`;
+    }
+}
+
+function goToCheckout() {
+    window.location.href = 'checkout.html';
 }
 
 // ============================================
@@ -468,14 +520,12 @@ function selectPDPWeight(btn, weight, price) {
 }
 
 function updatePDPButtons(product, weight, price) {
-    const orderBtn = document.getElementById('pdpOrderBtn');
+    const orderBtn = document.getElementById('pdpBuyNowBtn');
     const cartBtn = document.getElementById('pdpCartBtn');
 
     if (orderBtn) {
         orderBtn.onclick = function() {
-            const message = 'Hi! I want to order *' + product.name + '* - ' + weight + ' (\u20B9' + price + ')\n\nPlease share delivery details:\nName:\nAddress:\nPincode:';
-            window.open('https://wa.me/' + CONFIG.WHATSAPP_NUMBER + '?text=' + encodeURIComponent(message), '_blank');
-            showToast('Opening WhatsApp...', 'success');
+            buyNow(orderBtn, product.id, product.price1000 || 0);
         };
     }
 
@@ -549,8 +599,8 @@ function createProductCard(product, isPriority) {
                 </a>
                 <div class="weight-options">${weightButtons}</div>
                 <div class="product-actions">
-                    <button class="btn-whatsapp" onclick="quickOrder(this, '${product.name}', ${product.price1000 || 0})">
-                        <i class="fab fa-whatsapp"></i> Order on WhatsApp
+                    <button class="btn-buy-now" onclick="buyNow(this, '${product.id}', ${product.price1000 || 0})">
+                        <i class="fas fa-bolt"></i> Buy Now
                     </button>
                     <button class="btn-cart" onclick="addToCart(this, '${product.name}', ${product.price1000 || 0})">
                         <i class="fas fa-cart-plus"></i> Add to Cart
