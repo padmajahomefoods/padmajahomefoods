@@ -5240,3 +5240,64 @@ html, body {
         transition: none !important;
     }
 }
+
+/* ============================================
+   MOBILE PROFILE BUTTON (NAVBAR)
+   ============================================ */
+
+.mobile-nav-actions {
+    display: none;
+}
+
+.mobile-profile-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    font-size: 1.35rem; 
+    color: #757575; 
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-profile-btn:active {
+    transform: scale(0.9);
+    opacity: 0.8;
+}
+
+.mobile-profile-btn.logged-in {
+    color: var(--spice-red);
+}
+
+.mobile-profile-btn .status-dot {
+    display: none;
+    position: absolute;
+    bottom: 4px;
+    right: 2px;
+    width: 8px;
+    height: 8px;
+    background-color: var(--whatsapp-green);
+    border-radius: 50%;
+    border: 1.5px solid white;
+}
+
+.mobile-profile-btn.logged-in .status-dot {
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .mobile-nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .mobile-nav-actions .mobile-menu {
+        display: block;
+        padding-left: 4px; /* Slight spacing if needed */
+    }
+}

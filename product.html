@@ -83,8 +83,14 @@
                     </div>
                 </li>
             </ul>
-            <div class="mobile-menu" onclick="openMobileMenu()" role="button" aria-label="Open menu">
-                <i class="fas fa-bars"></i>
+            <div class="mobile-nav-actions">
+                <button class="mobile-profile-btn" id="mobileProfileBtn" onclick="openAuthModal()" aria-label="Profile">
+                    <i class="far fa-user"></i>
+                    <span class="status-dot"></span>
+                </button>
+                <div class="mobile-menu" onclick="openMobileMenu()" role="button" aria-label="Open menu">
+                    <i class="fas fa-bars"></i>
+                </div>
             </div>
         </div>
     </nav>

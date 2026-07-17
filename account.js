@@ -638,6 +638,7 @@ const Account = {
         const authBtn = document.getElementById('authBtn');
         const accountMenu = document.getElementById('accountMenu');
         const mobileAuthLink = document.getElementById('mobileAuthLink');
+        const mobileProfileBtn = document.getElementById('mobileProfileBtn');
 
         if (this.isLoggedIn() && this._currentUser) {
             const displayName = this._currentUser.user_metadata?.full_name || 
@@ -650,6 +651,11 @@ const Account = {
                 mobileAuthLink.innerHTML = '<i class="fas fa-user-circle"></i> My Account';
                 mobileAuthLink.onclick = (e) => { e.preventDefault(); openAccountPage(); closeMobileMenu(); };
             }
+            if (mobileProfileBtn) {
+                mobileProfileBtn.classList.add('logged-in');
+                mobileProfileBtn.innerHTML = '<i class="fas fa-user"></i><span class="status-dot"></span>';
+                mobileProfileBtn.onclick = (e) => { e.preventDefault(); openAccountPage(); };
+            }
         } else {
             if (authBtn) {
                 authBtn.innerHTML = '<i class="fas fa-user"></i> <span>Login</span>';
@@ -658,6 +664,11 @@ const Account = {
             if (mobileAuthLink) {
                 mobileAuthLink.innerHTML = '<i class="fas fa-user"></i> Login / Sign Up';
                 mobileAuthLink.onclick = (e) => { e.preventDefault(); openAuthModal(); closeMobileMenu(); };
+            }
+            if (mobileProfileBtn) {
+                mobileProfileBtn.classList.remove('logged-in');
+                mobileProfileBtn.innerHTML = '<i class="far fa-user"></i><span class="status-dot"></span>';
+                mobileProfileBtn.onclick = (e) => { e.preventDefault(); openAuthModal(); };
             }
         }
     },
