@@ -695,7 +695,7 @@ nav.scrolled {
 }
 
 .badge-new {
-    background: var(--whatsapp-green);
+    background: var(--spice-red);
     color: white;
 }
 
@@ -825,9 +825,9 @@ nav.scrolled {
     margin-top: auto;
 }
 
-.btn-whatsapp {
+.btn-buy-now {
     width: 100%;
-    background: var(--whatsapp-green);
+    background: var(--spice-red);
     color: white;
     border: none;
     padding: 12px;
@@ -843,13 +843,13 @@ nav.scrolled {
     transition: all 0.2s;
 }
 
-.btn-whatsapp:hover {
-    background: var(--whatsapp-dark);
+.btn-buy-now:hover {
+    background: #a02020;
     transform: scale(1.02);
-    box-shadow: 0 4px 12px rgba(29, 168, 81, 0.3);
+    box-shadow: 0 4px 12px rgba(198, 40, 40, 0.3);
 }
 
-.btn-whatsapp:active {
+.btn-buy-now:active {
     transform: scale(0.98);
 }
 
@@ -878,7 +878,7 @@ nav.scrolled {
 }
 
 .btn-cart.added {
-    background: var(--whatsapp-green);
+    background: var(--spice-red);
     border-color: var(--whatsapp-green);
     color: white;
 }
@@ -1163,7 +1163,7 @@ nav.scrolled {
 
 .cart-order-btn {
     width: 100%;
-    background: var(--whatsapp-green);
+    background: var(--spice-red);
     color: white;
     border: none;
     padding: 16px;
@@ -1181,7 +1181,7 @@ nav.scrolled {
 }
 
 .cart-order-btn:hover {
-    background: var(--whatsapp-dark);
+    background: #a02020;
     transform: scale(1.01);
     box-shadow: 0 6px 20px rgba(37, 211, 102, 0.3);
 }
@@ -1480,7 +1480,7 @@ nav.scrolled {
     margin-top: 8px;
 }
 
-.pdp-actions .btn-whatsapp {
+.pdp-actions .btn-buy-now {
     padding: 16px;
     font-size: 1rem;
     border-radius: var(--radius-md);
@@ -2115,7 +2115,7 @@ footer {
 }
 
 .toast.success {
-    background: var(--whatsapp-green);
+    background: var(--spice-red);
 }
 
 .toast.success i {
@@ -2226,7 +2226,7 @@ footer {
         font-size: 0.7rem;
     }
 
-    .btn-whatsapp {
+    .btn-buy-now {
         padding: 10px;
         font-size: 0.8rem;
     }
@@ -2437,7 +2437,7 @@ input:focus-visible {
     align-items: center;
     justify-content: center;
     gap: 10px;
-    background: var(--whatsapp-green);
+    background: var(--spice-red);
     color: white;
     padding: 14px;
     border-radius: var(--radius-md);
@@ -2449,7 +2449,7 @@ input:focus-visible {
 }
 
 .offer-btn:hover {
-    background: var(--whatsapp-dark);
+    background: #a02020;
     transform: scale(1.02);
 }
 
@@ -2681,7 +2681,7 @@ input:focus-visible {
 
 .best-seller-btn {
     width: 100%;
-    background: var(--whatsapp-green);
+    background: var(--spice-red);
     color: white;
     border: none;
     padding: 10px;
@@ -2699,7 +2699,7 @@ input:focus-visible {
 }
 
 .best-seller-btn:hover {
-    background: var(--whatsapp-dark);
+    background: #a02020;
     transform: scale(1.02);
 }
 
@@ -3129,7 +3129,7 @@ html, body {
         width: 100%;
     }
 
-    .product-info > .product-actions .btn-whatsapp {
+    .product-info > .product-actions .btn-buy-now {
         display: none !important;
     }
 
@@ -3165,7 +3165,7 @@ html, body {
     }
 
     .product-info > .product-actions .btn-cart.added {
-        background: var(--whatsapp-green);
+        background: var(--spice-red);
     }
 
     /* ---- Hide Quick View Link ---- */
@@ -3575,7 +3575,7 @@ html, body {
         margin-top: 6px;
     }
 
-    .pdp-actions .btn-whatsapp {
+    .pdp-actions .btn-buy-now {
         padding: 14px;
         font-size: 0.95rem;
         min-height: 48px;
@@ -4112,7 +4112,7 @@ html, body {
         min-width: 60px;
     }
 
-    .pdp-actions .btn-whatsapp {
+    .pdp-actions .btn-buy-now {
         padding: 12px;
         font-size: 0.88rem;
     }
