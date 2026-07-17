@@ -124,12 +124,40 @@ async function buyNow(btn, productId, basePrice) {
     const items = CartService.getItems();
     if (items.length > 0) {
         // Show conflict modal
-        const modal = document.getElementById('buyNowConflictModal');
-        if (modal) {
-            modal.style.display = 'flex';
-            // Store pending single item for checkout
-            window.pendingSingleCheckout = { productId, basePrice, weight };
+        let modal = document.getElementById('buyNowConflictModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.className = 'auth-modal-overlay';
+            modal.id = 'buyNowConflictModal';
+            modal.onclick = function(e) { if(e.target === this) closeBuyNowConflictModal(); };
+            modal.innerHTML = `
+                <div class="auth-modal" style="max-width: 450px;">
+                    <button type="button" class="auth-modal-close" onclick="closeBuyNowConflictModal()" aria-label="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div class="auth-modal-header" style="margin-bottom: 20px;">
+                        <i class="fas fa-shopping-cart" style="font-size: 2rem; color: var(--spice-red); margin-bottom: 10px;"></i>
+                        <h3>Cart Not Empty</h3>
+                        <p>You already have items in your cart. How would you like to proceed?</p>
+                    </div>
+                    <div class="auth-fields active" style="gap: 12px; margin-bottom: 0;">
+                        <button type="button" class="auth-submit-btn" onclick="proceedToCheckoutWithCart()" style="background: var(--deep-brown);">
+                            <i class="fas fa-cart-plus"></i> Add to Cart & Checkout All
+                        </button>
+                        <button type="button" class="auth-submit-btn" onclick="proceedToCheckoutSingleItem()" style="background: var(--spice-red);">
+                            <i class="fas fa-bolt"></i> Buy This Item Only
+                        </button>
+                        <button type="button" class="auth-submit-btn" onclick="closeBuyNowConflictModal()" style="background: var(--gray-200); color: var(--text-dark); border: 1px solid var(--gray-300);">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
         }
+        modal.style.display = 'flex';
+        // Store pending single item for checkout
+        window.pendingSingleCheckout = { productId, basePrice, weight };
     } else {
         // Empty cart, go straight to checkout
         window.location.assign(`checkout.html?buy_now_product_id=${encodeURIComponent(productId)}&weight=${encodeURIComponent(weight)}`);
