@@ -12,7 +12,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     loadOrderSummary();
+    preloadCustomerData();
 });
+
+async function preloadCustomerData() {
+    if (typeof AccountService !== 'undefined' && AccountService.isLoggedIn()) {
+        try {
+            const user = await AccountService.getCurrentUser();
+            const profile = await AccountService.getProfile();
+            
+            if (user && user.email) {
+                const emailField = document.getElementById('checkoutEmail');
+                if (emailField && !emailField.value) emailField.value = user.email;
+            }
+            
+            if (profile) {
+                const fields = {
+                    'checkoutName': profile.full_name,
+                    'checkoutPhone': profile.phone,
+                    'checkoutAddress': profile.address,
+                    'checkoutCity': profile.city,
+                    'checkoutState': profile.state,
+                    'checkoutPincode': profile.pincode
+                };
+                
+                for (const [id, value] of Object.entries(fields)) {
+                    const el = document.getElementById(id);
+                    if (el && value && !el.value) {
+                        el.value = value;
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Failed to preload customer data:", err);
+        }
+    }
+}
 
 async function loadOrderSummary() {
     const params = new URLSearchParams(window.location.search);
@@ -93,8 +128,26 @@ function renderSummaryItems(items) {
     grandTotalEl.textContent = '₹' + grandTotal;
 }
 
-function handleCheckoutSubmit(e) {
+async function handleCheckoutSubmit(e) {
     e.preventDefault();
+    
+    // Save delivery info back to profile if logged in
+    if (typeof AccountService !== 'undefined' && AccountService.isLoggedIn()) {
+        try {
+            const updates = {
+                full_name: document.getElementById('checkoutName').value.trim(),
+                phone: document.getElementById('checkoutPhone').value.trim(),
+                address: document.getElementById('checkoutAddress').value.trim(),
+                city: document.getElementById('checkoutCity').value.trim(),
+                state: document.getElementById('checkoutState').value.trim(),
+                pincode: document.getElementById('checkoutPincode').value.trim()
+            };
+            await AccountService.updateProfile(updates);
+        } catch (err) {
+            console.error("Failed to save profile data:", err);
+        }
+    }
+
     alert('Payment integration is not yet active. This is a placeholder for the checkout flow.');
 }
 
