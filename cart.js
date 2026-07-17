@@ -79,13 +79,9 @@ const CartService = {
     // SUPABASE (Logged-in Mode)
     // ============================================
     async _initSupabaseCart() {
-        // Check if localStorage has items to migrate
         const hasLocalItems = this._localCart.length > 0;
-
-        // Load user's cart from Supabase
         await this._loadSupabaseCart();
 
-        // Migrate local items if any
         if (hasLocalItems) {
             await this._migrateLocalToSupabase();
         }
@@ -125,7 +121,6 @@ const CartService = {
             const user = await Account.getCurrentUser();
             if (!user || this._localCart.length === 0) return;
 
-            // Check if user already has Supabase cart items
             const { data: existingItems, error: countErr } = await client
                 .from('cart_items')
                 .select('product_id, weight, quantity')
@@ -139,7 +134,6 @@ const CartService = {
             const hasExistingItems = (existingItems || []).length > 0;
 
             if (hasExistingItems) {
-                // Use merge function to combine carts (sums quantities, caps at 10)
                 const itemsJson = JSON.stringify(this._localCart.map(item => ({
                     product_id: this._slugify(item.name),
                     product_name: item.name,
@@ -157,20 +151,14 @@ const CartService = {
 
                 if (mergeErr) {
                     console.warn('Merge cart failed:', mergeErr);
-                    // Fallback: upsert individually
                     await this._upsertItemsIndividually(this._localCart);
                 }
             } else {
-                // No existing items - bulk insert local cart
                 await this._upsertItemsIndividually(this._localCart);
             }
 
-            // Clear localStorage after successful migration
             this._clearLocalCart();
-
-            // Reload from Supabase to get merged data
             await this._loadSupabaseCart();
-
             showToast('Cart synced to your account', 'success');
         } catch (e) {
             console.warn('Cart migration error:', e);
@@ -186,7 +174,6 @@ const CartService = {
             const productId = this._slugify(item.name);
             const weightInGrams = item.weightInGrams || parseWeight(item.weight);
 
-            // Check if item exists
             const { data: existing } = await client
                 .from('cart_items')
                 .select('id, quantity')
@@ -196,14 +183,12 @@ const CartService = {
                 .single();
 
             if (existing) {
-                // Update quantity
                 const newQty = Math.min(existing.quantity + item.quantity, this.MAX_QTY);
                 await client
                     .from('cart_items')
                     .update({ quantity: newQty })
                     .eq('id', existing.id);
             } else {
-                // Insert new
                 await client
                     .from('cart_items')
                     .insert({
@@ -225,7 +210,6 @@ const CartService = {
     // ============================================
 
     async addItem(item) {
-        // item = { name, weight, weightInGrams, price, basePrice, quantity }
         if (this._isLoggedIn()) {
             await this._addToSupabase(item);
         } else {
@@ -307,7 +291,6 @@ const CartService = {
             const productId = this._slugify(item.name);
             const weightInGrams = item.weightInGrams || parseWeight(item.weight);
 
-            // Check existing
             const { data: existing } = await client
                 .from('cart_items')
                 .select('id, quantity')
@@ -339,7 +322,6 @@ const CartService = {
                 if (error) console.warn('Insert cart item failed:', error);
             }
 
-            // Optimistic: reload from Supabase
             await this._loadSupabaseCart();
         } catch (e) {
             console.warn('Add to Supabase cart failed:', e);
@@ -358,8 +340,6 @@ const CartService = {
                 .eq('id', item._dbId);
 
             if (error) console.warn('Delete cart item failed:', error);
-
-            // Optimistic update
             this._supabaseCart.splice(index, 1);
         } catch (e) {
             console.warn('Remove from Supabase cart failed:', e);
@@ -416,13 +396,11 @@ const CartService = {
     // Auth State Handlers
     // ============================================
     async onLogin() {
-        // Called after successful login
         await this._initSupabaseCart();
         this._notifyUpdate();
     },
 
     async onLogout() {
-        // Called on logout - switch back to localStorage
         this._supabaseCart = [];
         this._loadLocalCart();
         this._notifyUpdate();
@@ -472,7 +450,6 @@ const CartService = {
     },
 
     _notifyUpdate() {
-        // Dispatch custom event for UI to listen
         window.dispatchEvent(new CustomEvent('cartUpdated', {
             detail: {
                 items: this.getItems(),
@@ -487,17 +464,6 @@ const CartService = {
 // BACKWARD COMPATIBILITY WRAPPERS
 // These wrap the new CartService to keep existing UI code working
 // ============================================
-
-// Legacy cart array - now proxies to CartService
-Object.defineProperty(window, 'cart', {
-    get() {
-        return CartService.getItems();
-    },
-    set(value) {
-        // Prevent direct assignment - use CartService methods
-        console.warn('Direct cart assignment not supported. Use CartService methods.');
-    }
-});
 
 // Legacy: saveCart() - no-op for Supabase, saves for local
 function saveCart() {
@@ -522,11 +488,9 @@ function updateCartUI() {
     const totalItems = CartService.getTotalItems();
     const totalPrice = CartService.getTotalPrice();
 
-    // Update cart badge
     const cartBadge = document.getElementById('cartBadge');
     if (cartBadge) cartBadge.textContent = totalItems;
 
-    // Update sticky cart
     const stickyCount = document.getElementById('stickyCartCount');
     const stickyTotal = document.getElementById('stickyCartTotal');
     const stickyBtn = document.getElementById('stickyCartBtn');
@@ -535,7 +499,6 @@ function updateCartUI() {
     if (stickyTotal) stickyTotal.textContent = '\u20B9' + totalPrice.toLocaleString('en-IN');
     if (stickyBtn) stickyBtn.classList.toggle('active', totalItems > 0);
 
-    // Update cart sidebar items
     const cartItems = document.getElementById('cartItems');
     const cartTotal = document.getElementById('cartTotal');
 

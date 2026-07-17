@@ -7,7 +7,6 @@
 // ============================================
 // LOCAL STATE (UI only — no product data cached here)
 // ============================================
-let cart = [];
 let _productsPromise = null; // For deduping concurrent loads
 
 // ============================================
@@ -49,27 +48,8 @@ function getPriceForWeight(product, weightStr) {
 }
 
 // ============================================
-// LOCALSTORAGE (Cart only)
+// LOCALSTORAGE (Cart only) — Delegated to CartService
 // ============================================
-function saveCart() {
-    localStorage.setItem(CONFIG.CART_STORAGE_KEY, JSON.stringify({ version: 2, items: cart }));
-}
-
-function loadCart() {
-    const saved = localStorage.getItem(CONFIG.CART_STORAGE_KEY);
-    if (saved) {
-        try {
-            const data = JSON.parse(saved);
-            cart = (data.version === 2 ? data.items : data.version === 1 ? data.items : []) || [];
-        } catch (e) {
-            cart = [];
-        }
-    }
-}
-
-function clearSavedCart() {
-    localStorage.removeItem(CONFIG.CART_STORAGE_KEY);
-}
 
 // ============================================
 // NAVBAR
@@ -118,205 +98,12 @@ function toggleCart(forceOpen) {
 }
 
 // ============================================
-// CART FUNCTIONALITY
+// CART FUNCTIONALITY — Delegated to CartService in cart.js
 // ============================================
-async function addToCart(btn, productName, basePrice) {
-    const card = btn.closest('.product-card');
-    const activeBtn = card.querySelector('.weight-btn.active');
-    const weight = activeBtn ? activeBtn.textContent : await getDefaultWeight(productName);
-
-    const products = await DB.getProducts();
-    const product = products.find(p => p.name === productName);
-    const finalPrice = product ? getPriceForWeight(product, weight) : Math.round((basePrice * parseWeight(weight)) / 1000);
-    const weightInGrams = parseWeight(weight);
-
-    const existingItem = cart.find(item => item.name === productName && item.weight === weight);
-
-    if (existingItem) {
-        if (existingItem.quantity >= 10) {
-            showToast('Maximum 10 items per product', 'error');
-            return;
-        }
-        existingItem.quantity += 1;
-    } else {
-        cart.push({
-            name: productName,
-            weight: weight,
-            weightInGrams: weightInGrams,
-            price: finalPrice,
-            basePrice: basePrice,
-            quantity: 1
-        });
-    }
-
-    updateCartUI();
-    saveCart();
-    playTickSound();
-
-    btn.innerHTML = '<i class="fas fa-check"></i> Added!';
-    btn.classList.add('added');
-
-    const cartIcon = document.querySelector('.nav-cart');
-    if (cartIcon) {
-        cartIcon.classList.add('cart-bounce');
-        setTimeout(() => cartIcon.classList.remove('cart-bounce'), 500);
-    }
-
-    showToast(productName + ' (' + weight + ') added to cart', 'success');
-
-    setTimeout(() => {
-        btn.innerHTML = '<i class="fas fa-cart-plus"></i> Add to Cart';
-        btn.classList.remove('added');
-    }, 1200);
-}
-
-function updateQuantity(index, change) {
-    cart[index].quantity += change;
-    if (cart[index].quantity <= 0) {
-        cart.splice(index, 1);
-    }
-    updateCartUI();
-    saveCart();
-}
-
-function removeFromCart(index) {
-    cart.splice(index, 1);
-    updateCartUI();
-    saveCart();
-    showToast('Item removed from cart', 'info');
-}
-
-function updateCartUI() {
-    const cartItems = document.getElementById('cartItems');
-    const cartBadge = document.getElementById('cartBadge');
-    const cartTotal = document.getElementById('cartTotal');
-    const stickyCount = document.getElementById('stickyCartCount');
-    const stickyTotal = document.getElementById('stickyCartTotal');
-    const stickyBtn = document.getElementById('stickyCartBtn');
-
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-    if (cartBadge) cartBadge.textContent = totalItems;
-    if (stickyCount) stickyCount.textContent = totalItems;
-    if (cartTotal) cartTotal.textContent = '\u20B9' + totalPrice.toLocaleString('en-IN');
-    if (stickyTotal) stickyTotal.textContent = '\u20B9' + totalPrice.toLocaleString('en-IN');
-    if (stickyBtn) stickyBtn.classList.toggle('active', totalItems > 0);
-
-    if (!cartItems) return;
-
-    if (cart.length === 0) {
-        cartItems.innerHTML = `
-            <div class="cart-empty">
-                <div class="cart-empty-icon">&#x1F336;&#xFE0F;</div>
-                <h4>Your spice box is empty</h4>
-                <p>Add authentic Guntur flavors to get started</p>
-            </div>
-        `;
-        return;
-    }
-
-    cartItems.innerHTML = cart.map((item, index) => `
-        <div class="cart-item">
-            <div class="cart-item-info">
-                <h4>${item.name}</h4>
-                <span class="cart-item-weight">${item.weight}</span>
-                <span class="cart-item-price">\u20B9${item.price} each</span>
-            </div>
-            <div class="cart-item-controls">
-                <div class="quantity-control">
-                    <button onclick="updateQuantity(${index}, -1)" aria-label="Decrease quantity"><i class="fas fa-minus"></i></button>
-                    <span>${item.quantity}</span>
-                    <button onclick="updateQuantity(${index}, 1)" aria-label="Increase quantity"><i class="fas fa-plus"></i></button>
-                </div>
-                <div class="cart-item-total">\u20B9${(item.price * item.quantity).toLocaleString('en-IN')}</div>
-                <button class="cart-item-remove" onclick="removeFromCart(${index})" aria-label="Remove item">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
 
 // ============================================
 // AUTH INTEGRATION — Cart & Order with Account
 // ============================================
-
-async function placeOrderWithAccount() {
-    if (typeof Account !== 'undefined' && Account.isLoggedIn()) {
-        const user = await Account.getCurrentUser();
-        if (user) {
-            const addresses = await Account.getAddresses();
-            const defaultAddress = addresses.find(a => a.is_default) || addresses[0];
-
-            const orderData = {
-                total_amount: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) * 100,
-                delivery_address: defaultAddress ? {
-                    full_name: defaultAddress.full_name,
-                    phone: defaultAddress.phone,
-                    address_line1: defaultAddress.address_line1,
-                    address_line2: defaultAddress.address_line2,
-                    city: defaultAddress.city,
-                    state: defaultAddress.state,
-                    pincode: defaultAddress.pincode
-                } : {},
-                whatsapp_number: defaultAddress ? defaultAddress.phone : '',
-                items: cart.map(item => ({
-                    product_id: '',
-                    product_name: item.name,
-                    weight: item.weight,
-                    price: item.price * 100,
-                    quantity: item.quantity
-                }))
-            };
-
-            try {
-                const result = await Account.placeOrder(orderData);
-                if (result.success) {
-                    showToast('Order saved to your account!', 'success');
-                }
-            } catch (e) {
-                console.warn('Failed to save order to account:', e);
-            }
-        }
-    }
-    placeOrderOnWhatsApp();
-}
-
-function placeOrderOnWhatsApp() {
-    if (cart.length === 0) {
-        showToast('Your cart is empty! Add some items first.', 'error');
-        return;
-    }
-
-    let message = 'Hello Padmaja Home Foods \uD83D\uDC4B\n\nI want to order:\n\n';
-
-    const emojis = ['1\uFE0F\u20E3','2\uFE0F\u20E3','3\uFE0F\u20E3','4\uFE0F\u20E3','5\uFE0F\u20E3','6\uFE0F\u20E3','7\uFE0F\u20E3','8\uFE0F\u20E3','9\uFE0F\u20E3','\uD83D\uDD1F'];
-    cart.forEach((item, index) => {
-        const emoji = emojis[index] || (index + 1) + '.';
-        message += emoji + ' ' + item.name + ' - ' + item.weight + ' x ' + item.quantity + ' = \u20B9' + (item.price * item.quantity) + '\n';
-    });
-
-    const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    message += '\n*Total: \u20B9' + totalPrice + '*\n\nPlease share your delivery details:\nName:\nAddress:\nPincode:\nPhone:';
-
-    window.open('https://wa.me/' + CONFIG.WHATSAPP_NUMBER + '?text=' + encodeURIComponent(message), '_blank');
-
-    cart = [];
-    updateCartUI();
-    clearSavedCart();
-    toggleCart();
-    showToast('Redirecting to WhatsApp...', 'success');
-}
-
-// Override original placeOrder to support account
-function placeOrder() {
-    if (typeof Account !== 'undefined' && Account.isLoggedIn()) {
-        placeOrderWithAccount();
-    } else {
-        placeOrderOnWhatsApp();
-    }
-}
 
 // ============================================
 // QUICK ORDER (Single Product)
@@ -690,29 +477,19 @@ function updatePDPButtons(product, weight, price) {
     }
 
     if (cartBtn) {
-        cartBtn.onclick = function() {
+        cartBtn.onclick = async function() {
             const weightInGrams = parseWeight(weight);
-            const existingItem = cart.find(item => item.name === product.name && item.weight === weight);
 
-            if (existingItem) {
-                if (existingItem.quantity >= 10) {
-                    showToast('Maximum 10 items per product', 'error');
-                    return;
-                }
-                existingItem.quantity += 1;
-            } else {
-                cart.push({
-                    name: product.name,
-                    weight: weight,
-                    weightInGrams: weightInGrams,
-                    price: price,
-                    basePrice: getBasePrice(product),
-                    quantity: 1
-                });
-            }
+            await CartService.addItem({
+                name: product.name,
+                weight: weight,
+                weightInGrams: weightInGrams,
+                price: price,
+                basePrice: getBasePrice(product),
+                quantity: 1
+            });
 
             updateCartUI();
-            saveCart();
             playTickSound();
             showToast(product.name + ' (' + weight + ') added to cart', 'success');
 
@@ -852,8 +629,8 @@ function injectImagePreloads(products) {
 // INIT
 // ============================================
 document.addEventListener('DOMContentLoaded', async function() {
-    loadCart();
-    updateCartUI();
+    // Initialize cart via CartService (loaded from cart.js)
+    // CartService.init() is called in cart.js DOMContentLoaded
 
     // Initialize customer auth
     if (typeof Account !== 'undefined') {
