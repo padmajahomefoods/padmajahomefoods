@@ -115,8 +115,13 @@ const Account = {
         const client = await this._getClient();
         if (!client) return false;
 
-        const { data, error } = await client.auth.getSession();
-        if (error || !data.session) {
+        // FIX: Use getUser() instead of getSession() for cross-tab sync.
+        // getSession() reads from the Supabase client's in-memory cache, which
+        // is stale when another tab wrote new auth tokens to localStorage.
+        // getUser() forces the client to read the latest JWT from localStorage,
+        // validate it against the Supabase API, and refresh its internal cache.
+        const { data: userData, error: userError } = await client.auth.getUser();
+        if (userError || !userData.user) {
             localStorage.removeItem(CONFIG.CUSTOMER_SESSION_KEY);
             this._currentUser = null;
             this._lastNotifiedUserId = null;
@@ -124,13 +129,14 @@ const Account = {
             return false;
         }
 
-        this._currentUser = data.session.user;
+        this._currentUser = userData.user;
         localStorage.setItem(CONFIG.CUSTOMER_SESSION_KEY, 'active');
         this._updateAuthUI();
         
-        // FIX: If we have a valid session on page load but haven't notified cart yet,
-        // dispatch userLoggedIn. This handles page refreshes after email verification.
-        const userId = data.session.user?.id;
+        // If we have a valid session on page load but haven't notified cart yet,
+        // dispatch userLoggedIn. This handles page refreshes after email verification
+        // and cross-tab login detection.
+        const userId = userData.user?.id;
         if (userId && this._lastNotifiedUserId !== userId) {
             console.log('[Account.checkSession] Existing session found for user:', userId, 'dispatching userLoggedIn');
             this._lastNotifiedUserId = userId;
