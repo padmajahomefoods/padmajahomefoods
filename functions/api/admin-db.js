@@ -15,19 +15,17 @@ export async function onRequestPost(context) {
 
         const supabaseUrl = context.env.SUPABASE_URL;
         const supabaseKey = context.env.SUPABASE_SERVICE_ROLE_KEY;
-        // The frontend securely holds the Anon Key in config.js and sends it in the x-anon-key header
-        const anonKey = context.env.SUPABASE_ANON_KEY || context.request.headers.get('x-anon-key');
 
-        if (!supabaseUrl || !supabaseKey || !anonKey) {
+        if (!supabaseUrl || !supabaseKey) {
             console.error("[admin-db] Missing required configuration keys.");
             return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500, headers: corsHeaders });
         }
 
-        // 2. Validate user using Supabase Auth
+        // 2. Validate user using Supabase Auth (using Service Role Key as apikey)
         console.log(`[admin-db] Validating token with Supabase Auth: ${supabaseUrl}/auth/v1/user`);
         const authRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
             headers: {
-                'apikey': anonKey,
+                'apikey': supabaseKey,
                 'Authorization': `Bearer ${token}`
             }
         });
