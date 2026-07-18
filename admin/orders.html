@@ -301,13 +301,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadOrders() {
     try {
         const client = DB.client;
-        const { data: orders, error } = await client
+        const { data: orders, error: ordersErr } = await client
             .from(CONFIG.TABLES.ORDERS)
-            .select(`*, ${CONFIG.TABLES.ORDER_ITEMS}(*)`)
+            .select('*')
             .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        allOrders = orders || [];
+        if (ordersErr) throw ordersErr;
+        
+        // Fetch order_items separately to avoid Supabase relationship errors
+        const orderIds = (orders || []).map(o => o.id);
+        
+        let orderItems = [];
+        if (orderIds.length > 0) {
+            const { data: items, error: itemsErr } = await client
+                .from(CONFIG.TABLES.ORDER_ITEMS)
+                .select('*')
+                .in('order_id', orderIds);
+                
+            if (!itemsErr && items) {
+                orderItems = items;
+            }
+        }
+        
+        // Attach items to their respective orders manually
+        allOrders = (orders || []).map(order => ({
+            ...order,
+            order_items: orderItems.filter(item => item.order_id === order.id)
+        }));
+        
         renderOrdersList(allOrders);
     } catch (err) {
         console.error('Failed to load orders:', err);
