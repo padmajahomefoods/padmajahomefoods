@@ -386,7 +386,7 @@ function selectOrder(orderId, element) {
     document.querySelectorAll('.order-list-item').forEach(el => el.classList.remove('active'));
     if(element) element.classList.add('active');
 
-    currentOrder = allOrders.find(o => o.id === orderId);
+    currentOrder = allOrders.find(o => String(o.id) === String(orderId));
     console.log("Found currentOrder object:", currentOrder);
     if (!currentOrder) {
         console.error("currentOrder not found in allOrders array!");
