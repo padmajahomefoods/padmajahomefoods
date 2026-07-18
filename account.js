@@ -1148,7 +1148,7 @@ async function loadOrdersTab() {
             const statusClass = 'status-' + order.status;
             const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
             const date = new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-            const total = (order.total_amount / 100).toLocaleString('en-IN');
+            const total = Number(order.total_amount).toLocaleString('en-IN');
             const itemCount = order.order_items?.length || 0;
 
             html += `
@@ -1170,7 +1170,7 @@ async function loadOrdersTab() {
                             <div class="order-item-row">
                                 <span class="order-item-name">${item.product_name}</span>
                                 <span class="order-item-detail">${item.weight} × ${item.quantity}</span>
-                                <span class="order-item-price">₹${(item.total / 100).toLocaleString('en-IN')}</span>
+                                <span class="order-item-price">₹${Number(item.total).toLocaleString('en-IN')}</span>
                             </div>
                         `).join('')}
                     </div>
