@@ -316,7 +316,15 @@ async function loadOrders() {
         console.log("Admin Orders Auth Debug - getSession():", sessionData, sessionError);
         // ------------------------------------
 
-        console.log("loadOrders() - Before Supabase query");
+        console.log("loadOrders() - Before Supabase query. Query structure: client.from('orders').select('*').order('created_at', { ascending: false })");
+        
+        console.log("--- RUNNING NAKED TEST QUERY ---");
+        const { data: nakedData, error: nakedError } = await client
+            .from(CONFIG.TABLES.ORDERS)
+            .select('*');
+        console.log("Naked query result (data, error):", nakedData, nakedError);
+        console.log("--------------------------------");
+
         const { data: orders, error: ordersErr } = await client
             .from(CONFIG.TABLES.ORDERS)
             .select('*')
