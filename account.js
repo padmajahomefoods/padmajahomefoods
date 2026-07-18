@@ -638,6 +638,7 @@ const Account = {
         const authBtn = document.getElementById('authBtn');
         const accountMenu = document.getElementById('accountMenu');
         const mobileAuthLink = document.getElementById('mobileAuthLink');
+        const mobileLogoutLi = document.getElementById('mobileLogoutLi');
         const mobileProfileBtn = document.getElementById('mobileProfileBtn');
 
         if (this.isLoggedIn() && this._currentUser) {
@@ -650,6 +651,9 @@ const Account = {
             if (mobileAuthLink) {
                 mobileAuthLink.innerHTML = '<i class="fas fa-user-circle"></i> My Account';
                 mobileAuthLink.onclick = (e) => { e.preventDefault(); openAccountPage(); closeMobileMenu(); };
+            }
+            if (mobileLogoutLi) {
+                mobileLogoutLi.style.display = 'block';
             }
             if (mobileProfileBtn) {
                 mobileProfileBtn.classList.add('logged-in');
@@ -664,6 +668,9 @@ const Account = {
             if (mobileAuthLink) {
                 mobileAuthLink.innerHTML = '<i class="fas fa-user"></i> Login / Sign Up';
                 mobileAuthLink.onclick = (e) => { e.preventDefault(); openAuthModal(); closeMobileMenu(); };
+            }
+            if (mobileLogoutLi) {
+                mobileLogoutLi.style.display = 'none';
             }
             if (mobileProfileBtn) {
                 mobileProfileBtn.classList.remove('logged-in');
