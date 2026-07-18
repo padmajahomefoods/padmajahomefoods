@@ -216,6 +216,7 @@
                             <div class="detail-box">
                                 <h5>Payment & Delivery</h5>
                                 <p><strong>Payment Status:</strong> <span id="detailPaymentStatus">Success</span></p>
+                                <p><strong>Payment ID:</strong> <span id="detailPaymentId" style="font-family:monospace;font-size:0.85rem;">N/A</span></p>
                                 <p><strong>Address:</strong></p>
                                 <p style="font-size: 0.85rem;" id="detailAddress">Address Line</p>
                             </div>
@@ -406,6 +407,7 @@ function selectOrder(orderId, element) {
     }
     document.getElementById('detailAddress').textContent = addressStr;
     document.getElementById('detailPaymentStatus').textContent = currentOrder.payment_id ? 'Paid (Razorpay)' : 'Pending';
+    document.getElementById('detailPaymentId').textContent = currentOrder.payment_id || 'N/A';
 
     // Items
     const tbody = document.getElementById('detailItemsTable');
