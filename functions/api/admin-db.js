@@ -15,21 +15,10 @@ export async function onRequestPost(context) {
 
         const supabaseUrl = context.env.SUPABASE_URL;
         const supabaseKey = context.env.SUPABASE_SERVICE_ROLE_KEY;
-        // Fallback to service role key for API requests if ANON_KEY is not configured in Cloudflare
-        const anonKey = context.env.SUPABASE_ANON_KEY || supabaseKey; 
+        const anonKey = context.env.SUPABASE_ANON_KEY;
 
-        console.log("[admin-db] Environment Check: URL exists?", !!supabaseUrl, "ServiceKey exists?", !!supabaseKey);
-
-        const missingEnvVars = [];
-        if (!supabaseUrl) missingEnvVars.push("SUPABASE_URL");
-        if (!supabaseKey) missingEnvVars.push("SUPABASE_SERVICE_ROLE_KEY");
-
-        if (missingEnvVars.length > 0) {
-            console.error("[admin-db] FATAL: Missing environment variables:", missingEnvVars.join(", "));
-            return new Response(JSON.stringify({ 
-                error: 'Server configuration error', 
-                details: `Missing environment variables: ${missingEnvVars.join(', ')}` 
-            }), { status: 500, headers: corsHeaders });
+        if (!supabaseUrl || !supabaseKey || !anonKey) {
+            return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500, headers: corsHeaders });
         }
 
         // 2. Validate user using Supabase Auth
