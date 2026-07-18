@@ -33,11 +33,91 @@
                 </div>
             </a>
             <ul class="nav-links">
-                <li><a href="index.html">Shop</a></li>
+                <li><a href="index.html" class="active">Shop</a></li>
                 <li><a href="home.html">Home</a></li>
+                <li><a href="home.html#trust">About</a></li>
+                <li><a href="home.html#contact">Contact</a></li>
+                <li>
+                    <div class="nav-cart" onclick="toggleCart()" role="button" aria-label="Open cart">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-badge" id="cartBadge">0</span>
+                    </div>
+                </li>
+                <li>
+                    <button class="nav-auth" id="authBtn" onclick="openAuthModal()">
+                        <i class="fas fa-user"></i> <span>Login</span>
+                    </button>
+                    <div class="account-menu" id="accountMenu">
+                        <a href="#" onclick="openAccountPage(); return false;"><i class="fas fa-user-circle"></i> My Account</a>
+                        <a href="#" onclick="handleLogout(); return false;"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </li>
             </ul>
+            <div class="mobile-nav-actions">
+                <button class="mobile-profile-btn" id="mobileProfileBtn" onclick="openAuthModal()" aria-label="Profile">
+                    <i class="far fa-user"></i>
+                    <span class="status-dot"></span>
+                </button>
+                <div class="mobile-menu" onclick="openMobileMenu()" role="button" aria-label="Open menu">
+                    <i class="fas fa-bars"></i>
+                </div>
+            </div>
         </div>
     </nav>
+
+<!-- Mobile Menu -->
+    <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileMenu()">
+        <i class="fas fa-times close-mobile" onclick="closeMobileMenu()"></i>
+        <div class="mobile-nav">
+            <ul>
+                <li><a href="index.html" onclick="closeMobileMenu()">Shop</a></li>
+                <li><a href="home.html" onclick="closeMobileMenu()">Home</a></li>
+                <li><a href="home.html#trust" onclick="closeMobileMenu()">About</a></li>
+                <li><a href="home.html#contact" onclick="closeMobileMenu()">Contact</a></li>
+                <li>
+                    <a href="#" id="mobileAuthLink" onclick="openAuthModal(); closeMobileMenu(); return false;">
+                        <i class="fas fa-user"></i> Login / Sign Up
+                    </a>
+                </li>
+                <li id="mobileLogoutLi" style="display: none;">
+                    <a href="#" onclick="handleLogout(); closeMobileMenu(); return false;">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3><i class="fas fa-shopping-cart"></i> Your Cart</h3>
+            <i class="fas fa-times cart-close" onclick="toggleCart()" role="button" aria-label="Close cart"></i>
+        </div>
+        <div class="cart-items" id="cartItems">
+            <div class="cart-empty">
+                <div class="cart-empty-icon">🌶️</div>
+                <h4>Your spice box is empty</h4>
+                <p>Add authentic Guntur flavors to get started</p>
+            </div>
+        </div>
+        <div class="cart-footer">
+            <div class="cart-delivery-note">
+                <i class="fas fa-info-circle"></i>
+                <span>Delivery charges extra. Estimated shipping: 2-5 business days. Pan India delivery.</span>
+            </div>
+            <div class="cart-total">
+                <span>Total:</span>
+                <span id="cartTotal">₹0</span>
+            </div>
+            <button class="cart-order-btn" onclick="goToCheckout()">
+                <i class="fas fa-lock"></i> Secure Checkout
+            </button>
+        </div>
+    </div>
+
+    
 
     <div class="legal-page" style="padding: 120px 5% 60px; max-width: 850px; margin: 0 auto; min-height: 80vh;">
 
@@ -168,6 +248,124 @@
             </div>
         </div>
     </footer>
+
+<!-- Buy Now Conflict Modal -->
+    <div class="auth-modal-overlay" id="buyNowConflictModal" onclick="if(event.target===this)closeBuyNowConflictModal()">
+        <div class="auth-modal" style="max-width: 450px;">
+            <button class="auth-modal-close" onclick="closeBuyNowConflictModal()" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="auth-modal-header" style="margin-bottom: 20px;">
+                <i class="fas fa-shopping-cart" style="font-size: 2rem; color: var(--spice-red); margin-bottom: 10px;"></i>
+                <h3>Cart Not Empty</h3>
+                <p>You already have items in your cart. How would you like to proceed?</p>
+            </div>
+            <div class="auth-fields active" style="gap: 12px; margin-bottom: 0;">
+                <button class="auth-submit-btn" onclick="proceedToCheckoutWithCart()" style="background: var(--deep-brown);">
+                    <i class="fas fa-cart-plus"></i> Add to Cart & Checkout All
+                </button>
+                <button class="auth-submit-btn" onclick="proceedToCheckoutSingleItem()" style="background: var(--spice-red);">
+                    <i class="fas fa-bolt"></i> Buy This Item Only
+                </button>
+                <button class="auth-submit-btn" onclick="closeBuyNowConflictModal()" style="background: var(--gray-200); color: var(--text-dark); border: 1px solid var(--gray-300);">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal (Login / Signup) -->
+    <div class="auth-modal-overlay" id="authModal" onclick="if(event.target===this)closeAuthModal()">
+        <div class="auth-modal">
+            <button class="auth-modal-close" onclick="closeAuthModal()" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="auth-modal-header">
+                <img src="logo.png" alt="Padmaja Home Foods" width="48" height="48">
+                <h3>Welcome Back</h3>
+                <p>Log in or create an account to save your orders</p>
+            </div>
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="loginTab" onclick="switchAuthTab('login')">Log In</button>
+                <button class="auth-tab" id="signupTab" onclick="switchAuthTab('signup')">Sign Up</button>
+            </div>
+            <form id="authForm" onsubmit="handleAuthSubmit(event)">
+                <div id="authError" class="auth-error" style="display:none;"></div>
+                <div id="authSuccess" class="auth-success" style="display:none;"></div>
+                <div class="auth-fields" id="loginFields">
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="authEmail" name="authEmail" placeholder="you@example.com" autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="authPassword" name="authPassword" placeholder="Enter your password" autocomplete="current-password">
+                    </div>
+                </div>
+                <div class="auth-fields" id="signupFields">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="authFullName" name="authFullName" placeholder="Your full name" autocomplete="name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="authEmailSignup" name="authEmailSignup" placeholder="you@example.com" autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="authPhone" name="authPhone" placeholder="10-digit mobile number" maxlength="10" autocomplete="tel">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="authPasswordSignup" name="authPasswordSignup" placeholder="Min 6 characters" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="authConfirmPassword" name="authConfirmPassword" placeholder="Confirm password" autocomplete="new-password">
+                    </div>
+                </div>
+                <button type="submit" class="auth-submit-btn" id="authSubmitBtn">Log In</button>
+            </form>
+            <p class="auth-toggle" id="authToggleText">Don't have an account? <a href="#" onclick="switchAuthTab('signup'); return false;">Sign Up</a></p>
+        </div>
+    </div>
+
+    <!-- Account Page (My Account) -->
+    <div class="account-page" id="accountPage">
+        <div class="account-page-overlay" onclick="closeAccountPage()"></div>
+        <div class="account-page-sidebar">
+            <div class="account-page-header">
+                <h3><i class="fas fa-user-circle"></i> My Account</h3>
+                <button class="account-page-close" onclick="closeAccountPage()" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="account-tabs">
+                <button class="account-tab-btn active" data-tab="profile" onclick="switchAccountTab('profile')">
+                    <i class="fas fa-user"></i> Profile
+                </button>
+                <button class="account-tab-btn" data-tab="addresses" onclick="switchAccountTab('addresses')">
+                    <i class="fas fa-map-marker-alt"></i> Addresses
+                </button>
+                <button class="account-tab-btn" data-tab="orders" onclick="switchAccountTab('orders')">
+                    <i class="fas fa-box"></i> Orders
+                </button>
+            </div>
+            <div class="account-page-content">
+                <div class="account-tab-content active" id="tab-profile"></div>
+                <div class="account-tab-content" id="tab-addresses"></div>
+                <div class="account-tab-content" id="tab-orders"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="db.js"></script>
+    <script src="account.js"></script>
+    <script src="cart.js"></script>
+    <script src="script.js"></script>
+
+
 
 </body>
 </html>
