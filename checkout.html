@@ -19,6 +19,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
 
@@ -89,10 +90,10 @@
                         </div>
                     </div>
 
-                    <button type="submit" id="payButton" disabled style="width: 100%; padding: 15px; background: var(--gray-300); color: var(--text-dark); border: none; border-radius: var(--radius-md); font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 1.1rem; cursor: not-allowed; transition: all 0.3s; display: flex; justify-content: center; align-items: center; gap: 10px;">
-                        <i class="fas fa-lock"></i> Pay with Razorpay (Coming Soon)
+                    <button type="submit" id="payButton" style="width: 100%; padding: 15px; background: var(--spice-red); color: white; border: none; border-radius: var(--radius-md); font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 1.1rem; cursor: pointer; transition: all 0.3s; display: flex; justify-content: center; align-items: center; gap: 10px;">
+                        <i class="fas fa-lock"></i> <span id="payButtonText">Pay Now</span>
                     </button>
-                    <p style="text-align: center; font-size: 0.85rem; color: var(--gray-500); margin-top: 15px;">Secure encrypted payment gateway.</p>
+                    <p style="text-align: center; font-size: 0.85rem; color: var(--gray-500); margin-top: 15px;"><i class="fas fa-shield-alt"></i> Secure payment powered by Razorpay.</p>
                 </form>
             </div>
 

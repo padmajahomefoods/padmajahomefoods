@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>Order Confirmed | Padmaja Home Foods</title>
+    <meta name="description" content="Your order has been placed successfully with Padmaja Home Foods.">
+    <meta name="theme-color" content="#FFF8E1">
+
+    <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-touch-icon.png">
+    <link rel="manifest" href="favicons/site.webmanifest">
+    <link rel="shortcut icon" href="favicons/favicon.ico">
+    <meta name="msapplication-TileColor" content="#da532c">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav id="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo-section">
+                <img src="logo.png" alt="Padmaja Home Foods" width="42" height="42">
+                <div class="brand-text">
+                    <h1>Padmaja Home Foods</h1>
+                    <span>Authentic Guntur Taste</span>
+                </div>
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html">Shop</a></li>
+                <li><a href="home.html">Home</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="checkout-page" style="padding: 120px 5% 60px; max-width: 700px; margin: 0 auto; min-height: 80vh; text-align: center;">
+
+        <!-- Success Icon -->
+        <div style="margin-bottom: 30px;">
+            <div style="width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #22C55E, #16A34A); display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 8px 30px rgba(34, 197, 94, 0.3); animation: scaleIn 0.5s ease;">
+                <i class="fas fa-check" style="font-size: 2.5rem; color: white;"></i>
+            </div>
+        </div>
+
+        <!-- Heading -->
+        <h2 style="font-family: 'Playfair Display', serif; color: var(--deep-brown); margin-bottom: 10px; font-size: 2rem;">Order Confirmed!</h2>
+        <p style="color: var(--gray-500); font-size: 1.05rem; margin-bottom: 35px;">Thank you for your order. Your authentic Guntur flavors are on the way!</p>
+
+        <!-- Order Details Card -->
+        <div style="background: white; padding: 30px; border-radius: var(--radius-md); box-shadow: 0 4px 20px rgba(0,0,0,0.06); text-align: left; margin-bottom: 30px;">
+            <h3 style="color: var(--deep-brown); margin-bottom: 20px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-receipt"></i> Order Details
+            </h3>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                    <p style="font-size: 0.8rem; color: var(--gray-500); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Order Number</p>
+                    <p id="successOrderNumber" style="font-weight: 600; color: var(--text-dark); font-size: 1rem;">—</p>
+                </div>
+                <div>
+                    <p style="font-size: 0.8rem; color: var(--gray-500); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Payment ID</p>
+                    <p id="successPaymentId" style="font-weight: 600; color: var(--text-dark); font-size: 1rem;">—</p>
+                </div>
+                <div>
+                    <p style="font-size: 0.8rem; color: var(--gray-500); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Status</p>
+                    <p style="font-weight: 600; color: #16A34A; font-size: 1rem;"><i class="fas fa-check-circle"></i> Payment Successful</p>
+                </div>
+                <div>
+                    <p style="font-size: 0.8rem; color: var(--gray-500); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Date</p>
+                    <p id="successDate" style="font-weight: 600; color: var(--text-dark); font-size: 1rem;">—</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Banner -->
+        <div style="background: linear-gradient(135deg, #FEF3C7, #FDE68A); padding: 20px; border-radius: var(--radius-md); margin-bottom: 30px; display: flex; align-items: center; gap: 12px; text-align: left;">
+            <i class="fas fa-truck" style="font-size: 1.5rem; color: var(--deep-brown); flex-shrink: 0;"></i>
+            <div>
+                <p style="font-weight: 600; color: var(--deep-brown); margin-bottom: 2px;">Estimated Delivery</p>
+                <p style="font-size: 0.9rem; color: var(--text-dark);">Your order will be shipped within 1–2 business days. Estimated delivery: 3–5 business days.</p>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+            <a href="index.html" style="display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; background: var(--spice-red); color: white; text-decoration: none; border-radius: var(--radius-md); font-weight: 600; font-family: 'Poppins', sans-serif; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(180, 60, 30, 0.3);">
+                <i class="fas fa-shopping-bag"></i> Continue Shopping
+            </a>
+            <a href="home.html" style="display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; background: white; color: var(--deep-brown); text-decoration: none; border-radius: var(--radius-md); font-weight: 600; font-family: 'Poppins', sans-serif; border: 2px solid var(--gray-200); transition: transform 0.2s;">
+                <i class="fas fa-home"></i> Go Home
+            </a>
+        </div>
+    </div>
+
+    <!-- Animation -->
+    <style>
+        @keyframes scaleIn {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.15); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @media (max-width: 600px) {
+            .checkout-page {
+                padding-top: 100px !important;
+            }
+        }
+    </style>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content" style="text-align: center; padding: 40px 20px;">
+            <p>&copy; 2026 Padmaja Home Foods. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Populate order details from URL parameters
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const orderNumber = params.get('order');
+            const paymentId = params.get('payment');
+
+            const orderEl = document.getElementById('successOrderNumber');
+            const paymentEl = document.getElementById('successPaymentId');
+            const dateEl = document.getElementById('successDate');
+
+            if (orderNumber && orderEl) orderEl.textContent = orderNumber;
+            if (paymentId && paymentEl) paymentEl.textContent = paymentId;
+            if (dateEl) {
+                dateEl.textContent = new Date().toLocaleDateString('en-IN', {
+                    day: 'numeric', month: 'short', year: 'numeric'
+                });
+            }
+        });
+    </script>
+
+</body>
+</html>
