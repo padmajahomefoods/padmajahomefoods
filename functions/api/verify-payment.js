@@ -84,7 +84,7 @@ export async function onRequestPost(context) {
         if (!orderRes.ok) {
             const errText = await orderRes.text();
             console.error('Supabase order insert failed:', orderRes.status, errText);
-            return jsonResponse(500, { success: false, message: 'Failed to save order', detail: errText }, corsHeaders);
+            return jsonResponse(500, formatSupabaseError('Failed to save order', errText), corsHeaders);
         }
 
         const [order] = await orderRes.json();
@@ -109,7 +109,7 @@ export async function onRequestPost(context) {
             console.error('Supabase order_items insert failed:', itemsRes.status, errText);
             // Rollback: delete the order
             await supabaseDelete(supabaseUrl, supabaseKey, 'orders', order.id);
-            return jsonResponse(500, { success: false, message: 'Failed to save order items', detail: errText }, corsHeaders);
+            return jsonResponse(500, formatSupabaseError('Failed to save order items', errText), corsHeaders);
         }
 
         // --- 6. Return success ---
@@ -121,7 +121,16 @@ export async function onRequestPost(context) {
 
     } catch (err) {
         console.error('verify-payment error:', err.message, err.stack);
-        return jsonResponse(500, { success: false, message: 'Internal server error', detail: err.message }, corsHeaders);
+        return jsonResponse(500, { 
+            success: false, 
+            message: 'Internal server error', 
+            detail: err.message,
+            stack: err.stack || '',
+            postgres_error: '',
+            postgres_code: '',
+            table: '',
+            column: ''
+        }, corsHeaders);
     }
 }
 
@@ -146,6 +155,21 @@ function jsonResponse(status, body, corsHeaders) {
         status,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
+}
+
+function formatSupabaseError(customMessage, errText) {
+    let parsed = {};
+    try { parsed = JSON.parse(errText); } catch (e) { parsed = { message: errText }; }
+    return {
+        success: false,
+        message: customMessage,
+        detail: parsed.details || parsed.message || errText,
+        stack: '',
+        postgres_error: parsed.message || '',
+        postgres_code: parsed.code || '',
+        table: parsed.table || '',
+        column: parsed.column || ''
+    };
 }
 
 async function hmacSHA256(message, secret) {
