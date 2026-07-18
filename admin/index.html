@@ -404,7 +404,7 @@ function showDashboard() {
 
 async function loadDashboardStats() {
     try {
-        const client = DB.client;
+        const client = await DB._getAdapter()._getClient();
         
         const { data: orders, error } = await client
             .from(CONFIG.TABLES.ORDERS)

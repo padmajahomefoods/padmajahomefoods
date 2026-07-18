@@ -300,7 +300,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadOrders() {
     try {
-        const client = DB.client;
+        const client = await DB._getAdapter()._getClient();
+        
+        // --- DEBUG LOGS REQUESTED BY USER ---
+        const { data: userData, error: userError } = await client.auth.getUser();
+        const { data: sessionData, error: sessionError } = await client.auth.getSession();
+        console.log("Admin Orders Auth Debug - getUser():", userData, userError);
+        console.log("Admin Orders Auth Debug - getSession():", sessionData, sessionError);
+        // ------------------------------------
+
         const { data: orders, error: ordersErr } = await client
             .from(CONFIG.TABLES.ORDERS)
             .select('*')
