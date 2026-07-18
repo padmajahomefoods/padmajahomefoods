@@ -372,18 +372,28 @@ function renderOrdersList(ordersToRender) {
             <p>${name}</p>
             <p style="margin-top:5px;"><span class="status-badge" style="background:#EDF2F7; font-size:0.7rem;">${(order.status||'Unknown').toUpperCase()}</span></p>
         `;
-        div.onclick = () => selectOrder(order.id, div);
+        div.addEventListener('click', (e) => {
+            console.log("[DEBUG] click handler fired on order card. Order ID:", order.id, "Target Element:", e.target);
+            selectOrder(order.id, div);
+        });
         list.appendChild(div);
     });
 }
 
 function selectOrder(orderId, element) {
+    console.log("selectOrder() called! Order ID:", orderId);
+    
     document.querySelectorAll('.order-list-item').forEach(el => el.classList.remove('active'));
     if(element) element.classList.add('active');
 
     currentOrder = allOrders.find(o => o.id === orderId);
-    if (!currentOrder) return;
+    console.log("Found currentOrder object:", currentOrder);
+    if (!currentOrder) {
+        console.error("currentOrder not found in allOrders array!");
+        return;
+    }
 
+    console.log("Opening fullDetails pane...");
     document.getElementById('emptyDetails').style.display = 'none';
     document.getElementById('fullDetails').style.display = 'block';
 
