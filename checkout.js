@@ -289,8 +289,26 @@ async function handleCheckoutSubmit(e) {
                     }),
                 });
 
-                const verifyData = await verifyRes.json();
-                console.log('verify-payment response:', verifyRes.status, JSON.stringify(verifyData, null, 2));
+                const rawText = await verifyRes.text();
+                let verifyData = {};
+                try {
+                    verifyData = JSON.parse(rawText);
+                } catch (e) {
+                    verifyData = { success: false, message: 'Invalid JSON response from server' };
+                }
+
+                console.log("HTTP Status:", verifyRes.status);
+                console.log("Raw response text:", rawText);
+                console.log("Parsed JSON:", JSON.stringify(verifyData, null, 2));
+                
+                if (!verifyRes.ok || !verifyData.success) {
+                    console.log("message:", verifyData.message);
+                    console.log("detail:", verifyData.detail);
+                    console.log("PostgreSQL error:", verifyData.postgres_error);
+                    console.log("table:", verifyData.table);
+                    console.log("column:", verifyData.column);
+                    console.log("code:", verifyData.postgres_code);
+                }
 
                 if (verifyData.success) {
                     // Clear cart after successful payment
