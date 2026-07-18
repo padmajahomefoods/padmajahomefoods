@@ -359,9 +359,11 @@ function showCheckoutError(message) {
 // ============================================
 
 function getPriceForWeight(product, weightStr) {
-    if (product.prices && product.prices[weightStr]) {
-        return product.prices[weightStr];
-    }
+    const w = weightStr.toLowerCase().replace('kg', 'Kg');
+    if (w === '100g' && product.price100g) return product.price100g;
+    if (w === '250g' && product.price250) return product.price250;
+    if (w === '500g' && product.price500) return product.price500;
+    if ((w === '1kg' || w === '1Kg') && product.price1000) return product.price1000;
     const wGrams = parseWeight(weightStr);
     const base = product.price1000 || 0;
     return Math.round((base * wGrams) / 1000);
