@@ -42,3 +42,45 @@ function handleAdminLogout() {
         window.location.href = '../index.html';
     }
 }
+
+/**
+ * Secure proxy to fetch database items as an admin, bypassing RLS safely.
+ */
+async function fetchAdminData(table, action = 'select', options = {}) {
+    try {
+        const client = await DB._getAdapter()._getClient();
+        const { data: session } = await client.auth.getSession();
+        
+        if (!session?.session?.access_token) {
+            throw new Error("No active admin session found");
+        }
+
+        const res = await fetch('/api/admin-db', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.session.access_token}`
+            },
+            body: JSON.stringify({
+                table,
+                action,
+                match: options.match,
+                inFilter: options.inFilter,
+                order: options.order,
+                payload: options.payload,
+                selectColumns: options.selectColumns || '*'
+            })
+        });
+
+        const result = await res.json();
+        
+        if (!res.ok) {
+            throw new Error(result.error || 'Unknown admin API error');
+        }
+
+        return { data: result.data, error: null };
+    } catch (err) {
+        console.error(`[Admin DB Error] ${table} ${action}:`, err);
+        return { data: null, error: err };
+    }
+}

@@ -411,18 +411,8 @@ function showDashboard() {
 }
 
 async function loadDashboardStats() {
-    console.log("loadDashboardStats() - Start: Before getting DB client");
     try {
-        const client = await DB._getAdapter()._getClient();
-        console.log("loadDashboardStats() - After getting DB client. Client:", client);
-        
-        console.log("loadDashboardStats() - Before Supabase query");
-        const { data: orders, error } = await client
-            .from(CONFIG.TABLES.ORDERS)
-            .select('*');
-
-        console.log("loadDashboardStats() - After Supabase query. Orders Data:", orders);
-        console.log("loadDashboardStats() - Supabase Error object:", error);
+        const { data: orders, error } = await fetchAdminData(CONFIG.TABLES.ORDERS, 'select');
 
         if (error) throw error;
         

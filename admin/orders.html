@@ -304,34 +304,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadOrders() {
-    console.log("loadOrders() - Start: Before getting DB client");
-    try {
-        const client = await DB._getAdapter()._getClient();
-        console.log("loadOrders() - After getting DB client. Client:", client);
-        
-        // --- DEBUG LOGS REQUESTED BY USER ---
-        const { data: userData, error: userError } = await client.auth.getUser();
-        const { data: sessionData, error: sessionError } = await client.auth.getSession();
-        console.log("Admin Orders Auth Debug - getUser():", userData, userError);
-        console.log("Admin Orders Auth Debug - getSession():", sessionData, sessionError);
-        // ------------------------------------
-
-        console.log("loadOrders() - Before Supabase query. Query structure: client.from('orders').select('*').order('created_at', { ascending: false })");
-        
-        console.log("--- RUNNING NAKED TEST QUERY ---");
-        const { data: nakedData, error: nakedError } = await client
-            .from(CONFIG.TABLES.ORDERS)
-            .select('*');
-        console.log("Naked query result (data, error):", nakedData, nakedError);
-        console.log("--------------------------------");
-
-        const { data: orders, error: ordersErr } = await client
-            .from(CONFIG.TABLES.ORDERS)
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        console.log("loadOrders() - After Supabase query. Orders Data:", orders);
-        console.log("loadOrders() - Supabase Error object:", ordersErr);
+        const { data: orders, error: ordersErr } = await fetchAdminData(
+            CONFIG.TABLES.ORDERS, 
+            'select', 
+            { order: { column: 'created_at', ascending: false } }
+        );
 
         if (ordersErr) throw ordersErr;
         
@@ -340,10 +317,11 @@ async function loadOrders() {
         
         let orderItems = [];
         if (orderIds.length > 0) {
-            const { data: items, error: itemsErr } = await client
-                .from(CONFIG.TABLES.ORDER_ITEMS)
-                .select('*')
-                .in('order_id', orderIds);
+            const { data: items, error: itemsErr } = await fetchAdminData(
+                CONFIG.TABLES.ORDER_ITEMS,
+                'select',
+                { inFilter: { column: 'order_id', values: orderIds } }
+            );
                 
             if (!itemsErr && items) {
                 orderItems = items;
@@ -487,10 +465,14 @@ async function saveOrderStatus() {
     }
     
     try {
-        const { error } = await DB.client
-            .from(CONFIG.TABLES.ORDERS)
-            .update(updatePayload)
-            .eq('id', currentOrder.id);
+        const { error } = await fetchAdminData(
+            CONFIG.TABLES.ORDERS,
+            'update',
+            { 
+                match: { id: currentOrder.id },
+                payload: updatePayload
+            }
+        );
             
         if (error) throw error;
         

@@ -733,12 +733,17 @@
                 if (oldProduct && oldProduct.image && oldProduct.image !== image) {
                     oldImagePath = oldProduct.image;
                 }
-                await DB.updateProduct(editingProductId, product);
+                const { error } = await fetchAdminData(CONFIG.TABLES.PRODUCTS, 'update', { 
+                    match: { id: editingProductId }, 
+                    payload: product 
+                });
+                if (error) throw error;
                 const idx = productsData.findIndex(p => p.id === editingProductId);
                 if (idx !== -1) productsData[idx] = product;
                 showAdminToast('Product updated!', 'success');
             } else {
-                await DB.addProduct(product);
+                const { error } = await fetchAdminData(CONFIG.TABLES.PRODUCTS, 'insert', { payload: product });
+                if (error) throw error;
                 productsData.push(product);
                 showAdminToast('Product added!', 'success');
             }
@@ -775,7 +780,8 @@
         if (!p) return;
         if (!confirm('Delete "' + p.name + '"?')) return;
         try {
-            await DB.deleteProduct(pid);
+            const { error } = await fetchAdminData(CONFIG.TABLES.PRODUCTS, 'delete', { match: { id: pid } });
+            if (error) throw error;
             // Also delete image from storage
             if (p.image && CONFIG.DATA_MODE === 'supabase') {
                 try { await DB.deleteImage(p.image); } catch (e) {}
@@ -840,7 +846,13 @@
         categoriesData[newIdx] = temp;
         categoriesData.forEach((cat, i) => cat.order = i + 1);
         try {
-            await DB.reorderCategories(categoriesData.map(c => c.id));
+            const updates = categoriesData.map(c => 
+                fetchAdminData(CONFIG.TABLES.CATEGORIES, 'update', { 
+                    match: { id: c.id }, 
+                    payload: { order: c.order } 
+                })
+            );
+            await Promise.all(updates);
             markUnsaved();
             renderCategories();
             showAdminToast('Category order updated', 'success');
@@ -894,7 +906,28 @@
                     showAdminToast('Category ID already exists', 'error');
                     return;
                 }
-                await DB.updateCategory(editingCategoryId, { id, name, icon });
+                if (id !== editingCategoryId) {
+                    // ID changed: Delete old, insert new, update dependent products
+                    const { error: delErr } = await fetchAdminData(CONFIG.TABLES.CATEGORIES, 'delete', { match: { id: editingCategoryId } });
+                    if (delErr) throw delErr;
+                    
+                    const { error: insErr } = await fetchAdminData(CONFIG.TABLES.CATEGORIES, 'insert', { payload: { id, name, icon } });
+                    if (insErr) throw insErr;
+                    
+                    const { error: updErr } = await fetchAdminData(CONFIG.TABLES.PRODUCTS, 'update', { 
+                        match: { cat_id: editingCategoryId }, 
+                        payload: { cat_id: id, category: name } 
+                    });
+                    if (updErr) throw updErr;
+                } else {
+                    // Just update name/icon
+                    const { error: updErr } = await fetchAdminData(CONFIG.TABLES.CATEGORIES, 'update', { 
+                        match: { id: editingCategoryId }, 
+                        payload: { name, icon } 
+                    });
+                    if (updErr) throw updErr;
+                }
+                
                 const idx = categoriesData.findIndex(c => c.id === editingCategoryId);
                 if (idx !== -1) {
                     const oldId = categoriesData[idx].id;
@@ -915,7 +948,8 @@
                 }
                 const maxOrder = categoriesData.length > 0 ? Math.max(...categoriesData.map(c => c.order || 0)) : 0;
                 const newCat = { id, name, icon, order: maxOrder + 1 };
-                await DB.addCategory(newCat);
+                const { error: addErr } = await fetchAdminData(CONFIG.TABLES.CATEGORIES, 'insert', { payload: newCat });
+                if (addErr) throw addErr;
                 categoriesData.push(newCat);
                 categoriesData.sort((a, b) => (a.order || 0) - (b.order || 0));
                 showAdminToast('Category added!', 'success');
@@ -942,7 +976,8 @@
         }
         if (!confirm('Delete category "' + cat.name + '"?')) return;
         try {
-            await DB.deleteCategory(catId);
+            const { error } = await fetchAdminData(CONFIG.TABLES.CATEGORIES, 'delete', { match: { id: catId } });
+            if (error) throw error;
             categoriesData = categoriesData.filter(c => c.id !== catId);
             categoriesData.forEach((cat, i) => cat.order = i + 1);
             rebuildCatNames();

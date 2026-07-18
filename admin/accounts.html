@@ -227,18 +227,12 @@ let grossSales = 0;
 let totalExpenses = 0;
 
 async function loadAnalytics() {
-    console.log("loadAnalytics() - Start: Before getting DB client");
     try {
-        const client = await DB._getAdapter()._getClient();
-        console.log("loadAnalytics() - After getting DB client. Client:", client);
-        
-        console.log("loadAnalytics() - Before Supabase query");
-        const { data: orders, error } = await client
-            .from(CONFIG.TABLES.ORDERS)
-            .select('created_at, total_amount, status');
-
-        console.log("loadAnalytics() - After Supabase query. Orders Data:", orders);
-        console.log("loadAnalytics() - Supabase Error object:", error);
+        const { data: orders, error } = await fetchAdminData(
+            CONFIG.TABLES.ORDERS, 
+            'select', 
+            { selectColumns: 'created_at, total_amount, status' }
+        );
 
         if (error) throw error;
 
@@ -285,11 +279,11 @@ async function loadAnalytics() {
 
 async function loadExpenses() {
     try {
-        const client = await DB._getAdapter()._getClient();
-        const { data: expenses, error } = await client
-            .from('expenses')
-            .select('*')
-            .order('expense_date', { ascending: false });
+        const { data: expenses, error } = await fetchAdminData(
+            'expenses', 
+            'select', 
+            { order: { column: 'expense_date', ascending: false } }
+        );
 
         if (error) {
             console.error('Expenses table might not exist yet.', error);
@@ -338,15 +332,14 @@ async function handleAddExpense(e) {
     const notes = document.getElementById('expNotes').value;
 
     try {
-        const client = await DB._getAdapter()._getClient();
-        const { error } = await client
-            .from('expenses')
-            .insert({
+        const { error } = await fetchAdminData('expenses', 'insert', {
+            payload: {
                 expense_date: date,
                 category: cat,
                 amount: amt,
                 notes: notes
-            });
+            }
+        });
 
         if (error) throw error;
         
