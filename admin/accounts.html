@@ -211,10 +211,15 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
-    if (typeof Account !== 'undefined' && await Account.isAdmin()) {
+    console.log("Admin Accounts - DOMContentLoaded triggered");
+    if (typeof Auth !== 'undefined' && Auth.isAuthenticated()) {
         document.getElementById('expDate').valueAsDate = new Date();
+        console.log("Admin Accounts - Calling loadAnalytics()");
         loadAnalytics();
+        console.log("Admin Accounts - Calling loadExpenses()");
         loadExpenses();
+    } else {
+        console.log("Admin Accounts - Auth check failed or Auth undefined");
     }
 });
 

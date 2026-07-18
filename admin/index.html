@@ -373,9 +373,14 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log("Admin Dashboard - DOMContentLoaded triggered");
     // If already authenticated, skip login screen
     if (typeof Auth !== 'undefined' && Auth.isAuthenticated()) {
+        console.log("Admin Dashboard - Calling showDashboard()");
         showDashboard();
+        console.log("Admin Dashboard - showDashboard() returned");
+    } else {
+        console.log("Admin Dashboard - Not authenticated, showing login screen");
     }
 });
 
@@ -397,9 +402,12 @@ async function handleLogin(e) {
 }
 
 function showDashboard() {
+    console.log("Admin Dashboard - inside showDashboard, before UI updates");
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('dashboard').classList.add('active');
+    console.log("Admin Dashboard - calling loadDashboardStats()");
     loadDashboardStats();
+    console.log("Admin Dashboard - loadDashboardStats() called (async)");
 }
 
 async function loadDashboardStats() {

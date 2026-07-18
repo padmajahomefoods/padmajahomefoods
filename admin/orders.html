@@ -293,8 +293,13 @@ let allOrders = [];
 let currentOrder = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-    if (typeof Account !== 'undefined' && await Account.isAdmin()) {
+    console.log("Admin Orders - DOMContentLoaded triggered");
+    if (typeof Auth !== 'undefined' && Auth.isAuthenticated()) {
+        console.log("Admin Orders - Calling loadOrders()");
         loadOrders();
+        console.log("Admin Orders - loadOrders() returned (async)");
+    } else {
+        console.log("Admin Orders - Auth check failed or Auth undefined");
     }
 });
 
