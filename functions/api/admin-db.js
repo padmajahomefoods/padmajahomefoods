@@ -17,8 +17,18 @@ export async function onRequestPost(context) {
         const supabaseKey = context.env.SUPABASE_SERVICE_ROLE_KEY;
         const anonKey = context.env.SUPABASE_ANON_KEY;
 
-        if (!supabaseUrl || !supabaseKey || !anonKey) {
-            return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500, headers: corsHeaders });
+        const missingEnvVars = [];
+        if (!supabaseUrl) missingEnvVars.push("SUPABASE_URL");
+        if (!supabaseKey) missingEnvVars.push("SUPABASE_SERVICE_ROLE_KEY");
+        if (!anonKey) missingEnvVars.push("SUPABASE_ANON_KEY");
+
+        if (missingEnvVars.length > 0) {
+            console.error("[admin-db] Missing environment variables:", missingEnvVars.join(", "));
+            console.error("[admin-db] Note: You must configure these variables in the Cloudflare Pages Dashboard -> Settings -> Environment variables -> Production/Preview.");
+            return new Response(JSON.stringify({ 
+                error: 'Server configuration error', 
+                details: `Missing environment variables: ${missingEnvVars.join(', ')}. Please configure them in Cloudflare Pages settings.` 
+            }), { status: 500, headers: corsHeaders });
         }
 
         // 2. Validate user using Supabase Auth (with anon key to verify token)
