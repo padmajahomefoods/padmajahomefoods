@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Padmaja Home Foods</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        body {
+            background-color: var(--bg-light);
+        }
+        .launcher-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            display: none;
+        }
+        .launcher-container.active {
+            display: block;
+        }
+        
+        .launcher-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 50px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .header-brand img {
+            height: 70px;
+        }
+        .header-brand .header-text {
+            text-align: left;
+        }
+        .header-brand h2 {
+            font-family: 'Playfair Display', serif;
+            color: var(--primary);
+            margin: 0 0 4px 0;
+            font-size: 1.8rem;
+        }
+        .header-brand p {
+            margin: 0;
+            color: var(--text-gray);
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        .logout-btn-top {
+            background: linear-gradient(135deg, #FF5A5F 0%, #D32F2F 100%);
+            border: none;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
+            transition: all 0.3s ease;
+        }
+        .logout-btn-top:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(211, 47, 47, 0.4);
+        }
+
+        /* Top Stats (Circles) */
+        .stats-circles {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 50px;
+            flex-wrap: wrap;
+        }
+        .stat-circle {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid var(--primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+            text-align: center;
+            padding: 10px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .stat-circle:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+        }
+        .stat-circle .val {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        .stat-circle .label {
+            font-size: 0.8rem;
+            color: var(--text-gray);
+            font-weight: 500;
+            line-height: 1.2;
+        }
+
+        /* Grid Layout & Centered Settings */
+        .launcher-grid-wrapper {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto 40px auto;
+        }
+        .launcher-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            column-gap: 140px; /* Space for the centered settings gear */
+        }
+        .launcher-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: left;
+            text-decoration: none;
+            color: var(--text-dark);
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.04);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            min-height: 110px;
+        }
+        .launcher-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+            border-color: var(--primary);
+        }
+        .launcher-card i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin: 0;
+            transition: transform 0.3s ease;
+        }
+        .launcher-card:hover i {
+            transform: scale(1.1);
+        }
+        .launcher-card h3 {
+            margin: 0;
+            font-size: 1.4rem;
+        }
+
+        /* Settings Icon Centered */
+        .settings-launcher {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        .settings-launcher a {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: var(--text-gray);
+            transition: color 0.3s ease;
+        }
+        .settings-launcher a:hover {
+            color: var(--primary);
+        }
+        .settings-launcher i {
+            font-size: 3.5rem;
+            margin-bottom: 12px;
+            transition: transform 0.4s ease, color 0.3s ease;
+        }
+        .settings-launcher a:hover i {
+            transform: rotate(90deg) scale(1.1);
+        }
+        
+        /* Login Screen */
+        .admin-login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .admin-login-container.hidden {
+            display: none;
+        }
+        .admin-login-box {
+            background: white;
+            border-radius: 12px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        .admin-login-box img {
+            height: 80px;
+            margin-bottom: 20px;
+        }
+        .admin-form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .admin-form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .admin-form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-family: inherit;
+        }
+        .admin-login-btn {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .admin-error {
+            color: #E3523B;
+            font-size: 0.85rem;
+            margin-top: 16px;
+            display: none;
+        }
+        .admin-error.active { display: block; }
+        
+    @media(max-width: 768px) {
+        .launcher-header {
+            flex-direction: column;
+            gap: 20px;
+        }
+        .header-brand {
+            flex-direction: column;
+            text-align: center;
+        }
+        .header-brand .header-text {
+            text-align: center;
+        }
+        .launcher-grid { 
+            grid-template-columns: 1fr; 
+            column-gap: 25px;
+            margin-bottom: 120px; /* Space for settings below */
+        }
+        .settings-launcher {
+            position: absolute;
+            bottom: -80px;
+            top: auto;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 0;
+        }
+    }
+    @media(max-width: 600px) {
+        .stats-circles { gap: 20px; }
+        .stat-circle { width: 110px; height: 110px; }
+        .stat-circle .val { font-size: 1.4rem; }
+    }
+    </style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div class="admin-login-container" id="loginScreen">
+    <div class="admin-login-box">
+        <img src="../logo.png" alt="Padmaja Home Foods">
+        <h2 style="font-family:'Playfair Display',serif; color:var(--primary); margin:0 0 8px 0;">Admin Panel</h2>
+        <p style="color:var(--text-gray); margin-bottom:32px;">Please log in to continue</p>
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="admin-form-group">
+                <label>Username</label>
+                <input type="text" id="adminUser" required autocomplete="username">
+            </div>
+            <div class="admin-form-group">
+                <label>Password</label>
+                <input type="password" id="adminPass" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="admin-login-btn"><i class="fas fa-lock"></i> Login</button>
+            <div class="admin-error" id="loginError"><i class="fas fa-exclamation-circle"></i> Invalid credentials</div>
+        </form>
+    </div>
+</div>
+
+<!-- Dashboard Launcher (Hidden until authenticated) -->
+<div class="launcher-container" id="dashboard">
+    <header class="launcher-header">
+        <div class="header-brand">
+            <img src="../logo.png" alt="Logo">
+            <div class="header-text">
+                <h2>Admin Dashboard</h2>
+                <p>Padmaja Home Foods</p>
+            </div>
+        </div>
+        <button class="logout-btn-top" onclick="handleAdminLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    </header>
+
+    <!-- Top Statistics (Circles) -->
+    <div class="stats-circles">
+        <div class="stat-circle">
+            <div class="val" id="statNewOrders">0</div>
+            <div class="label">New Orders<br>(Today)</div>
+        </div>
+        <div class="stat-circle">
+            <div class="val" id="statTodaySales">₹0</div>
+            <div class="label">Today's<br>Sales</div>
+        </div>
+        <div class="stat-circle">
+            <div class="val" id="statPendingShipments">0</div>
+            <div class="label">Pending<br>Shipments</div>
+        </div>
+    </div>
+
+    <!-- Middle Grid & Centered Settings -->
+    <div class="launcher-grid-wrapper">
+        <div class="launcher-grid">
+            <a href="orders.html" class="launcher-card">
+                <i class="fas fa-shopping-bag"></i>
+                <h3>Orders</h3>
+            </a>
+            <a href="billdesk.html" class="launcher-card">
+                <i class="fas fa-file-invoice"></i>
+                <h3>Bill Desk</h3>
+            </a>
+            <a href="accounts.html" class="launcher-card">
+                <i class="fas fa-chart-line"></i>
+                <h3>Accounts</h3>
+            </a>
+            <a href="products.html" class="launcher-card">
+                <i class="fas fa-box-open"></i>
+                <h3>Products</h3>
+            </a>
+        </div>
+
+        <!-- Settings Gear (Centered Absolutely) -->
+        <div class="settings-launcher">
+            <a href="settings.html">
+                <i class="fas fa-cog"></i>
+                <span style="font-weight: 500;">Settings</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config.js"></script>
+<script src="../db.js"></script>
+<script src="../auth.js"></script>
+<script src="admin.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    // If already authenticated, skip login screen
+    if (typeof Auth !== 'undefined' && Auth.isAuthenticated()) {
+        showDashboard();
+    }
+});
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const u = document.getElementById('adminUser').value;
+    const p = document.getElementById('adminPass').value;
+    const err = document.getElementById('loginError');
+    
+    const result = await Auth.login(u, p);
+    if (result.success) {
+        err.classList.remove('active');
+        showDashboard();
+    } else {
+        err.textContent = result.message || 'Invalid credentials';
+        err.classList.add('active');
+        document.getElementById('adminPass').value = '';
+    }
+}
+
+function showDashboard() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('dashboard').classList.add('active');
+    loadDashboardStats();
+}
+
+async function loadDashboardStats() {
+    try {
+        const client = DB.client;
+        
+        const { data: orders, error } = await client
+            .from(CONFIG.TABLES.ORDERS)
+            .select('*');
+
+        if (error) throw error;
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let newOrdersCount = 0;
+        let todaySales = 0;
+        let pendingShipmentsCount = 0;
+
+        (orders || []).forEach(order => {
+            const orderDate = new Date(order.created_at);
+            
+            if (['confirmed', 'preparing', 'packed', 'ready to dispatch'].includes(order.status?.toLowerCase())) {
+                pendingShipmentsCount++;
+            }
+
+            if (orderDate >= today) {
+                newOrdersCount++;
+                todaySales += Number(order.total_amount || 0);
+            }
+        });
+
+        document.getElementById('statNewOrders').textContent = newOrdersCount;
+        document.getElementById('statTodaySales').textContent = '₹' + todaySales.toLocaleString('en-IN');
+        document.getElementById('statPendingShipments').textContent = pendingShipmentsCount;
+
+    } catch (err) {
+        console.error('Error loading stats:', err);
+    }
+}
+</script>
+
+</body>
+</html>

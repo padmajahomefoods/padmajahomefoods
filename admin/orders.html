@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orders Management | Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .orders-layout {
+            display: flex;
+            height: calc(100vh - 130px);
+            gap: 20px;
+        }
+        .orders-list-col {
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .orders-search {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            background: #F8FAFC;
+        }
+        .orders-search input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+        }
+        .orders-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .order-list-item {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .order-list-item:hover, .order-list-item.active {
+            background: var(--primary-light);
+        }
+        .order-list-item h4 {
+            margin: 0 0 5px 0;
+            font-size: 1rem;
+            color: var(--primary);
+        }
+        .order-list-item p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-gray);
+        }
+        
+        .order-details-col {
+            flex: 2;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 24px;
+            overflow-y: auto;
+            display: none; /* hidden until selection */
+        }
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        .detail-box {
+            background: #F8FAFC;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        .detail-box h5 {
+            margin: 0 0 10px 0;
+            color: var(--text-gray);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        .detail-box p {
+            margin: 5px 0;
+            font-size: 0.95rem;
+            color: var(--text-dark);
+        }
+        .order-items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+        .order-items-table th, .order-items-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+        .order-items-table th {
+            background: #F8FAFC;
+            font-size: 0.85rem;
+            color: var(--text-gray);
+        }
+        
+        .status-update-section {
+            background: #FDF9F7;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #F6E5DF;
+            margin-top: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+        }
+        .tracking-fields {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed var(--border);
+        }
+        .empty-state {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-gray);
+            flex-direction: column;
+            gap: 10px;
+        }
+        .empty-state i {
+            font-size: 3rem;
+            color: var(--border);
+        }
+    </style>
+</head>
+<body>
+
+<div class="admin-layout">
+    <aside class="admin-sidebar">
+        <div class="admin-sidebar-header">
+            <img src="../logo.png" alt="Logo">
+            <h2>Admin Panel</h2>
+        </div>
+        <nav class="admin-nav">
+            <a href="index.html"><i class="fas fa-home"></i> Dashboard</a>
+            <a href="orders.html"><i class="fas fa-shopping-bag"></i> Orders</a>
+            <a href="billdesk.html"><i class="fas fa-file-invoice"></i> Bill Desk</a>
+            <a href="products.html"><i class="fas fa-box-open"></i> Products</a>
+            <a href="accounts.html"><i class="fas fa-chart-line"></i> Accounts</a>
+            <a href="settings.html"><i class="fas fa-cog"></i> Settings</a>
+        </nav>
+    </aside>
+
+    <main class="admin-main">
+        <header class="admin-topbar">
+            <h1 class="admin-topbar-title">Orders Management</h1>
+            <div>
+                <button class="btn btn-primary" onclick="handleAdminLogout()">Logout</button>
+            </div>
+        </header>
+
+        <div class="admin-content">
+            <div class="orders-layout">
+                <!-- Orders List Column -->
+                <div class="orders-list-col">
+                    <div class="orders-search">
+                        <input type="text" id="orderSearch" placeholder="Search by ID, Name or Mobile..." onkeyup="filterOrders()">
+                    </div>
+                    <div class="orders-list" id="ordersList">
+                        <!-- Rendered via JS -->
+                    </div>
+                </div>
+
+                <!-- Order Details Column -->
+                <div class="order-details-col" id="orderDetails">
+                    <div class="empty-state" id="emptyDetails">
+                        <i class="fas fa-mouse-pointer"></i>
+                        <p>Select an order from the list to view details</p>
+                    </div>
+                    
+                    <div id="fullDetails" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                            <div>
+                                <h2 style="margin: 0 0 5px 0; color: var(--primary);" id="detailOrderNumber">PHF000</h2>
+                                <p style="margin: 0; color: var(--text-gray); font-size: 0.9rem;" id="detailDate">Date</p>
+                            </div>
+                            <span class="status-badge" style="background: #EBF8FF; color: #3182CE;" id="detailStatus">Status</span>
+                        </div>
+
+                        <div class="details-grid">
+                            <div class="detail-box">
+                                <h5>Customer Details</h5>
+                                <p><i class="fas fa-user"></i> <span id="detailName">Name</span></p>
+                                <p><i class="fas fa-phone"></i> <span id="detailMobile">Mobile</span></p>
+                                <p><i class="fas fa-envelope"></i> <span id="detailEmail">Email</span></p>
+                            </div>
+                            <div class="detail-box">
+                                <h5>Payment & Delivery</h5>
+                                <p><strong>Payment Status:</strong> <span id="detailPaymentStatus">Success</span></p>
+                                <p><strong>Address:</strong></p>
+                                <p style="font-size: 0.85rem;" id="detailAddress">Address Line</p>
+                            </div>
+                        </div>
+
+                        <h3 style="font-size: 1.1rem; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Ordered Products</h3>
+                        <table class="order-items-table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Weight/Qty</th>
+                                    <th>Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailItemsTable">
+                                <!-- JS -->
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="3" style="text-align: right; font-weight: 600;">Grand Total:</td>
+                                    <td style="font-weight: 700; color: var(--primary);" id="detailGrandTotal">₹0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <div class="status-update-section">
+                            <h3 style="font-size: 1.1rem; margin-top: 0; margin-bottom: 15px;">Update Order Status</h3>
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select id="statusSelect" onchange="toggleTrackingFields()">
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="preparing">Preparing</option>
+                                    <option value="packed">Packed</option>
+                                    <option value="ready to dispatch">Ready to Dispatch</option>
+                                    <option value="shipped">Shipped</option>
+                                    <option value="delivered">Delivered</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            
+                            <div id="trackingFields" class="tracking-fields">
+                                <div class="form-group">
+                                    <label>Courier Name</label>
+                                    <input type="text" id="courierName" placeholder="e.g. DTDC, Delhivery">
+                                </div>
+                                <div class="form-group">
+                                    <label>Tracking Number</label>
+                                    <input type="text" id="trackingNumber" placeholder="AWB Number">
+                                </div>
+                                <div class="form-group">
+                                    <label>Tracking URL</label>
+                                    <input type="url" id="trackingUrl" placeholder="https://...">
+                                </div>
+                            </div>
+                            
+                            <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="saveOrderStatus()">Save Status</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config.js"></script>
+<script src="../db.js"></script>
+<script src="../auth.js"></script>
+<script src="admin.js"></script>
+
+<script>
+let allOrders = [];
+let currentOrder = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+    if (typeof Account !== 'undefined' && await Account.isAdmin()) {
+        loadOrders();
+    }
+});
+
+async function loadOrders() {
+    try {
+        const client = DB.client;
+        const { data: orders, error } = await client
+            .from(CONFIG.TABLES.ORDERS)
+            .select(`*, ${CONFIG.TABLES.ORDER_ITEMS}(*)`)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        allOrders = orders || [];
+        renderOrdersList(allOrders);
+    } catch (err) {
+        console.error('Failed to load orders:', err);
+    }
+}
+
+function renderOrdersList(ordersToRender) {
+    const list = document.getElementById('ordersList');
+    list.innerHTML = '';
+    
+    if (ordersToRender.length === 0) {
+        list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-gray);">No orders found.</div>';
+        return;
+    }
+
+    ordersToRender.forEach(order => {
+        const div = document.createElement('div');
+        div.className = 'order-list-item';
+        // Extract info from notes for preview if user missing
+        const parts = order.notes ? order.notes.split('|').map(s=>s.trim()) : [];
+        const name = parts[0] || 'Guest Customer';
+        const mobile = parts[2] || order.whatsapp_number || '';
+        
+        div.innerHTML = `
+            <div style="display:flex; justify-content:space-between;">
+                <h4>${order.order_number}</h4>
+                <span style="font-size:0.8rem; color:var(--text-gray);">${new Date(order.created_at).toLocaleDateString('en-IN')}</span>
+            </div>
+            <p>${name}</p>
+            <p style="margin-top:5px;"><span class="status-badge" style="background:#EDF2F7; font-size:0.7rem;">${(order.status||'Unknown').toUpperCase()}</span></p>
+        `;
+        div.onclick = () => selectOrder(order.id, div);
+        list.appendChild(div);
+    });
+}
+
+function selectOrder(orderId, element) {
+    document.querySelectorAll('.order-list-item').forEach(el => el.classList.remove('active'));
+    if(element) element.classList.add('active');
+
+    currentOrder = allOrders.find(o => o.id === orderId);
+    if (!currentOrder) return;
+
+    document.getElementById('emptyDetails').style.display = 'none';
+    document.getElementById('fullDetails').style.display = 'block';
+
+    const parts = currentOrder.notes ? currentOrder.notes.split('|').map(s=>s.trim()) : [];
+    
+    document.getElementById('detailOrderNumber').textContent = currentOrder.order_number;
+    document.getElementById('detailDate').textContent = new Date(currentOrder.created_at).toLocaleString('en-IN');
+    document.getElementById('detailStatus').textContent = (currentOrder.status || 'Confirmed').toUpperCase();
+    
+    document.getElementById('detailName').textContent = parts[0] || 'Guest Customer';
+    document.getElementById('detailEmail').textContent = parts[1] || 'N/A';
+    document.getElementById('detailMobile').textContent = parts[2] || currentOrder.whatsapp_number || 'N/A';
+    
+    let addressStr = 'N/A';
+    if(currentOrder.delivery_address) {
+        if(typeof currentOrder.delivery_address === 'object') {
+            addressStr = currentOrder.delivery_address.full_address || JSON.stringify(currentOrder.delivery_address);
+        } else {
+            addressStr = currentOrder.delivery_address;
+        }
+    }
+    document.getElementById('detailAddress').textContent = addressStr;
+    document.getElementById('detailPaymentStatus').textContent = currentOrder.payment_id ? 'Paid (Razorpay)' : 'Pending';
+
+    // Items
+    const tbody = document.getElementById('detailItemsTable');
+    tbody.innerHTML = '';
+    (currentOrder.order_items || []).forEach(item => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${item.product_name}</td>
+                <td>${item.weight} × ${item.quantity}</td>
+                <td>₹${Number(item.price).toLocaleString('en-IN')}</td>
+                <td>₹${Number(item.total).toLocaleString('en-IN')}</td>
+            </tr>
+        `;
+    });
+    
+    document.getElementById('detailGrandTotal').textContent = '₹' + Number(currentOrder.total_amount).toLocaleString('en-IN');
+
+    // Forms
+    document.getElementById('statusSelect').value = currentOrder.status || 'confirmed';
+    document.getElementById('courierName').value = currentOrder.courier_name || '';
+    document.getElementById('trackingNumber').value = currentOrder.tracking_number || '';
+    document.getElementById('trackingUrl').value = currentOrder.tracking_url || '';
+    
+    toggleTrackingFields();
+}
+
+function toggleTrackingFields() {
+    const status = document.getElementById('statusSelect').value;
+    const trackingFields = document.getElementById('trackingFields');
+    if (status === 'shipped') {
+        trackingFields.style.display = 'block';
+    } else {
+        trackingFields.style.display = 'none';
+    }
+}
+
+function filterOrders() {
+    const q = document.getElementById('orderSearch').value.toLowerCase();
+    const filtered = allOrders.filter(o => {
+        const parts = o.notes ? o.notes.toLowerCase() : '';
+        const phone = o.whatsapp_number ? o.whatsapp_number.toLowerCase() : '';
+        return (o.order_number||'').toLowerCase().includes(q) || parts.includes(q) || phone.includes(q);
+    });
+    renderOrdersList(filtered);
+}
+
+async function saveOrderStatus() {
+    if(!currentOrder) return;
+    
+    const newStatus = document.getElementById('statusSelect').value;
+    const courier = document.getElementById('courierName').value;
+    const trackingNo = document.getElementById('trackingNumber').value;
+    const trackingUrl = document.getElementById('trackingUrl').value;
+    
+    const updatePayload = {
+        status: newStatus
+    };
+    
+    if (newStatus === 'shipped') {
+        updatePayload.courier_name = courier;
+        updatePayload.tracking_number = trackingNo;
+        updatePayload.tracking_url = trackingUrl;
+    }
+    
+    try {
+        const { error } = await DB.client
+            .from(CONFIG.TABLES.ORDERS)
+            .update(updatePayload)
+            .eq('id', currentOrder.id);
+            
+        if (error) throw error;
+        
+        alert('Order status updated successfully!');
+        
+        // Update local state
+        currentOrder.status = newStatus;
+        if(newStatus === 'shipped') {
+            currentOrder.courier_name = courier;
+            currentOrder.tracking_number = trackingNo;
+            currentOrder.tracking_url = trackingUrl;
+        }
+        
+        document.getElementById('detailStatus').textContent = newStatus.toUpperCase();
+        // Refresh list
+        renderOrdersList(allOrders);
+        
+    } catch(err) {
+        alert('Failed to update status: ' + err.message);
+    }
+}
+</script>
+
+</body>
+</html>

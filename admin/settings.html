@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings | Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<div class="admin-layout">
+    <aside class="admin-sidebar">
+        <div class="admin-sidebar-header">
+            <img src="../logo.png" alt="Logo">
+            <h2>Admin Panel</h2>
+        </div>
+        <nav class="admin-nav">
+            <a href="index.html"><i class="fas fa-home"></i> Dashboard</a>
+            <a href="orders.html"><i class="fas fa-shopping-bag"></i> Orders</a>
+            <a href="billdesk.html"><i class="fas fa-file-invoice"></i> Bill Desk</a>
+            <a href="products.html"><i class="fas fa-box-open"></i> Products</a>
+            <a href="accounts.html"><i class="fas fa-chart-line"></i> Accounts</a>
+            <a href="settings.html"><i class="fas fa-cog"></i> Settings</a>
+        </nav>
+    </aside>
+
+    <main class="admin-main">
+        <header class="admin-topbar">
+            <h1 class="admin-topbar-title">Settings & Configuration</h1>
+            <div>
+                <button class="btn btn-primary" onclick="handleAdminLogout()">Logout</button>
+            </div>
+        </header>
+
+        <div class="admin-content">
+            <div style="background: white; padding: 40px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
+                <i class="fas fa-tools" style="font-size: 3rem; color: var(--text-gray); margin-bottom: 20px;"></i>
+                <h2 style="margin-top: 0;">Settings Module</h2>
+                <p style="color: var(--text-gray); max-width: 500px; margin: 0 auto 30px;">
+                    This section is a placeholder for future configuration options.
+                </p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; text-align: left;">
+                    <div style="padding: 20px; border: 1px dashed var(--border); border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px 0;"><i class="fas fa-store"></i> Shop Details</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0;">Configure store name, logo, address, and contact info.</p>
+                    </div>
+                    <div style="padding: 20px; border: 1px dashed var(--border); border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px 0;"><i class="fas fa-truck"></i> Shipping</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0;">Set flat delivery charges, free shipping thresholds, and zones.</p>
+                    </div>
+                    <div style="padding: 20px; border: 1px dashed var(--border); border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px 0;"><i class="fas fa-credit-card"></i> Payment</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0;">Update Razorpay keys and manage payment gateways.</p>
+                    </div>
+                    <div style="padding: 20px; border: 1px dashed var(--border); border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px 0;"><i class="fab fa-whatsapp"></i> Notifications</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0;">Configure WhatsApp numbers and email templates.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config.js"></script>
+<script src="../db.js"></script>
+<script src="../auth.js"></script>
+<script src="admin.js"></script>
+
+</body>
+</html>
