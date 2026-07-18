@@ -574,17 +574,34 @@ const Account = {
         if (!user) return [];
 
         const client = await this._getClient();
-        const { data, error } = await client
+        const { data: orders, error: ordersErr } = await client
             .from(CONFIG.TABLES.ORDERS)
-            .select(`*, ${CONFIG.TABLES.ORDER_ITEMS}(*)`)
+            .select('*')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
 
-        if (error) {
-            console.warn('Orders fetch error:', error);
+        if (ordersErr) {
+            console.warn('Orders fetch error:', ordersErr);
             return [];
         }
-        return data || [];
+        
+        const orderIds = (orders || []).map(o => o.id);
+        let orderItems = [];
+        if (orderIds.length > 0) {
+            const { data: items, error: itemsErr } = await client
+                .from(CONFIG.TABLES.ORDER_ITEMS)
+                .select('*')
+                .in('order_id', orderIds);
+                
+            if (!itemsErr && items) {
+                orderItems = items;
+            }
+        }
+        
+        return (orders || []).map(order => ({
+            ...order,
+            order_items: orderItems.filter(item => item.order_id === order.id)
+        }));
     },
 
     async placeOrder(orderData) {
