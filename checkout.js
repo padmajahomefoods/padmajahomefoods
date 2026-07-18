@@ -290,6 +290,7 @@ async function handleCheckoutSubmit(e) {
                 });
 
                 const verifyData = await verifyRes.json();
+                console.log('verify-payment response:', verifyRes.status, verifyData);
 
                 if (verifyData.success) {
                     // Clear cart after successful payment
