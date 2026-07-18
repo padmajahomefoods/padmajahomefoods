@@ -304,25 +304,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadOrders() {
+    try {
+        console.log("loadOrders() - Requesting orders from backend API...");
         const { data: orders, error: ordersErr } = await fetchAdminData(
             CONFIG.TABLES.ORDERS, 
             'select', 
             { order: { column: 'created_at', ascending: false } }
         );
 
+        console.log("loadOrders() - Received orders:", orders, "Error:", ordersErr);
         if (ordersErr) throw ordersErr;
         
-        // Fetch order_items separately to avoid Supabase relationship errors
+        // Fetch order_items separately
         const orderIds = (orders || []).map(o => o.id);
         
         let orderItems = [];
         if (orderIds.length > 0) {
+            console.log("loadOrders() - Requesting order items for IDs:", orderIds);
             const { data: items, error: itemsErr } = await fetchAdminData(
                 CONFIG.TABLES.ORDER_ITEMS,
                 'select',
                 { inFilter: { column: 'order_id', values: orderIds } }
             );
-                
+            
+            console.log("loadOrders() - Received order items:", items, "Error:", itemsErr);
             if (!itemsErr && items) {
                 orderItems = items;
             }
@@ -334,6 +339,7 @@ async function loadOrders() {
             order_items: orderItems.filter(item => item.order_id === order.id)
         }));
         
+        console.log(`loadOrders() - Final Array (count: ${allOrders.length}) passed to renderer:`, allOrders);
         renderOrdersList(allOrders);
     } catch (err) {
         console.error('Failed to load orders:', err);
