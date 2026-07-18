@@ -23,6 +23,8 @@ export async function onRequestPost(context) {
             total_amount,
         } = body;
 
+        console.log('verify-payment received:', JSON.stringify({ razorpay_payment_id, razorpay_order_id, total_amount, itemCount: items?.length }));
+
         // --- 1. Validate required fields ---
         if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
             return jsonResponse(400, { success: false, message: 'Missing payment verification fields' }, corsHeaders);
@@ -55,11 +57,18 @@ export async function onRequestPost(context) {
         const orderNumber = 'PHF' + Date.now();
 
         // --- 4. Insert order into Supabase ---
+        // delivery_address column is jsonb — send as object, not string
+        let addressObj = delivery_address || '';
+        if (typeof addressObj === 'string' && addressObj.length > 0) {
+            // Parse the "line, city, state - pincode" format from checkout.js
+            addressObj = { full_address: addressObj };
+        }
+
         const orderPayload = {
             order_number: orderNumber,
             user_id: customer?.user_id || null,
             total_amount: total_amount,
-            delivery_address: delivery_address || '',
+            delivery_address: addressObj || null,
             status: 'confirmed',
             payment_id: razorpay_payment_id,
             razorpay_order_id: razorpay_order_id,
@@ -68,12 +77,14 @@ export async function onRequestPost(context) {
                 : '',
         };
 
+        console.log('Inserting order payload:', JSON.stringify(orderPayload));
+
         const orderRes = await supabaseInsert(supabaseUrl, supabaseKey, 'orders', orderPayload);
 
         if (!orderRes.ok) {
             const errText = await orderRes.text();
-            console.error('Supabase order insert failed:', errText);
-            return jsonResponse(500, { success: false, message: 'Failed to save order' }, corsHeaders);
+            console.error('Supabase order insert failed:', orderRes.status, errText);
+            return jsonResponse(500, { success: false, message: 'Failed to save order', detail: errText }, corsHeaders);
         }
 
         const [order] = await orderRes.json();
@@ -81,7 +92,7 @@ export async function onRequestPost(context) {
         // --- 5. Insert order items ---
         const orderItems = items.map(item => ({
             order_id: order.id,
-            product_id: item.product_id || '',
+            product_id: item.product_id || null,
             product_name: item.name || item.product_name || '',
             weight: item.weight || '',
             price: item.price,
@@ -89,14 +100,16 @@ export async function onRequestPost(context) {
             total: item.price * item.quantity,
         }));
 
+        console.log('Inserting order_items:', JSON.stringify(orderItems));
+
         const itemsRes = await supabaseInsert(supabaseUrl, supabaseKey, 'order_items', orderItems);
 
         if (!itemsRes.ok) {
             const errText = await itemsRes.text();
-            console.error('Supabase order_items insert failed:', errText);
+            console.error('Supabase order_items insert failed:', itemsRes.status, errText);
             // Rollback: delete the order
             await supabaseDelete(supabaseUrl, supabaseKey, 'orders', order.id);
-            return jsonResponse(500, { success: false, message: 'Failed to save order items' }, corsHeaders);
+            return jsonResponse(500, { success: false, message: 'Failed to save order items', detail: errText }, corsHeaders);
         }
 
         // --- 6. Return success ---
@@ -107,8 +120,8 @@ export async function onRequestPost(context) {
         }, corsHeaders);
 
     } catch (err) {
-        console.error('verify-payment error:', err);
-        return jsonResponse(500, { success: false, message: 'Internal server error' }, corsHeaders);
+        console.error('verify-payment error:', err.message, err.stack);
+        return jsonResponse(500, { success: false, message: 'Internal server error', detail: err.message }, corsHeaders);
     }
 }
 
