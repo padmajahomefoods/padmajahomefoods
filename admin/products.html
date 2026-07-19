@@ -740,16 +740,19 @@
                 if (oldProduct && oldProduct.image && oldProduct.image !== image) {
                     oldImagePath = oldProduct.image;
                 }
+                const dbPayload = DB._getAdapter()._productToRow(product);
+                delete dbPayload.id; // Remove id from payload for update
                 const { error } = await fetchAdminData(CONFIG.TABLES.PRODUCTS, 'update', { 
                     match: { id: editingProductId }, 
-                    payload: product 
+                    payload: dbPayload 
                 });
                 if (error) throw error;
                 const idx = productsData.findIndex(p => p.id === editingProductId);
                 if (idx !== -1) productsData[idx] = product;
                 showAdminToast('Product updated!', 'success');
             } else {
-                const { error } = await fetchAdminData(CONFIG.TABLES.PRODUCTS, 'insert', { payload: product });
+                const dbPayload = DB._getAdapter()._productToRow(product);
+                const { error } = await fetchAdminData(CONFIG.TABLES.PRODUCTS, 'insert', { payload: dbPayload });
                 if (error) throw error;
                 productsData.push(product);
                 showAdminToast('Product added!', 'success');
