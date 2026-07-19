@@ -373,8 +373,13 @@ function renderOrdersList(ordersToRender) {
             <p style="margin-top:5px;"><span class="status-badge" style="background:#EDF2F7; font-size:0.7rem;">${(order.status||'Unknown').toUpperCase()}</span></p>
         `;
         div.addEventListener('click', (e) => {
-            console.log("[DEBUG] click handler fired on order card. Order ID:", order.id, "Target Element:", e.target);
-            selectOrder(order.id, div);
+            console.log("[DEBUG] click handler fired on order card. Order ID:", order.id);
+            try {
+                selectOrder(order.id, div);
+            } catch (err) {
+                alert("Debug Error in selectOrder: " + err.message);
+                console.error(err);
+            }
         });
         list.appendChild(div);
     });
@@ -390,6 +395,7 @@ function selectOrder(orderId, element) {
     console.log("Found currentOrder object:", currentOrder);
     if (!currentOrder) {
         console.error("currentOrder not found in allOrders array!");
+        alert("Debug Error: currentOrder not found for ID: " + orderId);
         return;
     }
 
