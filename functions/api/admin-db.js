@@ -15,16 +15,20 @@ export async function onRequestPost(context) {
 
         const supabaseUrl = context.env.SUPABASE_URL;
         const supabaseKey = context.env.SUPABASE_SERVICE_ROLE_KEY;
-        const anonKey = context.env.SUPABASE_ANON_KEY;
+        const anonKey = context.request.headers.get('x-anon-key');
 
         if (!supabaseUrl || !supabaseKey) {
             return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500, headers: corsHeaders });
         }
 
+        if (!anonKey) {
+            return new Response(JSON.stringify({ error: 'Missing Anon Key from frontend headers' }), { status: 500, headers: corsHeaders });
+        }
+
         // 2. Validate user using Supabase Auth
         const authRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
             headers: {
-                'apikey': supabaseKey,
+                'apikey': anonKey,
                 'Authorization': `Bearer ${token}`
             }
         });
