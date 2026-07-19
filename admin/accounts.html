@@ -80,33 +80,24 @@
         }
     </style>
 </head>
-<body>
+<body style="background-color: #FAFAFA; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; min-height: 100vh;">
 
-<div class="admin-layout">
-    <aside class="admin-sidebar">
-        <div class="admin-sidebar-header">
-            <img src="../logo.png" alt="Logo">
-            <h2>Admin Panel</h2>
-        </div>
-        <nav class="admin-nav">
-            <a href="index.html"><i class="fas fa-home"></i> Dashboard</a>
-            <a href="orders.html"><i class="fas fa-shopping-bag"></i> Orders</a>
-            <a href="billdesk.html"><i class="fas fa-file-invoice"></i> Bill Desk</a>
-            <a href="products.html"><i class="fas fa-box-open"></i> Products</a>
-            <a href="accounts.html"><i class="fas fa-chart-line"></i> Accounts</a>
-            <a href="settings.html"><i class="fas fa-cog"></i> Settings</a>
-        </nav>
-    </aside>
-
-    <main class="admin-main">
-        <header class="admin-topbar">
-            <h1 class="admin-topbar-title">Accounts & Analytics</h1>
-            <div>
-                <button class="btn btn-primary" onclick="handleAdminLogout()">Logout</button>
+<div class="launcher-container active" id="dashboard" style="max-width: 1200px; margin: 0 auto; padding: 40px 20px;">
+    <header class="launcher-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 2px solid #EEE; padding-bottom: 20px;">
+        <div class="header-brand" style="display: flex; align-items: center; gap: 15px;">
+            <img src="../logo.png" alt="Padmaja Home Foods" style="height: 70px;">
+            <div class="header-text" style="text-align: left;">
+                <h2 style="font-family: 'Playfair Display', serif; color: var(--primary); margin: 0 0 4px 0; font-size: 1.8rem;">Accounts & Analytics</h2>
+                <p style="margin: 0; color: var(--text-gray); font-size: 0.95rem; font-weight: 500;">Padmaja Home Foods</p>
             </div>
-        </header>
+        </div>
+        <div class="admin-header-actions" style="display: flex; gap: 10px;">
+            <button class="admin-header-btn" onclick="window.location.href='index.html'" style="background: white; border: 1px solid var(--border); color: var(--primary); padding: 10px 24px; border-radius: 50px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: 'Poppins', sans-serif; font-weight: 600;"><i class="fas fa-arrow-left"></i> Dashboard</button>
+            <button class="admin-header-btn" onclick="handleAdminLogout()" style="background: linear-gradient(135deg, #FF5A5F 0%, #D32F2F 100%); border: none; color: white; padding: 10px 24px; border-radius: 50px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: 'Poppins', sans-serif; font-weight: 600;"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </div>
+    </header>
 
-        <div class="admin-content">
+    <div>
             <div class="analytics-grid">
                 <div class="analytics-card">
                     <h4>Today's Sales</h4>
@@ -200,7 +191,7 @@
                 </div>
             </div>
         </div>
-    </main>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
