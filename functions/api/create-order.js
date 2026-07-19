@@ -230,25 +230,40 @@ async function recoverPendingOrders(env) {
         const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
         const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
         
-        const query = `${supabaseUrl}/rest/v1/orders?status=eq.pending&created_at=gte.${thirtyMinsAgo}&created_at=lte.${fiveMinsAgo}&select=id,razorpay_order_id,order_number`;
+        console.log(`[Recovery] Triggered. Fetching orders between ${thirtyMinsAgo} and ${fiveMinsAgo}`);
+        
+        const query = `${supabaseUrl}/rest/v1/orders?status=in.(pending,processing)&created_at=gte.${thirtyMinsAgo}&created_at=lte.${fiveMinsAgo}&select=id,razorpay_order_id,order_number,status`;
         const res = await fetch(query, {
             headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
         });
         
-        if (!res.ok) return;
+        if (!res.ok) {
+            console.error('[Recovery] Supabase query failed:', await res.text());
+            return;
+        }
         
         const pendingOrders = await res.json();
+        console.log(`[Recovery] Found ${pendingOrders.length} stuck order(s).`, pendingOrders.map(o => o.order_number));
         
         for (const order of pendingOrders) {
-            if (!order.razorpay_order_id) continue;
+            if (!order.razorpay_order_id) {
+                console.log(`[Recovery] Skipping ${order.order_number} - no razorpay_order_id`);
+                continue;
+            }
             
+            console.log(`[Recovery] Querying Razorpay for ${order.order_number} (rzp_order_id: ${order.razorpay_order_id})`);
             const rzpRes = await fetch(`https://api.razorpay.com/v1/orders/${order.razorpay_order_id}/payments`, {
                 headers: { 'Authorization': `Basic ${btoa(keyId + ':' + keySecret)}` }
             });
             
-            if (!rzpRes.ok) continue;
+            if (!rzpRes.ok) {
+                console.error(`[Recovery] Razorpay API failed for ${order.order_number}:`, await rzpRes.text());
+                continue;
+            }
             
             const rzpData = await rzpRes.json();
+            console.log(`[Recovery] Razorpay response for ${order.order_number}:`, JSON.stringify(rzpData));
+            
             if (rzpData && rzpData.items && rzpData.items.length > 0) {
                 // Determine actual payment state
                 const capturedPayment = rzpData.items.find(p => p.status === 'captured');
@@ -260,16 +275,21 @@ async function recoverPendingOrders(env) {
                 if (capturedPayment) {
                     newStatus = 'confirmed';
                     paymentId = capturedPayment.id;
+                    console.log(`[Recovery] Found captured payment for ${order.order_number}`);
                 } else if (failedPayment) {
                     newStatus = 'payment_failed';
                     paymentId = failedPayment.id;
+                    console.log(`[Recovery] Found failed payment for ${order.order_number}`);
+                } else {
+                    console.log(`[Recovery] No captured or failed payments found for ${order.order_number}`);
                 }
                 
-                if (newStatus) {
+                if (newStatus && newStatus !== order.status) {
+                    console.log(`[Recovery] Updating ${order.order_number} to ${newStatus}`);
                     const updatePayload = { status: newStatus };
                     if (paymentId) updatePayload.payment_id = paymentId;
                     
-                    await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${order.id}`, {
+                    const updateRes = await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${order.id}`, {
                         method: 'PATCH',
                         headers: {
                             'Content-Type': 'application/json',
@@ -278,8 +298,15 @@ async function recoverPendingOrders(env) {
                         },
                         body: JSON.stringify(updatePayload)
                     });
-                    console.log(`[Recovery] Automatically recovered pending order ${order.order_number} to ${newStatus}`);
+                    
+                    if (!updateRes.ok) {
+                        console.error(`[Recovery] Update failed for ${order.order_number}:`, await updateRes.text());
+                    } else {
+                        console.log(`[Recovery] Successfully recovered ${order.order_number} to ${newStatus}`);
+                    }
                 }
+            } else {
+                console.log(`[Recovery] No payments found in Razorpay for ${order.order_number}`);
             }
         }
     } catch (e) {
