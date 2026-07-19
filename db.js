@@ -529,14 +529,16 @@ const DB = {
         return weights;
     },
 
-    // ============================================
-    // SETTINGS
-    // ============================================
+};
 
+// ============================================
+// SETTINGS SERVICE
+// ============================================
+window.SettingsService = {
     async loadSettings() {
         try {
-            if (CONFIG.DATA_MODE === 'local') return; // Skip for local
-            const client = await this._getAdapter()._getClient();
+            if (typeof CONFIG !== 'undefined' && CONFIG.DATA_MODE === 'local') return; // Skip for local
+            const client = await SupabaseAdapter._getClient();
             const { data, error } = await client.from('settings').select('*');
             
             if (error) {
@@ -555,7 +557,7 @@ const DB = {
                         }
                     }
                 });
-                console.log('[DB] Settings loaded and merged successfully.');
+                console.log('[SettingsService] Settings loaded and merged successfully.');
             }
         } catch (err) {
             console.error('Failed to load settings:', err);
@@ -563,9 +565,9 @@ const DB = {
     },
     
     async updateSetting(key, value) {
-        if (CONFIG.DATA_MODE === 'local') return { success: false, message: 'Settings cannot be updated in local mode.' };
+        if (typeof CONFIG !== 'undefined' && CONFIG.DATA_MODE === 'local') return { success: false, message: 'Settings cannot be updated in local mode.' };
         try {
-            const client = await this._getAdapter()._getClient();
+            const client = await SupabaseAdapter._getClient();
             
             const { data, error } = await client.from('settings').upsert({
                 key: key,
