@@ -75,14 +75,9 @@ export async function onRequestPost(context) {
             delivery_address: addressObj || null,
             status: 'confirmed',
             payment_id: razorpay_payment_id,
-            razorpay_order_id: razorpay_order_id,
-            subtotal: subtotal || 0,
-            total_weight: total_weight || 0,
-            delivery_charge: delivery_charge || 0,
-            delivery_discount: delivery_discount || 0,
             notes: customer?.name
-                ? `${customer.name} | ${customer.email || ''} | ${customer.phone || ''}`
-                : '',
+                ? `${customer.name} | ${customer.email || ''} | ${customer.phone || ''} | RZPOID: ${razorpay_order_id || ''} | Subtotal: ${subtotal || 0} | Delivery: ${delivery_charge || 0} | Discount: ${delivery_discount || 0}`
+                : `RZPOID: ${razorpay_order_id || ''} | Subtotal: ${subtotal || 0} | Delivery: ${delivery_charge || 0} | Discount: ${delivery_discount || 0}`,
         };
 
         console.log('Inserting order payload:', JSON.stringify(orderPayload));
