@@ -180,6 +180,10 @@ export async function onRequestPost(context) {
             }
         }
 
+        if (context.waitUntil) {
+            context.waitUntil(recoverPendingOrders(context.env));
+        }
+
         return jsonResponse(200, {
             success: true,
             order_id: rzpOrder.id, // razorpay_order_id for frontend
@@ -210,4 +214,75 @@ function jsonResponse(status, body, corsHeaders) {
         status,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
+}
+
+async function recoverPendingOrders(env) {
+    try {
+        const keyId = env.RAZORPAY_KEY_ID;
+        const keySecret = env.RAZORPAY_KEY_SECRET;
+        const supabaseUrl = env.SUPABASE_URL;
+        const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
+        
+        if (!keyId || !keySecret || !supabaseUrl || !supabaseKey) return;
+        
+        // Only recover orders that have been pending for at least 5 minutes, 
+        // to avoid interfering with orders currently being checked out
+        const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        
+        const query = `${supabaseUrl}/rest/v1/orders?status=eq.pending&created_at=gte.${thirtyMinsAgo}&created_at=lte.${fiveMinsAgo}&select=id,razorpay_order_id,order_number`;
+        const res = await fetch(query, {
+            headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+        });
+        
+        if (!res.ok) return;
+        
+        const pendingOrders = await res.json();
+        
+        for (const order of pendingOrders) {
+            if (!order.razorpay_order_id) continue;
+            
+            const rzpRes = await fetch(`https://api.razorpay.com/v1/orders/${order.razorpay_order_id}/payments`, {
+                headers: { 'Authorization': `Basic ${btoa(keyId + ':' + keySecret)}` }
+            });
+            
+            if (!rzpRes.ok) continue;
+            
+            const rzpData = await rzpRes.json();
+            if (rzpData && rzpData.items && rzpData.items.length > 0) {
+                // Determine actual payment state
+                const capturedPayment = rzpData.items.find(p => p.status === 'captured');
+                const failedPayment = rzpData.items.find(p => p.status === 'failed');
+                
+                let newStatus = null;
+                let paymentId = null;
+                
+                if (capturedPayment) {
+                    newStatus = 'confirmed';
+                    paymentId = capturedPayment.id;
+                } else if (failedPayment) {
+                    newStatus = 'payment_failed';
+                    paymentId = failedPayment.id;
+                }
+                
+                if (newStatus) {
+                    const updatePayload = { status: newStatus };
+                    if (paymentId) updatePayload.payment_id = paymentId;
+                    
+                    await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${order.id}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': supabaseKey,
+                            'Authorization': `Bearer ${supabaseKey}`
+                        },
+                        body: JSON.stringify(updatePayload)
+                    });
+                    console.log(`[Recovery] Automatically recovered pending order ${order.order_number} to ${newStatus}`);
+                }
+            }
+        }
+    } catch (e) {
+        console.error('[Recovery] Error during background recovery:', e);
+    }
 }
