@@ -458,7 +458,27 @@ function selectOrder(orderId, element) {
         `;
     });
     
-    document.getElementById('detailTotalWeight').textContent = (currentOrder.total_weight || 0) + 'g';
+    let calculatedWeightInGrams = 0;
+    (currentOrder.order_items || []).forEach(item => {
+        if (item.weight) {
+            let w = 0;
+            const weightStr = String(item.weight).toLowerCase().trim();
+            if (weightStr.endsWith('kg')) {
+                w = parseFloat(weightStr) * 1000;
+            } else if (weightStr.endsWith('g')) {
+                w = parseFloat(weightStr);
+            } else {
+                w = parseFloat(weightStr);
+            }
+            if (!isNaN(w)) {
+                calculatedWeightInGrams += w * (item.quantity || 1);
+            }
+        }
+    });
+    
+    const displayWeight = currentOrder.total_weight || calculatedWeightInGrams;
+    const displayWeightStr = displayWeight >= 1000 ? (displayWeight / 1000) + 'kg' : displayWeight + 'g';
+    document.getElementById('detailTotalWeight').textContent = displayWeightStr;
     
     let deliveryCharge = currentOrder.delivery_charge || 0;
     let deliveryDiscount = currentOrder.delivery_discount || 0;
