@@ -173,8 +173,18 @@
             <div class="orders-layout">
                 <!-- Orders List Column -->
                 <div class="orders-list-col">
-                    <div class="orders-search">
+                    <div class="orders-search" style="display: flex; gap: 10px; flex-direction: column;">
                         <input type="text" id="orderSearch" placeholder="Search by ID, Name or Mobile..." onkeyup="filterOrders()">
+                        <select id="statusFilter" onchange="filterOrders()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); outline: none; font-family: 'Poppins', sans-serif;">
+                            <option value="all">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="packed">Packed</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="payment_failed">Payment Failed</option>
+                        </select>
                     </div>
                     <div class="orders-list" id="ordersList">
                         <!-- Rendered via JS -->
@@ -255,6 +265,7 @@
                             <div class="form-group">
                                 <label>Status</label>
                                 <select id="statusSelect" onchange="toggleTrackingFields()">
+                                    <option value="pending">Pending</option>
                                     <option value="confirmed">Confirmed</option>
                                     <option value="preparing">Preparing</option>
                                     <option value="packed">Packed</option>
@@ -262,6 +273,7 @@
                                     <option value="shipped">Shipped</option>
                                     <option value="delivered">Delivered</option>
                                     <option value="cancelled">Cancelled</option>
+                                    <option value="payment_failed">Payment Failed</option>
                                 </select>
                             </div>
                             
@@ -485,10 +497,17 @@ function toggleTrackingFields() {
 
 function filterOrders() {
     const q = document.getElementById('orderSearch').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    
     const filtered = allOrders.filter(o => {
         const parts = o.notes ? o.notes.toLowerCase() : '';
         const phone = o.whatsapp_number ? o.whatsapp_number.toLowerCase() : '';
-        return (o.order_number||'').toLowerCase().includes(q) || parts.includes(q) || phone.includes(q);
+        const matchesSearch = (o.order_number||'').toLowerCase().includes(q) || parts.includes(q) || phone.includes(q);
+        
+        const orderStatus = (o.status || 'pending').toLowerCase();
+        const matchesStatus = statusFilter === 'all' || orderStatus === statusFilter;
+        
+        return matchesSearch && matchesStatus;
     });
     renderOrdersList(filtered);
 }

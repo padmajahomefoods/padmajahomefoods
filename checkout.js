@@ -278,6 +278,19 @@ async function handleCheckoutSubmit(e) {
     payButton.disabled = true;
     payBtnText.textContent = 'Processing...';
 
+    // Determine user_id for the order (null for guests)
+    let userId = null;
+    if (typeof Account !== 'undefined' && Account.isLoggedIn()) {
+        const user = await Account.getCurrentUser();
+        if (user) userId = user.id;
+    }
+
+    // Idempotency: Reuse pending order if cart hasn't changed
+    const cartHash = btoa(JSON.stringify(_checkoutItems.map(i => `${i.product_id || i.id}:${i.quantity}:${i.weight || ''}`)) + '|' + _checkoutGrandTotal);
+    const pendingOrderId = sessionStorage.getItem('phf_pending_order');
+    const storedCartHash = sessionStorage.getItem('phf_cart_hash');
+    const usePendingOrder = (pendingOrderId && cartHash === storedCartHash) ? pendingOrderId : null;
+
     let orderData;
     try {
         const res = await fetch('/api/create-order', {
@@ -290,6 +303,21 @@ async function handleCheckoutSubmit(e) {
                 customer_name: customerName,
                 customer_email: customerEmail,
                 customer_phone: customerPhone,
+                user_id: userId,
+                items: _checkoutItems.map(item => ({
+                    product_id: item.product_id || item.id || '',
+                    name: item.name || item.product_name || '',
+                    weight: item.weight || '',
+                    price: item.price,
+                    quantity: item.quantity,
+                })),
+                delivery_address: deliveryAddress,
+                subtotal: _checkoutSubtotal,
+                total_weight: _checkoutTotalWeight,
+                delivery_charge: _checkoutDeliveryCharge,
+                delivery_discount: _checkoutDeliveryDiscount,
+                cart_hash: cartHash,
+                pending_order_id: usePendingOrder
             }),
         });
 
@@ -298,6 +326,13 @@ async function handleCheckoutSubmit(e) {
         if (!orderData.success) {
             throw new Error(orderData.message || 'Failed to create order');
         }
+
+        // Store pending order details
+        if (orderData.order_id) {
+            sessionStorage.setItem('phf_pending_order', orderData.order_id);
+            sessionStorage.setItem('phf_cart_hash', cartHash);
+        }
+
     } catch (err) {
         console.error('Create order failed:', err);
         showCheckoutError('Could not initiate payment. Please try again.');
@@ -328,13 +363,6 @@ async function handleCheckoutSubmit(e) {
             payBtnText.textContent = 'Verifying...';
 
             try {
-                // Determine user_id for the order (null for guests)
-                let userId = null;
-                if (typeof Account !== 'undefined' && Account.isLoggedIn()) {
-                    const user = await Account.getCurrentUser();
-                    if (user) userId = user.id;
-                }
-
                 const verifyRes = await fetch('/api/verify-payment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -342,25 +370,6 @@ async function handleCheckoutSubmit(e) {
                         razorpay_payment_id: response.razorpay_payment_id,
                         razorpay_order_id: response.razorpay_order_id,
                         razorpay_signature: response.razorpay_signature,
-                        items: _checkoutItems.map(item => ({
-                            product_id: item.product_id || item.id || '',
-                            name: item.name || item.product_name || '',
-                            weight: item.weight || '',
-                            price: item.price,
-                            quantity: item.quantity,
-                        })),
-                        delivery_address: deliveryAddress,
-                        total_amount: _checkoutGrandTotal,
-                        subtotal: _checkoutSubtotal,
-                        total_weight: _checkoutTotalWeight,
-                        delivery_charge: _checkoutDeliveryCharge,
-                        delivery_discount: _checkoutDeliveryDiscount,
-                        customer: {
-                            user_id: userId,
-                            name: customerName,
-                            email: customerEmail,
-                            phone: customerPhone,
-                        },
                     }),
                 });
 
@@ -386,6 +395,10 @@ async function handleCheckoutSubmit(e) {
                 }
 
                 if (verifyData.success) {
+                    // Clear pending order storage
+                    sessionStorage.removeItem('phf_pending_order');
+                    sessionStorage.removeItem('phf_cart_hash');
+
                     // Clear cart after successful payment
                     if (typeof CartService !== 'undefined' && CartService.clearCart) {
                         CartService.clearCart();

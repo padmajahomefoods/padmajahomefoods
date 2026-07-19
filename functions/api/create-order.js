@@ -1,7 +1,7 @@
 // ============================================
-// Cloudflare Pages Function — Create Razorpay Order
+// Cloudflare Pages Function — Create Razorpay Order & Pending DB Order
 // Route: POST /api/create-order
-// Secrets: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET (env vars)
+// Secrets: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (env vars)
 // ============================================
 
 export async function onRequestPost(context) {
@@ -12,28 +12,73 @@ export async function onRequestPost(context) {
     };
 
     try {
-        const { amount, currency, receipt, customer_name, customer_email, customer_phone } = await context.request.json();
+        const body = await context.request.json();
+        const { 
+            amount, currency, receipt, customer_name, customer_email, customer_phone,
+            user_id, items, delivery_address, subtotal, total_weight, 
+            delivery_charge, delivery_discount, cart_hash, pending_order_id
+        } = body;
 
         // Validate required fields
         if (!amount || amount <= 0) {
-            return new Response(JSON.stringify({ success: false, message: 'Invalid amount' }), {
-                status: 400,
-                headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            });
+            return jsonResponse(400, { success: false, message: 'Invalid amount' }, corsHeaders);
         }
 
         const keyId = context.env.RAZORPAY_KEY_ID;
         const keySecret = context.env.RAZORPAY_KEY_SECRET;
+        const supabaseUrl = context.env.SUPABASE_URL;
+        const supabaseKey = context.env.SUPABASE_SERVICE_ROLE_KEY;
 
-        if (!keyId || !keySecret) {
-            console.error('Razorpay credentials not configured');
-            return new Response(JSON.stringify({ success: false, message: 'Payment gateway not configured' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            });
+        if (!keyId || !keySecret || !supabaseUrl || !supabaseKey) {
+            console.error('Server configuration error');
+            return jsonResponse(500, { success: false, message: 'Server configuration error' }, corsHeaders);
         }
 
-        // Create Razorpay order via their REST API
+        // 1. Lazy Cleanup of Old Pending Orders
+        try {
+            const cleanupDate = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+            await fetch(`${supabaseUrl}/rest/v1/orders?status=eq.pending&created_at=lt.${cleanupDate}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`
+                },
+                body: JSON.stringify({ status: 'cancelled' })
+            });
+        } catch(e) {
+            console.error('Lazy cleanup failed', e);
+        }
+
+        // 2. Idempotency Check
+        if (pending_order_id && cart_hash) {
+            try {
+                const orderQuery = await fetch(`${supabaseUrl}/rest/v1/orders?razorpay_order_id=eq.${pending_order_id}&status=eq.pending&select=*`, {
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+                });
+                const existingOrders = await orderQuery.json();
+
+                if (existingOrders && existingOrders.length > 0) {
+                    const existing = existingOrders[0];
+                    const orderAgeMs = Date.now() - new Date(existing.created_at).getTime();
+                    
+                    if (orderAgeMs < 30 * 60 * 1000 && existing.notes && existing.notes.includes(`CartHash:${cart_hash}`)) {
+                        console.log("Reusing existing pending order:", existing.order_number);
+                        return jsonResponse(200, {
+                            success: true,
+                            order_id: existing.razorpay_order_id,
+                            amount: Math.round(amount * 100),
+                            currency: currency || 'INR',
+                            key_id: keyId,
+                        }, corsHeaders);
+                    }
+                }
+            } catch(e) {
+                console.error("Idempotency check failed:", e);
+            }
+        }
+
+        // 3. Create Razorpay order
         const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
             method: 'POST',
             headers: {
@@ -46,7 +91,6 @@ export async function onRequestPost(context) {
                 receipt: receipt || 'rcpt_' + Date.now(),
                 notes: {
                     customer_name: customer_name || '',
-                    customer_email: customer_email || '',
                     customer_phone: customer_phone || '',
                 },
             }),
@@ -55,35 +99,95 @@ export async function onRequestPost(context) {
         if (!razorpayResponse.ok) {
             const errorBody = await razorpayResponse.text();
             console.error('Razorpay order creation failed:', razorpayResponse.status, errorBody);
-            return new Response(JSON.stringify({ success: false, message: 'Failed to create payment order' }), {
-                status: 502,
-                headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            });
+            return jsonResponse(502, { success: false, message: 'Failed to create payment order' }, corsHeaders);
         }
 
-        const order = await razorpayResponse.json();
+        const rzpOrder = await razorpayResponse.json();
+        const orderNumber = 'PHF' + Date.now();
 
-        return new Response(JSON.stringify({
-            success: true,
-            order_id: order.id,
-            amount: order.amount,
-            currency: order.currency,
-            key_id: keyId, // Public key — safe to send to frontend
-        }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        // 4. Insert Supabase Pending Order
+        let addressObj = delivery_address || '';
+        if (typeof addressObj === 'string' && addressObj.length > 0) {
+            addressObj = { full_address: addressObj };
+        }
+
+        const orderNotes = `${customer_name || 'Guest'} | ${customer_email || ''} | ${customer_phone || ''} | Subtotal: ${subtotal || 0} | Delivery: ${delivery_charge || 0} | Discount: ${delivery_discount || 0} | CartHash:${cart_hash}`;
+
+        const orderPayload = {
+            order_number: orderNumber,
+            user_id: user_id || null,
+            total_amount: amount,
+            delivery_address: addressObj || null,
+            status: 'pending',
+            razorpay_order_id: rzpOrder.id,
+            notes: orderNotes
+        };
+
+        const orderRes = await fetch(`${supabaseUrl}/rest/v1/orders`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(orderPayload)
         });
+
+        if (!orderRes.ok) {
+            console.error('Supabase insert failed:', await orderRes.text());
+            return jsonResponse(500, { success: false, message: 'Failed to save order' }, corsHeaders);
+        }
+
+        const [savedOrder] = await orderRes.json();
+
+        // 5. Insert Order Items
+        if (items && items.length > 0) {
+            const orderItems = items.map(item => ({
+                order_id: savedOrder.id,
+                product_id: item.product_id || null,
+                product_name: item.name || '',
+                weight: item.weight || '',
+                price: item.price,
+                quantity: item.quantity,
+                total: item.price * item.quantity,
+            }));
+
+            const itemsRes = await fetch(`${supabaseUrl}/rest/v1/order_items`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`
+                },
+                body: JSON.stringify(orderItems)
+            });
+
+            if (!itemsRes.ok) {
+                console.error('Supabase items insert failed:', await itemsRes.text());
+                // Rollback order
+                await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${savedOrder.id}`, {
+                    method: 'DELETE',
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+                });
+                return jsonResponse(500, { success: false, message: 'Failed to save items' }, corsHeaders);
+            }
+        }
+
+        return jsonResponse(200, {
+            success: true,
+            order_id: rzpOrder.id, // razorpay_order_id for frontend
+            amount: rzpOrder.amount,
+            currency: rzpOrder.currency,
+            key_id: keyId,
+        }, corsHeaders);
 
     } catch (err) {
         console.error('create-order error:', err);
-        return new Response(JSON.stringify({ success: false, message: 'Internal server error' }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        });
+        return jsonResponse(500, { success: false, message: 'Internal server error' }, corsHeaders);
     }
 }
 
-// Handle CORS preflight
 export async function onRequestOptions() {
     return new Response(null, {
         status: 204,
@@ -92,5 +196,12 @@ export async function onRequestOptions() {
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type',
         },
+    });
+}
+
+function jsonResponse(status, body, corsHeaders) {
+    return new Response(JSON.stringify(body), {
+        status,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
 }

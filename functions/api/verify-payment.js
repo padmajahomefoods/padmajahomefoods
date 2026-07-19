@@ -16,25 +16,12 @@ export async function onRequestPost(context) {
         const {
             razorpay_payment_id,
             razorpay_order_id,
-            razorpay_signature,
-            items,
-            delivery_address,
-            customer,
-            total_amount,
-            subtotal,
-            total_weight,
-            delivery_charge,
-            delivery_discount
+            razorpay_signature
         } = body;
 
-        console.log('verify-payment received:', JSON.stringify({ razorpay_payment_id, razorpay_order_id, total_amount, itemCount: items?.length }));
-
-        // --- 1. Validate required fields ---
+        // 1. Validate required fields
         if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
             return jsonResponse(400, { success: false, message: 'Missing payment verification fields' }, corsHeaders);
-        }
-        if (!items || !items.length) {
-            return jsonResponse(400, { success: false, message: 'No items in order' }, corsHeaders);
         }
 
         const keySecret = context.env.RAZORPAY_KEY_SECRET;
@@ -46,7 +33,7 @@ export async function onRequestPost(context) {
             return jsonResponse(500, { success: false, message: 'Server configuration error' }, corsHeaders);
         }
 
-        // --- 2. Verify Razorpay signature (HMAC-SHA256) ---
+        // 2. Verify Razorpay signature (HMAC-SHA256)
         const expectedSignature = await hmacSHA256(
             razorpay_order_id + '|' + razorpay_payment_id,
             keySecret
@@ -57,82 +44,51 @@ export async function onRequestPost(context) {
             return jsonResponse(400, { success: false, message: 'Payment verification failed — invalid signature' }, corsHeaders);
         }
 
-        // --- 3. Generate order number ---
-        const orderNumber = 'PHF' + Date.now();
-
-        // --- 4. Insert order into Supabase ---
-        // delivery_address column is jsonb — send as object, not string
-        let addressObj = delivery_address || '';
-        if (typeof addressObj === 'string' && addressObj.length > 0) {
-            // Parse the "line, city, state - pincode" format from checkout.js
-            addressObj = { full_address: addressObj };
-        }
-
-        const orderPayload = {
-            order_number: orderNumber,
-            user_id: customer?.user_id || null,
-            total_amount: total_amount,
-            delivery_address: addressObj || null,
+        // 3. Update existing order to confirmed
+        const updatePayload = {
             status: 'confirmed',
             payment_id: razorpay_payment_id,
-            notes: customer?.name
-                ? `${customer.name} | ${customer.email || ''} | ${customer.phone || ''} | RZPOID: ${razorpay_order_id || ''} | Subtotal: ${subtotal || 0} | Delivery: ${delivery_charge || 0} | Discount: ${delivery_discount || 0}`
-                : `RZPOID: ${razorpay_order_id || ''} | Subtotal: ${subtotal || 0} | Delivery: ${delivery_charge || 0} | Discount: ${delivery_discount || 0}`,
+            updated_at: new Date().toISOString()
         };
 
-        console.log('Inserting order payload:', JSON.stringify(orderPayload));
+        const updateRes = await fetch(`${supabaseUrl}/rest/v1/orders?razorpay_order_id=eq.${razorpay_order_id}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(updatePayload)
+        });
 
-        const orderRes = await supabaseInsert(supabaseUrl, supabaseKey, 'orders', orderPayload);
-
-        if (!orderRes.ok) {
-            const errText = await orderRes.text();
-            console.error('Supabase order insert failed:', orderRes.status, errText);
-            return jsonResponse(500, formatSupabaseError('Failed to save order', errText), corsHeaders);
+        if (!updateRes.ok) {
+            const errText = await updateRes.text();
+            console.error('Supabase order update failed:', updateRes.status, errText);
+            return jsonResponse(500, { success: false, message: 'Failed to update order status' }, corsHeaders);
         }
 
-        const [order] = await orderRes.json();
-
-        // --- 5. Insert order items ---
-        const orderItems = items.map(item => ({
-            order_id: order.id,
-            product_id: item.product_id || null,
-            product_name: item.name || item.product_name || '',
-            weight: item.weight || '',
-            price: item.price,
-            quantity: item.quantity,
-            total: item.price * item.quantity,
-        }));
-
-        console.log('Inserting order_items:', JSON.stringify(orderItems));
-
-        const itemsRes = await supabaseInsert(supabaseUrl, supabaseKey, 'order_items', orderItems);
-
-        if (!itemsRes.ok) {
-            const errText = await itemsRes.text();
-            console.error('Supabase order_items insert failed:', itemsRes.status, errText);
-            // Rollback: delete the order
-            await supabaseDelete(supabaseUrl, supabaseKey, 'orders', order.id);
-            return jsonResponse(500, formatSupabaseError('Failed to save order items', errText), corsHeaders);
+        const updatedOrders = await updateRes.json();
+        
+        if (!updatedOrders || updatedOrders.length === 0) {
+            console.error('Order not found for razorpay_order_id:', razorpay_order_id);
+            return jsonResponse(404, { success: false, message: 'Order not found for this payment' }, corsHeaders);
         }
 
-        // --- 6. Return success ---
+        const confirmedOrder = updatedOrders[0];
+
+        // 4. Return success
         return jsonResponse(200, {
             success: true,
-            order_number: orderNumber,
-            order_id: order.id,
+            order_number: confirmedOrder.order_number,
+            order_id: confirmedOrder.id,
         }, corsHeaders);
 
     } catch (err) {
         console.error('verify-payment error:', err.message, err.stack);
         return jsonResponse(500, { 
             success: false, 
-            message: 'Internal server error', 
-            detail: err.message,
-            stack: err.stack || '',
-            postgres_error: '',
-            postgres_code: '',
-            table: '',
-            column: ''
+            message: 'Internal server error'
         }, corsHeaders);
     }
 }
@@ -160,21 +116,6 @@ function jsonResponse(status, body, corsHeaders) {
     });
 }
 
-function formatSupabaseError(customMessage, errText) {
-    let parsed = {};
-    try { parsed = JSON.parse(errText); } catch (e) { parsed = { message: errText }; }
-    return {
-        success: false,
-        message: customMessage,
-        detail: parsed.details || parsed.message || errText,
-        stack: '',
-        postgres_error: parsed.message || '',
-        postgres_code: parsed.code || '',
-        table: parsed.table || '',
-        column: parsed.column || ''
-    };
-}
-
 async function hmacSHA256(message, secret) {
     const encoder = new TextEncoder();
     const key = await crypto.subtle.importKey(
@@ -188,27 +129,4 @@ async function hmacSHA256(message, secret) {
     return Array.from(new Uint8Array(signature))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
-}
-
-async function supabaseInsert(url, key, table, data) {
-    return fetch(`${url}/rest/v1/${table}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'apikey': key,
-            'Authorization': `Bearer ${key}`,
-            'Prefer': 'return=representation',
-        },
-        body: JSON.stringify(Array.isArray(data) ? data : [data]),
-    });
-}
-
-async function supabaseDelete(url, key, table, id) {
-    return fetch(`${url}/rest/v1/${table}?id=eq.${id}`, {
-        method: 'DELETE',
-        headers: {
-            'apikey': key,
-            'Authorization': `Bearer ${key}`,
-        },
-    });
 }
