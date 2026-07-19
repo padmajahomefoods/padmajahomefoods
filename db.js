@@ -536,7 +536,7 @@ const DB = {
     async loadSettings() {
         try {
             if (CONFIG.DATA_MODE === 'local') return; // Skip for local
-            const client = await this._getClient();
+            const client = await this._getAdapter()._getClient();
             const { data, error } = await client.from('settings').select('*');
             
             if (error) {
@@ -565,7 +565,7 @@ const DB = {
     async updateSetting(key, value) {
         if (CONFIG.DATA_MODE === 'local') return { success: false, message: 'Settings cannot be updated in local mode.' };
         try {
-            const client = await this._getClient();
+            const client = await this._getAdapter()._getClient();
             
             const { data, error } = await client.from('settings').upsert({
                 key: key,
