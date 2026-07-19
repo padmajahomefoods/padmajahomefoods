@@ -1190,6 +1190,26 @@ async function loadOrdersTab() {
                                 <span class="order-item-price">₹${Number(item.total).toLocaleString('en-IN')}</span>
                             </div>
                         `).join('')}
+                        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed var(--border); font-size: 0.9rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: var(--text-gray);">
+                                <span>Subtotal</span>
+                                <span>₹${Number(order.subtotal || order.total_amount).toLocaleString('en-IN')}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: var(--text-gray);">
+                                <span>Delivery Charge</span>
+                                <span>${(order.delivery_charge || 0) === 0 ? 'Free' : '₹' + order.delivery_charge}</span>
+                            </div>
+                            ${order.delivery_discount > 0 ? `
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #48BB78; font-weight: 500;">
+                                <span>Delivery Discount</span>
+                                <span>-₹${order.delivery_discount}</span>
+                            </div>
+                            ` : ''}
+                            <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); font-weight: 600; color: var(--text-dark);">
+                                <span>Grand Total</span>
+                                <span>₹${Number(order.total_amount).toLocaleString('en-IN')}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;

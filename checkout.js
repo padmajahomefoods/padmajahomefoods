@@ -2,11 +2,23 @@
 // CHECKOUT LOGIC — Razorpay Integration
 // ============================================
 
-const DELIVERY_CHARGE = 0; // Configurable later
-
 // Track current checkout items globally so handleCheckoutSubmit can access them
 let _checkoutItems = [];
 let _checkoutGrandTotal = 0;
+let _checkoutSubtotal = 0;
+let _checkoutDeliveryCharge = 0;
+let _checkoutDeliveryDiscount = 0;
+let _checkoutTotalWeight = 0;
+
+function calculateDeliveryCharge(weightInGrams) {
+    if (!CONFIG || !CONFIG.DELIVERY || !CONFIG.DELIVERY.WEIGHT_SLABS) return 0; // Fallback
+    for (const slab of CONFIG.DELIVERY.WEIGHT_SLABS) {
+        if (weightInGrams <= slab.maxWeight) {
+            return slab.charge;
+        }
+    }
+    return CONFIG.DELIVERY.MAX_SLAB_CHARGE;
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
     // CartService.init() is usually called in script.js, but checkout.html doesn't load script.js
@@ -138,11 +150,47 @@ function renderSummaryItems(items) {
 
     container.innerHTML = html;
 
-    const grandTotal = subtotal + DELIVERY_CHARGE;
+    _checkoutTotalWeight = items.reduce((sum, item) => {
+        const grams = item.weightInGrams || parseWeight(item.weight);
+        return sum + (grams * item.quantity);
+    }, 0);
+
+    const calculatedCharge = calculateDeliveryCharge(_checkoutTotalWeight);
+    const threshold = CONFIG.DELIVERY ? CONFIG.DELIVERY.FREE_DELIVERY_THRESHOLD : 1999;
+    
+    let actualDeliveryCharge = calculatedCharge;
+    let deliveryDiscount = 0;
+
+    if (subtotal >= threshold) {
+        deliveryDiscount = calculatedCharge;
+        actualDeliveryCharge = 0;
+    }
+
+    const grandTotal = subtotal + actualDeliveryCharge;
+    _checkoutSubtotal = subtotal;
+    _checkoutDeliveryCharge = actualDeliveryCharge;
+    _checkoutDeliveryDiscount = deliveryDiscount;
     _checkoutGrandTotal = grandTotal;
 
     subtotalEl.textContent = '₹' + subtotal;
-    deliveryEl.textContent = DELIVERY_CHARGE === 0 ? 'Free' : '₹' + DELIVERY_CHARGE;
+    
+    const discountRow = document.getElementById('checkoutDiscountRow');
+    const discountEl = document.getElementById('checkoutDeliveryDiscount');
+
+    if (deliveryDiscount > 0) {
+        deliveryEl.textContent = '₹' + calculatedCharge;
+        deliveryEl.style.textDecoration = 'line-through';
+        deliveryEl.style.color = 'var(--gray-400)';
+        
+        discountRow.style.display = 'flex';
+        discountEl.textContent = '-₹' + deliveryDiscount;
+    } else {
+        deliveryEl.textContent = actualDeliveryCharge === 0 ? 'Free' : '₹' + actualDeliveryCharge;
+        deliveryEl.style.textDecoration = 'none';
+        deliveryEl.style.color = 'var(--text-dark)';
+        discountRow.style.display = 'none';
+    }
+
     grandTotalEl.textContent = '₹' + grandTotal;
 
     if (payBtnText) payBtnText.textContent = 'Pay ₹' + grandTotal;
@@ -280,6 +328,10 @@ async function handleCheckoutSubmit(e) {
                         })),
                         delivery_address: deliveryAddress,
                         total_amount: _checkoutGrandTotal,
+                        subtotal: _checkoutSubtotal,
+                        total_weight: _checkoutTotalWeight,
+                        delivery_charge: _checkoutDeliveryCharge,
+                        delivery_discount: _checkoutDeliveryDiscount,
                         customer: {
                             user_id: userId,
                             name: customerName,

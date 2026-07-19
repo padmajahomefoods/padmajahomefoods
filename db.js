@@ -527,5 +527,57 @@ const DB = {
             }
         });
         return weights;
+    },
+
+    // ============================================
+    // SETTINGS
+    // ============================================
+
+    async loadSettings() {
+        try {
+            if (CONFIG.DATA_MODE === 'local') return; // Skip for local
+            const client = await this._getClient();
+            const { data, error } = await client.from('settings').select('*');
+            
+            if (error) {
+                console.error('Error fetching settings:', error);
+                return; // Silently fallback to config.js defaults
+            }
+            
+            if (data && data.length > 0) {
+                data.forEach(row => {
+                    if (row.key === 'delivery' && row.value) {
+                        const val = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+                        if (val && typeof CONFIG !== 'undefined' && CONFIG.DELIVERY) {
+                            if (val.free_delivery_threshold !== undefined) CONFIG.DELIVERY.FREE_DELIVERY_THRESHOLD = val.free_delivery_threshold;
+                            if (val.weight_slabs) CONFIG.DELIVERY.WEIGHT_SLABS = val.weight_slabs;
+                            if (val.max_slab_charge !== undefined) CONFIG.DELIVERY.MAX_SLAB_CHARGE = val.max_slab_charge;
+                        }
+                    }
+                });
+                console.log('[DB] Settings loaded and merged successfully.');
+            }
+        } catch (err) {
+            console.error('Failed to load settings:', err);
+        }
+    },
+    
+    async updateSetting(key, value) {
+        if (CONFIG.DATA_MODE === 'local') return { success: false, message: 'Settings cannot be updated in local mode.' };
+        try {
+            const client = await this._getClient();
+            
+            const { data, error } = await client.from('settings').upsert({
+                key: key,
+                value: value,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'key' });
+            
+            if (error) throw error;
+            return { success: true };
+        } catch (err) {
+            console.error('Failed to update setting:', err);
+            return { success: false, message: err.message };
+        }
     }
 };

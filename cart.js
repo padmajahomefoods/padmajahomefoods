@@ -19,6 +19,12 @@ const CartService = {
     // --- Initialization ---
     async init() {
         console.log('[CartService.init] Starting initialization...');
+        
+        // Load app settings from database before initializing cart UI
+        if (typeof DB !== 'undefined' && DB.loadSettings) {
+            await DB.loadSettings();
+        }
+        
         this._loadLocalCart();
         console.log('[CartService.init] Local cart loaded:', this._localCart.length, 'items');
 
@@ -595,6 +601,14 @@ const CartService = {
         return items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     },
 
+    getTotalWeight() {
+        const items = this.getItems();
+        return items.reduce((sum, item) => {
+            const grams = item.weightInGrams || parseWeight(item.weight);
+            return sum + (grams * item.quantity);
+        }, 0);
+    },
+
     isEmpty() {
         return this.getItems().length === 0;
     },
@@ -707,6 +721,37 @@ function updateCartUI() {
             </div>
         </div>
     `).join('');
+
+    // --- FREE DELIVERY PROGRESS BAR ---
+    const threshold = typeof CONFIG !== 'undefined' && CONFIG.DELIVERY ? CONFIG.DELIVERY.FREE_DELIVERY_THRESHOLD : 1999;
+    let progressPercent = (totalPrice / threshold) * 100;
+    if (progressPercent > 100) progressPercent = 100;
+    
+    let progressMessage = '';
+    if (progressPercent >= 100) {
+        progressMessage = '🎉 Congratulations! You unlocked FREE Delivery.';
+    } else if (progressPercent >= 90) {
+        progressMessage = `🔥 Almost there! Add just ₹${threshold - totalPrice} more.`;
+    } else if (progressPercent >= 50) {
+        progressMessage = `✨ You're getting closer to FREE Delivery.`;
+    } else {
+        progressMessage = `🛒 Keep shopping! You're on your way to FREE Delivery.`;
+    }
+
+    const progressHtml = `
+        <div class="free-delivery-progress" style="background: #F8FAFC; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.9rem; font-weight: 600; color: var(--primary);">🚚 FREE Delivery on orders above ₹${threshold}</span>
+                <span style="font-size: 0.85rem; color: var(--text-gray); font-weight: 500;">₹${totalPrice} / ₹${threshold}</span>
+            </div>
+            <div class="progress-bar-bg" style="width: 100%; background: #E2E8F0; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
+                <div class="progress-bar-fill" style="width: ${progressPercent}%; background: ${progressPercent === 100 ? '#48BB78' : 'var(--primary)'}; height: 100%; transition: width 0.3s ease, background 0.3s ease;"></div>
+            </div>
+            <p style="margin: 0; font-size: 0.85rem; color: ${progressPercent === 100 ? '#48BB78' : 'var(--text-gray)'}; font-weight: 500;">${progressMessage}</p>
+        </div>
+    `;
+
+    cartItems.insertAdjacentHTML('afterbegin', progressHtml);
 }
 
 async function addToCart(btn, productName, basePrice) {

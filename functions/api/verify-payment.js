@@ -21,6 +21,10 @@ export async function onRequestPost(context) {
             delivery_address,
             customer,
             total_amount,
+            subtotal,
+            total_weight,
+            delivery_charge,
+            delivery_discount
         } = body;
 
         console.log('verify-payment received:', JSON.stringify({ razorpay_payment_id, razorpay_order_id, total_amount, itemCount: items?.length }));
@@ -72,6 +76,10 @@ export async function onRequestPost(context) {
             status: 'confirmed',
             payment_id: razorpay_payment_id,
             razorpay_order_id: razorpay_order_id,
+            subtotal: subtotal || 0,
+            total_weight: total_weight || 0,
+            delivery_charge: delivery_charge || 0,
+            delivery_discount: delivery_discount || 0,
             notes: customer?.name
                 ? `${customer.name} | ${customer.email || ''} | ${customer.phone || ''}`
                 : '',

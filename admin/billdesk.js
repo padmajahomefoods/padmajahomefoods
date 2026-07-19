@@ -6,6 +6,28 @@
 let PRODUCTS_DATA = {};   // { categoryName: [products] }
 let CATEGORIES_DATA = []; // categories array from JSON
 let billItems = [];
+let _userEditedDeliveryCharge = false;
+
+// Helpers
+function parseWeight(wStr) {
+    if (!wStr) return 0;
+    wStr = wStr.toLowerCase().replace(/[^0-9kg]/g, '');
+    if (wStr.includes('kg')) {
+        return parseFloat(wStr.replace('kg', '')) * 1000;
+    } else {
+        return parseFloat(wStr.replace('g', ''));
+    }
+}
+
+function calculateDeliveryCharge(weightInGrams) {
+    if (!CONFIG || !CONFIG.DELIVERY || !CONFIG.DELIVERY.WEIGHT_SLABS) return 0; // Fallback
+    for (const slab of CONFIG.DELIVERY.WEIGHT_SLABS) {
+        if (weightInGrams <= slab.maxWeight) {
+            return slab.charge;
+        }
+    }
+    return CONFIG.DELIVERY.MAX_SLAB_CHARGE;
+}
 
 // Category icon & emoji mapping (fallbacks)
 const CATEGORY_ICONS = {
@@ -220,9 +242,22 @@ function updateSheetQty(index, change) {
 // UPDATE CART SUMMARY (Sticky Bar + Sheet)
 // ============================================
 function updateCartSummary() {
-    const deliveryCharge = parseFloat(document.getElementById('deliveryCharge').value) || 0;
     const totalQty = billItems.reduce((sum, item) => sum + item.qty, 0);
     const productsTotal = billItems.reduce((sum, item) => sum + item.total, 0);
+    
+    // Auto-calculate delivery if not manually edited
+    const deliveryInput = document.getElementById('deliveryCharge');
+    if (!_userEditedDeliveryCharge) {
+        const threshold = (typeof CONFIG !== 'undefined' && CONFIG.DELIVERY) ? CONFIG.DELIVERY.FREE_DELIVERY_THRESHOLD : 1999;
+        if (productsTotal >= threshold) {
+            deliveryInput.value = 0;
+        } else {
+            const totalWeightGrams = billItems.reduce((sum, item) => sum + (parseWeight(item.weight) * item.qty), 0);
+            deliveryInput.value = calculateDeliveryCharge(totalWeightGrams);
+        }
+    }
+    
+    const deliveryCharge = parseFloat(deliveryInput.value) || 0;
     const grandTotal = productsTotal + deliveryCharge;
 
     // Update Sticky Bar
@@ -410,10 +445,16 @@ function shareBill() {
 // ============================================
 // INITIALIZE
 // ============================================
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    if (typeof DB !== 'undefined' && DB.loadSettings) {
+        await DB.loadSettings();
+    }
     loadProducts();
     const deliveryInput = document.getElementById('deliveryCharge');
     if (deliveryInput) {
-        deliveryInput.addEventListener('input', updateCartSummary);
+        deliveryInput.addEventListener('input', function() {
+            _userEditedDeliveryCharge = true;
+            updateCartSummary();
+        });
     }
 });

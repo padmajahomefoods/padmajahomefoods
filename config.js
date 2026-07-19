@@ -36,7 +36,24 @@ const CONFIG = {
 
     // Cache settings (ms)
     CACHE_DURATION_MS: 5 * 60 * 1000,
+
+    // Delivery settings
+    DELIVERY: {
+        FREE_DELIVERY_THRESHOLD: 1999,
+        // Array of slabs: maxWeight (in grams), charge (in rupees)
+        // Must be sorted by maxWeight ascending
+        WEIGHT_SLABS: [
+            { maxWeight: 500, charge: 59 },
+            { maxWeight: 1000, charge: 89 },
+            { maxWeight: 2000, charge: 129 },
+            { maxWeight: 3000, charge: 169 }
+        ],
+        // Fallback for weights exceeding the highest slab
+        MAX_SLAB_CHARGE: 249 
+    }
 };
 
 Object.freeze(CONFIG);
 Object.freeze(CONFIG.TABLES);
+// NOTE: CONFIG.DELIVERY is deliberately left unfrozen so it can be overridden 
+// dynamically by DB.loadSettings() on application start.

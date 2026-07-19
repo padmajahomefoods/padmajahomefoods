@@ -228,8 +228,24 @@
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <td colspan="3" style="text-align: right; font-weight: 600;">Grand Total:</td>
-                                    <td style="font-weight: 700; color: var(--primary);" id="detailGrandTotal">₹0</td>
+                                    <td colspan="3" style="text-align: right; font-weight: 500; font-size: 0.9rem; color: var(--text-gray);">Subtotal (Products):</td>
+                                    <td style="font-weight: 500;" id="detailSubtotal">₹0</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" style="text-align: right; font-weight: 500; font-size: 0.9rem; color: var(--text-gray);">Total Weight:</td>
+                                    <td style="font-weight: 500;" id="detailTotalWeight">0g</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" style="text-align: right; font-weight: 500; font-size: 0.9rem; color: var(--text-gray);">Delivery Charge:</td>
+                                    <td style="font-weight: 500;" id="detailDeliveryCharge">₹0</td>
+                                </tr>
+                                <tr id="detailDeliveryDiscountRow" style="display: none;">
+                                    <td colspan="3" style="text-align: right; font-weight: 500; font-size: 0.9rem; color: #48BB78;">Delivery Discount:</td>
+                                    <td style="font-weight: 500; color: #48BB78;" id="detailDeliveryDiscount">-₹0</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" style="text-align: right; font-weight: 600; padding-top: 15px;">Grand Total:</td>
+                                    <td style="font-weight: 700; color: var(--primary); padding-top: 15px;" id="detailGrandTotal">₹0</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -430,6 +446,22 @@ function selectOrder(orderId, element) {
         `;
     });
     
+    document.getElementById('detailSubtotal').textContent = '₹' + Number(currentOrder.subtotal || currentOrder.total_amount).toLocaleString('en-IN');
+    document.getElementById('detailTotalWeight').textContent = (currentOrder.total_weight || 0) + 'g';
+    
+    const deliveryCharge = currentOrder.delivery_charge || 0;
+    const deliveryDiscount = currentOrder.delivery_discount || 0;
+    
+    document.getElementById('detailDeliveryCharge').textContent = deliveryCharge === 0 ? 'Free' : '₹' + deliveryCharge;
+    
+    const discountRow = document.getElementById('detailDeliveryDiscountRow');
+    if (deliveryDiscount > 0) {
+        discountRow.style.display = 'table-row';
+        document.getElementById('detailDeliveryDiscount').textContent = '-₹' + deliveryDiscount;
+    } else {
+        discountRow.style.display = 'none';
+    }
+
     document.getElementById('detailGrandTotal').textContent = '₹' + Number(currentOrder.total_amount).toLocaleString('en-IN');
 
     // Forms

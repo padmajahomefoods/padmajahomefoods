@@ -7,69 +7,87 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="admin.css">
+    <style>
+        body { background-color: var(--bg-light); }
+        .launcher-container { max-width: 900px; margin: 0 auto; padding: 40px 20px; display: none; }
+        .launcher-container.active { display: block; }
+        .launcher-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 50px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+        .header-brand { display: flex; align-items: center; gap: 15px; }
+        .header-brand img { width: 50px; height: 50px; object-fit: contain; }
+        .header-brand h1 { margin: 0; font-family: 'Playfair Display', serif; color: var(--deep-brown); font-size: 1.5rem; }
+        .header-actions { display: flex; gap: 15px; }
+        .btn-nav { padding: 10px 20px; border: 1px solid var(--border); background: white; border-radius: 8px; color: var(--text-dark); text-decoration: none; font-weight: 500; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-nav:hover { background: var(--bg-light); border-color: var(--gray-300); }
+        
+        .settings-card { background: white; padding: 30px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 30px; }
+        .settings-card h2 { margin-top: 0; margin-bottom: 20px; font-size: 1.3rem; color: var(--deep-brown); display: flex; align-items: center; gap: 10px; }
+        .settings-card h2 i { color: var(--primary); }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-dark); }
+        .form-group input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Poppins', sans-serif; transition: border-color 0.3s; }
+        .form-group input:focus { outline: none; border-color: var(--primary); }
+        
+        .slab-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 15px; align-items: center; margin-bottom: 15px; padding: 15px; background: var(--bg-light); border-radius: 8px; border: 1px solid var(--border); }
+        .slab-row input { margin-bottom: 0; }
+        .btn-remove-slab { background: #FC8181; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; transition: background 0.3s; }
+        .btn-remove-slab:hover { background: #E53E3E; }
+        
+        .settings-actions { display: flex; gap: 15px; margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px; }
+        .btn-save { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif; transition: background 0.3s; }
+        .btn-save:hover { background: var(--primary-hover); }
+        .btn-reset { background: white; color: var(--text-dark); border: 1px solid var(--border); padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 500; font-family: 'Poppins', sans-serif; transition: all 0.3s; }
+        .btn-reset:hover { background: var(--bg-light); }
+    </style>
 </head>
 <body>
 
-<div class="admin-layout">
-    <aside class="admin-sidebar">
-        <div class="admin-sidebar-header">
-            <img src="../logo.png" alt="Logo">
-            <h2>Admin Panel</h2>
+<div class="launcher-container" id="adminContent">
+    <div class="launcher-header">
+        <div class="header-brand">
+            <img src="../logo.png" alt="Padmaja Home Foods">
+            <h1>Settings &amp; Config</h1>
         </div>
-        <nav class="admin-nav">
-            <a href="index.html"><i class="fas fa-home"></i> Dashboard</a>
-            <a href="orders.html"><i class="fas fa-shopping-bag"></i> Orders</a>
-            <a href="billdesk.html"><i class="fas fa-file-invoice"></i> Bill Desk</a>
-            <a href="products.html"><i class="fas fa-box-open"></i> Products</a>
-            <a href="accounts.html"><i class="fas fa-chart-line"></i> Accounts</a>
-            <a href="settings.html"><i class="fas fa-cog"></i> Settings</a>
-        </nav>
-    </aside>
-
-    <main class="admin-main">
-        <header class="admin-topbar">
-            <h1 class="admin-topbar-title">Settings & Configuration</h1>
-            <div>
-                <button class="btn btn-primary" onclick="handleAdminLogout()">Logout</button>
+        <div class="header-actions">
+            <a href="index.html" class="btn-nav"><i class="fas fa-home"></i> Dashboard</a>
+            <button class="btn-nav" onclick="handleAdminLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </div>
+    </div>
+    
+    <div class="settings-card">
+        <h2><i class="fas fa-truck"></i> Shipping Settings</h2>
+        
+        <div class="form-group" style="max-width: 300px;">
+            <label>Free Delivery Threshold (₹)</label>
+            <input type="number" id="freeDeliveryThreshold" min="0" placeholder="e.g. 1999">
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <label style="font-weight: 500; color: var(--text-dark); margin: 0;">Weight Slabs</label>
+                <button type="button" class="btn-nav" onclick="addWeightSlab()" style="padding: 6px 12px; font-size: 0.9rem;"><i class="fas fa-plus"></i> Add Slab</button>
             </div>
-        </header>
-
-        <div class="admin-content">
-            <div style="background: white; padding: 40px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
-                <i class="fas fa-tools" style="font-size: 3rem; color: var(--text-gray); margin-bottom: 20px;"></i>
-                <h2 style="margin-top: 0;">Settings Module</h2>
-                <p style="color: var(--text-gray); max-width: 500px; margin: 0 auto 30px;">
-                    This section is a placeholder for future configuration options.
-                </p>
-                
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; text-align: left;">
-                    <div style="padding: 20px; border: 1px dashed var(--border); border-radius: 8px;">
-                        <h4 style="margin: 0 0 10px 0;"><i class="fas fa-store"></i> Shop Details</h4>
-                        <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0;">Configure store name, logo, address, and contact info.</p>
-                    </div>
-                    <div style="padding: 20px; border: 1px dashed var(--border); border-radius: 8px;">
-                        <h4 style="margin: 0 0 10px 0;"><i class="fas fa-truck"></i> Shipping</h4>
-                        <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0;">Set flat delivery charges, free shipping thresholds, and zones.</p>
-                    </div>
-                    <div style="padding: 20px; border: 1px dashed var(--border); border-radius: 8px;">
-                        <h4 style="margin: 0 0 10px 0;"><i class="fas fa-credit-card"></i> Payment</h4>
-                        <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0;">Update Razorpay keys and manage payment gateways.</p>
-                    </div>
-                    <div style="padding: 20px; border: 1px dashed var(--border); border-radius: 8px;">
-                        <h4 style="margin: 0 0 10px 0;"><i class="fab fa-whatsapp"></i> Notifications</h4>
-                        <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0;">Configure WhatsApp numbers and email templates.</p>
-                    </div>
-                </div>
+            
+            <div id="weightSlabsContainer">
+                <!-- Slabs rendered by JS -->
             </div>
         </div>
-    </main>
+        
+        <div class="settings-actions">
+            <button type="button" class="btn-save" onclick="saveShippingSettings()" id="saveSettingsBtn">Save Settings</button>
+            <button type="button" class="btn-reset" onclick="resetShippingSettings()">Reset to Default</button>
+        </div>
+    </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Toast Notification -->
+<div id="toast" class="toast"></div>
+
+<!-- App Scripts -->
 <script src="../config.js"></script>
 <script src="../db.js"></script>
 <script src="../auth.js"></script>
 <script src="admin.js"></script>
-
+<script src="settings.js"></script>
 </body>
 </html>
