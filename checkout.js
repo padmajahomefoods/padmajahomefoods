@@ -9,18 +9,41 @@ let _checkoutSubtotal = 0;
 let _checkoutDeliveryCharge = 0;
 let _checkoutDeliveryDiscount = 0;
 let _checkoutTotalWeight = 0;
+let _latestDeliverySettings = null;
+
+async function fetchLatestDeliverySettings() {
+    try {
+        if (typeof SupabaseAdapter !== 'undefined') {
+            const client = await SupabaseAdapter._getClient();
+            const { data, error } = await client.from('settings').select('*').eq('key', 'delivery').single();
+            if (data && data.value) {
+                _latestDeliverySettings = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+                console.log("[Checkout] Fetched latest delivery settings from DB.");
+            }
+        }
+    } catch(err) {
+        console.warn("Could not fetch latest delivery settings, falling back to config", err);
+    }
+}
 
 function calculateDeliveryCharge(weightInGrams) {
-    if (!CONFIG || !CONFIG.DELIVERY || !CONFIG.DELIVERY.WEIGHT_SLABS) return 0; // Fallback
-    for (const slab of CONFIG.DELIVERY.WEIGHT_SLABS) {
+    const slabs = _latestDeliverySettings?.weight_slabs || (CONFIG && CONFIG.DELIVERY && CONFIG.DELIVERY.WEIGHT_SLABS);
+    const maxCharge = _latestDeliverySettings?.max_slab_charge !== undefined ? _latestDeliverySettings.max_slab_charge : (CONFIG && CONFIG.DELIVERY && CONFIG.DELIVERY.MAX_SLAB_CHARGE);
+    
+    if (!slabs) return 0; // Fallback
+
+    for (const slab of slabs) {
         if (weightInGrams <= slab.maxWeight) {
             return slab.charge;
         }
     }
-    return CONFIG.DELIVERY.MAX_SLAB_CHARGE;
+    return maxCharge || 0;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Fetch absolute latest settings directly from DB first
+    await fetchLatestDeliverySettings();
+
     // CartService.init() is usually called in script.js, but checkout.html doesn't load script.js
     if (CartService && CartService.init) {
         await CartService.init();
@@ -156,7 +179,7 @@ function renderSummaryItems(items) {
     }, 0);
 
     const calculatedCharge = calculateDeliveryCharge(_checkoutTotalWeight);
-    const threshold = CONFIG.DELIVERY ? CONFIG.DELIVERY.FREE_DELIVERY_THRESHOLD : 1999;
+    const threshold = _latestDeliverySettings?.free_delivery_threshold !== undefined ? _latestDeliverySettings.free_delivery_threshold : (CONFIG.DELIVERY ? CONFIG.DELIVERY.FREE_DELIVERY_THRESHOLD : 1999);
     
     let actualDeliveryCharge = calculatedCharge;
     let deliveryDiscount = 0;
