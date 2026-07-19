@@ -191,3 +191,20 @@ async function saveShippingSettings() {
         btn.disabled = false;
     }
 }
+
+// Toast Notification Helper
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    
+    toast.textContent = message;
+    toast.className = `toast toast-${type} active`;
+    
+    // Add font awesome icon based on type
+    const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+    toast.innerHTML = `<i class="fas ${icon}"></i> ${message}`;
+    
+    setTimeout(() => {
+        toast.className = 'toast';
+    }, 3000);
+}
