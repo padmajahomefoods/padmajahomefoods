@@ -567,19 +567,28 @@ window.SettingsService = {
     async updateSetting(key, value) {
         if (typeof CONFIG !== 'undefined' && CONFIG.DATA_MODE === 'local') return { success: false, message: 'Settings cannot be updated in local mode.' };
         try {
+            // Admin Panel RLS bypass
+            if (typeof fetchAdminData === 'function') {
+                const res = await fetchAdminData('settings', 'update', {
+                    match: { key: key },
+                    payload: { value: value, updated_at: new Date().toISOString() }
+                });
+                if (res.error) throw res.error;
+                return { success: true };
+            }
+
+            // Fallback for direct client (will fail if RLS is active without proper policies)
             const client = await SupabaseAdapter._getClient();
-            
-            const { data, error } = await client.from('settings').upsert({
-                key: key,
+            const { data, error } = await client.from('settings').update({
                 value: value,
                 updated_at: new Date().toISOString()
-            }, { onConflict: 'key' });
+            }).eq('key', key);
             
             if (error) throw error;
             return { success: true };
         } catch (err) {
             console.error('Failed to update setting:', err);
-            return { success: false, message: err.message };
+            return { success: false, message: err.message || err };
         }
     }
 };
