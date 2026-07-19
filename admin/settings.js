@@ -20,8 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function initSettings() {
-    if (typeof DB !== 'undefined' && DB.loadSettings) {
-        await DB.loadSettings();
+    if (typeof SettingsService !== 'undefined' && SettingsService.loadSettings) {
+        await SettingsService.loadSettings();
     }
     
     // Load into UI
@@ -171,7 +171,7 @@ async function saveShippingSettings() {
     btn.disabled = true;
     
     try {
-        const res = await DB.updateSetting('delivery', payload);
+        const res = await SettingsService.updateSetting('delivery', payload);
         if (res.success) {
             showToast('Shipping Settings saved successfully!', 'success');
             // Update in-memory config so current session reflects it

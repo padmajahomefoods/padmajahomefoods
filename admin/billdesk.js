@@ -446,8 +446,8 @@ function shareBill() {
 // INITIALIZE
 // ============================================
 document.addEventListener('DOMContentLoaded', async function() {
-    if (typeof DB !== 'undefined' && DB.loadSettings) {
-        await DB.loadSettings();
+    if (typeof SettingsService !== 'undefined' && SettingsService.loadSettings) {
+        await SettingsService.loadSettings();
     }
     loadProducts();
     const deliveryInput = document.getElementById('deliveryCharge');
