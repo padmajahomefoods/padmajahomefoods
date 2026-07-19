@@ -441,7 +441,18 @@ function selectOrder(orderId, element) {
         }
     }
     document.getElementById('detailAddress').textContent = addressStr;
-    document.getElementById('detailPaymentStatus').textContent = currentOrder.payment_id ? 'Paid (Razorpay)' : 'Pending';
+    let paymentStatusText = 'Pending';
+    if (currentOrder.status === 'failed' || currentOrder.status === 'payment_failed') {
+        paymentStatusText = 'Failed';
+    } else if (currentOrder.status === 'pending' || currentOrder.status === 'processing') {
+        paymentStatusText = 'Pending';
+    } else if (currentOrder.status === 'confirmed' && currentOrder.payment_id) {
+        paymentStatusText = 'Paid (Razorpay)';
+    } else if (currentOrder.payment_id) {
+        paymentStatusText = 'Paid (Razorpay)';
+    }
+    
+    document.getElementById('detailPaymentStatus').textContent = paymentStatusText;
     document.getElementById('detailPaymentId').textContent = currentOrder.payment_id || 'N/A';
 
     // Items
