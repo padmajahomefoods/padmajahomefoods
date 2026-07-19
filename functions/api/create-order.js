@@ -143,15 +143,20 @@ export async function onRequestPost(context) {
 
         // 5. Insert Order Items
         if (items && items.length > 0) {
-            const orderItems = items.map(item => ({
-                order_id: savedOrder.id,
-                product_id: item.product_id || null,
-                product_name: item.name || '',
-                weight: item.weight || '',
-                price: item.price,
-                quantity: item.quantity,
-                total: item.price * item.quantity,
-            }));
+            const orderItems = items.map(item => {
+                const mapped = {
+                    order_id: savedOrder.id,
+                    product_name: item.name || item.product_name || '',
+                    weight: item.weight || '',
+                    price: item.price,
+                    quantity: item.quantity,
+                    total: item.price * item.quantity,
+                };
+                if (item.product_id && item.product_id !== '') {
+                    mapped.product_id = item.product_id;
+                }
+                return mapped;
+            });
 
             const itemsRes = await fetch(`${supabaseUrl}/rest/v1/order_items`, {
                 method: 'POST',
@@ -164,13 +169,14 @@ export async function onRequestPost(context) {
             });
 
             if (!itemsRes.ok) {
-                console.error('Supabase items insert failed:', await itemsRes.text());
+                const errText = await itemsRes.text();
+                console.error('Supabase items insert failed:', errText);
                 // Rollback order
                 await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${savedOrder.id}`, {
                     method: 'DELETE',
                     headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
                 });
-                return jsonResponse(500, { success: false, message: 'Failed to save items' }, corsHeaders);
+                return jsonResponse(500, { success: false, message: 'Failed to save items', detail: errText }, corsHeaders);
             }
         }
 
