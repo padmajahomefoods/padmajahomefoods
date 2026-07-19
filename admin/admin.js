@@ -60,7 +60,7 @@ async function fetchAdminData(table, action = 'select', options = {}) {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${session.session.access_token}`,
-                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_KEY : ''
+                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
             },
             body: JSON.stringify({
                 table,

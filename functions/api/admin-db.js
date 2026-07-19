@@ -36,7 +36,7 @@ export async function onRequestPost(context) {
         if (!authRes.ok) {
             const authErrText = await authRes.text();
             console.error("[admin-db] Auth verification failed:", authRes.status, authErrText);
-            return new Response(JSON.stringify({ error: 'Invalid or expired token', details: authErrText }), { status: 401, headers: corsHeaders });
+            return new Response(JSON.stringify({ error: 'Auth verification failed', details: authErrText, status: authRes.status }), { status: authRes.status, headers: corsHeaders });
         }
 
         const user = await authRes.json();
