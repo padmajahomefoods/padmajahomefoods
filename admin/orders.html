@@ -458,18 +458,28 @@ function selectOrder(orderId, element) {
         `;
     });
     
-    document.getElementById('detailSubtotal').textContent = '₹' + Number(currentOrder.subtotal || currentOrder.total_amount).toLocaleString('en-IN');
     document.getElementById('detailTotalWeight').textContent = (currentOrder.total_weight || 0) + 'g';
     
-    const deliveryCharge = currentOrder.delivery_charge || 0;
-    const deliveryDiscount = currentOrder.delivery_discount || 0;
+    let deliveryCharge = currentOrder.delivery_charge || 0;
+    let deliveryDiscount = currentOrder.delivery_discount || 0;
+    let subtotal = currentOrder.subtotal || currentOrder.total_amount;
     
-    document.getElementById('detailDeliveryCharge').textContent = deliveryCharge === 0 ? 'Free' : '₹' + deliveryCharge;
+    if (currentOrder.notes && typeof currentOrder.notes === 'string' && currentOrder.notes.includes('Subtotal:')) {
+        const parts = currentOrder.notes.split('|').map(s => s.trim());
+        parts.forEach(p => {
+            if (p.startsWith('Subtotal:')) subtotal = parseFloat(p.replace('Subtotal:', '').trim()) || subtotal;
+            if (p.startsWith('Delivery:')) deliveryCharge = parseFloat(p.replace('Delivery:', '').trim()) || deliveryCharge;
+            if (p.startsWith('Discount:')) deliveryDiscount = parseFloat(p.replace('Discount:', '').trim()) || deliveryDiscount;
+        });
+    }
+    
+    document.getElementById('detailSubtotal').textContent = '₹' + Number(subtotal).toLocaleString('en-IN');
+    document.getElementById('detailDeliveryCharge').textContent = Number(deliveryCharge) === 0 ? 'Free' : '₹' + Number(deliveryCharge).toLocaleString('en-IN');
     
     const discountRow = document.getElementById('detailDeliveryDiscountRow');
-    if (deliveryDiscount > 0) {
+    if (Number(deliveryDiscount) > 0) {
         discountRow.style.display = 'table-row';
-        document.getElementById('detailDeliveryDiscount').textContent = '-₹' + deliveryDiscount;
+        document.getElementById('detailDeliveryDiscount').textContent = '-₹' + Number(deliveryDiscount).toLocaleString('en-IN');
     } else {
         discountRow.style.display = 'none';
     }
