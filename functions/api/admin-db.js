@@ -21,10 +21,10 @@ export async function onRequestPost(context) {
             return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500, headers: corsHeaders });
         }
 
-        // 2. Validate user using Supabase Auth (with anon key to verify token)
+        // 2. Validate user using Supabase Auth
         const authRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
             headers: {
-                'apikey': anonKey,
+                'apikey': supabaseKey,
                 'Authorization': `Bearer ${token}`
             }
         });
