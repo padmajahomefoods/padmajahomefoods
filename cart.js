@@ -52,9 +52,7 @@ const CartService = {
             this._client = null;
         }
         
-        const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm');
-        const supabase = module.default || module;
-        this._client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+        this._client = await window.getSupabaseClient();
         
         // Log session status for debugging
         const { data: { session } } = await this._client.auth.getSession();

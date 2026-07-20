@@ -57,3 +57,25 @@ Object.freeze(CONFIG);
 Object.freeze(CONFIG.TABLES);
 // NOTE: CONFIG.DELIVERY is deliberately left unfrozen so it can be overridden 
 // dynamically by DB.loadSettings() on application start.
+window.getSupabaseClient = async function() {
+    if (window._globalSupabaseClient) return window._globalSupabaseClient;
+    if (window._globalSupabasePromise) return window._globalSupabasePromise;
+    window._globalSupabasePromise = new Promise(async (resolve, reject) => {
+        try {
+            const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm');
+            const createClient = module.createClient || module.default?.createClient;
+            let client;
+            if (!createClient) {
+                const supabase = module.default || module;
+                client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+            } else {
+                client = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+            }
+            window._globalSupabaseClient = client;
+            resolve(client);
+        } catch (err) {
+            reject(err);
+        }
+    });
+    return window._globalSupabasePromise;
+};

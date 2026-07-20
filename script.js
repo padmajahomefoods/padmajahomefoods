@@ -717,8 +717,8 @@ function injectImagePreloads(products) {
 // ============================================
 document.addEventListener('DOMContentLoaded', async function() {
     // Load app settings from DB (overrides config.js defaults)
-    if (typeof DB !== 'undefined' && DB.loadSettings) {
-        await DB.loadSettings();
+    if (typeof SettingsService !== 'undefined' && SettingsService.loadSettings) {
+        await SettingsService.loadSettings();
     }
 
     // Initialize cart via CartService (loaded from cart.js)

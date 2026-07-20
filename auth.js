@@ -27,15 +27,10 @@ const Auth = {
         }
 
         try {
-            const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm');
-            const supabase = module.default || module;
-            this._supabaseClient = supabase.createClient(
-                CONFIG.SUPABASE_URL,
-                CONFIG.SUPABASE_ANON_KEY
-            );
+            this._supabaseClient = await window.getSupabaseClient();
             return this._supabaseClient;
         } catch (err) {
-            console.error('Failed to initialize Supabase client:', err);
+            console.error('Failed to initialize Supabase client in auth:', err);
             return null;
         }
     },

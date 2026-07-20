@@ -14,27 +14,12 @@ const Account = {
         if (this._client) return this._client;
         if (this._clientPromise) return this._clientPromise;
 
-        this._clientPromise = new Promise(async (resolve, reject) => {
-            try {
-                const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm');
-                const createClient = module.createClient || module.default?.createClient;
-                if (!createClient) {
-                    const supabase = module.default || module;
-                    this._client = supabase.createClient(
-                        CONFIG.SUPABASE_URL,
-                        CONFIG.SUPABASE_ANON_KEY
-                    );
-                } else {
-                    this._client = createClient(
-                        CONFIG.SUPABASE_URL,
-                        CONFIG.SUPABASE_ANON_KEY
-                    );
-                }
-                resolve(this._client);
-            } catch (err) {
-                console.error('Failed to initialize Supabase client:', err);
-                reject(err);
-            }
+        this._clientPromise = window.getSupabaseClient().then(client => {
+            this._client = client;
+            return client;
+        }).catch(err => {
+            console.error('Failed to initialize Supabase client in account:', err);
+            throw err;
         });
 
         return this._clientPromise;
