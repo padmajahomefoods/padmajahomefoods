@@ -699,11 +699,13 @@ function updateCartUI() {
         return;
     }
 
+    const escapeHTML = (str) => String(str).replace(/[&<>'"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[m]);
+
     cartItems.innerHTML = items.map((item, index) => `
         <div class="cart-item">
             <div class="cart-item-info">
-                <h4>${item.name}</h4>
-                <span class="cart-item-weight">${item.weight}</span>
+                <h4>${escapeHTML(item.name)}</h4>
+                <span class="cart-item-weight">${escapeHTML(item.weight)}</span>
                 <span class="cart-item-price">&#x20B9;${item.price} each</span>
             </div>
             <div class="cart-item-controls">

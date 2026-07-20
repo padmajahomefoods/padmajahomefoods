@@ -3,6 +3,9 @@
 // Supabase Auth (Email + Password) for shop customers
 // ============================================
 
+// Helper to escape HTML and prevent XSS
+const escapeHTML = (str) => String(str || '').replace(/[&<>'"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[m]);
+
 const Account = {
     _client: null,
     _clientPromise: null,
@@ -644,8 +647,8 @@ const Account = {
         const mobileProfileBtn = document.getElementById('mobileProfileBtn');
 
         if (this.isLoggedIn() && this._currentUser) {
-            const displayName = this._currentUser.user_metadata?.full_name || 
-                               this._currentUser.email?.split('@')[0] || 'Account';
+            const displayName = escapeHTML(this._currentUser.user_metadata?.full_name || 
+                               this._currentUser.email?.split('@')[0] || 'Account');
             if (authBtn) {
                 authBtn.innerHTML = '<i class="fas fa-user-circle"></i> <span>' + displayName + '</span>';
                 authBtn.onclick = () => this.toggleAccountMenu();
@@ -917,16 +920,16 @@ async function loadProfileTab() {
             <form id="profileForm" onsubmit="handleProfileUpdate(event)">
                 <div class="form-group">
                     <label>Full Name</label>
-                    <input type="text" id="profileFullName" value="${profile?.full_name || user?.user_metadata?.full_name || ''}" placeholder="Your full name" required>
+                    <input type="text" id="profileFullName" value="${escapeHTML(profile?.full_name || user?.user_metadata?.full_name || '')}" placeholder="Your full name" required>
                 </div>
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" value="${user?.email || ''}" disabled class="disabled-input">
+                    <input type="email" value="${escapeHTML(user?.email || '')}" disabled class="disabled-input">
                     <small>Email cannot be changed</small>
                 </div>
                 <div class="form-group">
                     <label>Phone Number</label>
-                    <input type="tel" id="profilePhone" value="${phone}" placeholder="Your phone number" maxlength="10">
+                    <input type="tel" id="profilePhone" value="${escapeHTML(phone)}" placeholder="Your phone number" maxlength="10">
                 </div>
                 <button type="submit" class="btn-primary" style="width: auto; padding: 12px 28px;">
                     <i class="fas fa-save"></i> Save Changes
@@ -968,14 +971,14 @@ async function loadAddressesTab() {
             html += `
                 <div class="address-card">
                     <div class="address-card-header">
-                        <span class="address-label">${addr.label}</span>
+                        <span class="address-label">${escapeHTML(addr.label)}</span>
                         ${addr.is_default ? '<span class="address-default-badge">Default</span>' : ''}
                     </div>
                     <div class="address-card-body">
-                        <p class="address-name">${addr.full_name}</p>
-                        <p class="address-text">${addr.address_line1}${addr.address_line2 ? ', ' + addr.address_line2 : ''}</p>
-                        <p class="address-city">${addr.city}, ${addr.state} - ${addr.pincode}</p>
-                        <p class="address-phone"><i class="fas fa-phone"></i> ${addr.phone}</p>
+                        <p class="address-name">${escapeHTML(addr.full_name)}</p>
+                        <p class="address-text">${escapeHTML(addr.address_line1)}${addr.address_line2 ? ', ' + escapeHTML(addr.address_line2) : ''}</p>
+                        <p class="address-city">${escapeHTML(addr.city)}, ${escapeHTML(addr.state)} - ${escapeHTML(addr.pincode)}</p>
+                        <p class="address-phone"><i class="fas fa-phone"></i> ${escapeHTML(addr.phone)}</p>
                     </div>
                     <div class="address-card-actions">
                         <button onclick="editAddress('${addr.id}')" class="btn-edit"><i class="fas fa-edit"></i> Edit</button>
@@ -1165,13 +1168,13 @@ async function loadOrdersTab() {
                     <div class="order-card-body">
                         <p class="order-items-count">${itemCount} item${itemCount !== 1 ? 's' : ''}</p>
                         <p class="order-total">Total: <strong>₹${total}</strong></p>
-                        ${order.delivery_address ? `<p class="order-address"><i class="fas fa-map-marker-alt"></i> ${order.delivery_address.city || ''}</p>` : ''}
+                        ${order.delivery_address ? `<p class="order-address"><i class="fas fa-map-marker-alt"></i> ${escapeHTML(order.delivery_address.city || '')}</p>` : ''}
                     </div>
                     <div class="order-card-items">
                         ${(order.order_items || []).map(item => `
                             <div class="order-item-row">
-                                <span class="order-item-name">${item.product_name}</span>
-                                <span class="order-item-detail">${item.weight} × ${item.quantity}</span>
+                                <span class="order-item-name">${escapeHTML(item.product_name)}</span>
+                                <span class="order-item-detail">${escapeHTML(item.weight)} × ${item.quantity}</span>
                                 <span class="order-item-price">₹${Number(item.total).toLocaleString('en-IN')}</span>
                             </div>
                         `).join('')}
