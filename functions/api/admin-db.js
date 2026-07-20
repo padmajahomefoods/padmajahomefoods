@@ -69,6 +69,13 @@ export async function onRequestPost(context) {
             console.error("[admin-db] Missing table or action");
             return new Response(JSON.stringify({ error: 'Table and action are required' }), { status: 400, headers: corsHeaders });
         }
+
+        // --- SECURITY FIX: Strict Table Allowlist ---
+        const ALLOWED_TABLES = ['products', 'categories', 'orders', 'order_items', 'profiles', 'addresses'];
+        if (!ALLOWED_TABLES.includes(table)) {
+            console.error(`[admin-db] SECURITY ALERT: Attempted to access forbidden table: ${table}`);
+            return new Response(JSON.stringify({ error: 'Forbidden table access' }), { status: 403, headers: corsHeaders });
+        }
         
         // 5. Execute DB operation with Service Role Key
         let endpoint = `${supabaseUrl}/rest/v1/${table}`;
