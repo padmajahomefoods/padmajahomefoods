@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin.html
 Disallow: /billdesk/
 
-Sitemap: https://padmajahomefoods.netlify.app/sitemap.xml
+Sitemap: https://padmajahomefoods.com/sitemap.xml
