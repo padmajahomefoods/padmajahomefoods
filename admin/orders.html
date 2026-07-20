@@ -594,8 +594,9 @@ async function saveOrderStatus() {
         }
         
         document.getElementById('detailStatus').textContent = newStatus.toUpperCase();
-        // Refresh list
-        renderOrdersList(allOrders);
+        
+        // Re-apply current search and status filters instead of rendering all orders
+        filterOrders();
         
     } catch(err) {
         alert('Failed to update status: ' + err.message);
