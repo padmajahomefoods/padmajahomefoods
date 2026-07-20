@@ -21,8 +21,8 @@ const CartService = {
         console.log('[CartService.init] Starting initialization...');
         
         // Load app settings from database before initializing cart UI
-        if (typeof DB !== 'undefined' && DB.loadSettings) {
-            await DB.loadSettings();
+        if (typeof SettingsService !== 'undefined' && SettingsService.loadSettings) {
+            await SettingsService.loadSettings();
         }
         
         this._loadLocalCart();
@@ -739,15 +739,27 @@ function updateCartUI() {
     }
 
     const progressHtml = `
-        <div class="free-delivery-progress" style="background: #F8FAFC; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-size: 0.9rem; font-weight: 600; color: var(--primary);">🚚 FREE Delivery on orders above ₹${threshold}</span>
-                <span style="font-size: 0.85rem; color: var(--text-gray); font-weight: 500;">₹${totalPrice} / ₹${threshold}</span>
+        <div class="free-delivery-progress" style="background: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 16px; margin-bottom: 16px; position: relative;">
+            
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: ${progressPercent >= 100 ? '#e6f4ea' : '#fce8e8'}; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-truck" style="color: ${progressPercent >= 100 ? '#1e8e3e' : '#D84A3A'}; font-size: 0.9rem;"></i>
+                    </div>
+                    <span style="font-size: 0.95rem; font-weight: 700; color: var(--text-dark);">Free Delivery Progress</span>
+                </div>
+                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-gray);">₹${totalPrice} <span style="font-weight: 400; color: #999;">of</span> ₹${threshold}</span>
             </div>
-            <div class="progress-bar-bg" style="width: 100%; background: #E2E8F0; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
-                <div class="progress-bar-fill" style="width: ${progressPercent}%; background: ${progressPercent === 100 ? '#48BB78' : 'var(--primary)'}; height: 100%; transition: width 0.3s ease, background 0.3s ease;"></div>
+
+            <div class="progress-bar-bg" style="width: 100%; background: #F1F5F9; height: 12px; border-radius: 6px; overflow: visible; margin-bottom: 12px; position: relative;">
+                <div class="progress-bar-fill" style="position: relative; width: ${progressPercent}%; background: ${progressPercent >= 100 ? '#1e8e3e' : 'linear-gradient(90deg, #B22222, #D84A3A)'}; height: 100%; border-radius: 6px; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;">
+                    ${progressPercent > 0 && progressPercent < 100 ? `<div style="position: absolute; right: -6px; top: -2px; width: 16px; height: 16px; background: #fff; border: 3px solid #D84A3A; border-radius: 50%; box-shadow: 0 0 8px rgba(216, 74, 58, 0.6);"></div>` : ''}
+                </div>
             </div>
-            <p style="margin: 0; font-size: 0.85rem; color: ${progressPercent === 100 ? '#48BB78' : 'var(--text-gray)'}; font-weight: 500;">${progressMessage}</p>
+
+            <p style="margin: 0; font-size: 0.85rem; color: ${progressPercent >= 100 ? '#1e8e3e' : 'var(--text-dark)'}; font-weight: 500; text-align: center;">
+                ${progressPercent >= 100 ? '🎉 Congratulations! FREE Delivery unlocked.' : `Add <strong>₹${threshold - totalPrice}</strong> more to unlock FREE Delivery 🚚`}
+            </p>
         </div>
     `;
 
