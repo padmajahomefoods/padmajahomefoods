@@ -3516,6 +3516,7 @@ html, body {
         width: 95%;
         max-height: 50vh;
         background: transparent;
+        aspect-ratio: auto;
     }
     
     .pdp-main-image img {
