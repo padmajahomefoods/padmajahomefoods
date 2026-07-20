@@ -739,27 +739,30 @@ function updateCartUI() {
     }
 
     const progressHtml = `
-        <div class="free-delivery-progress" style="background: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 10px 14px; margin-bottom: 16px; position: relative;">
-            
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 28px; height: 28px; border-radius: 50%; background: ${progressPercent >= 100 ? '#e6f4ea' : '#fce8e8'}; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-truck" style="color: ${progressPercent >= 100 ? '#1e8e3e' : '#D84A3A'}; font-size: 0.75rem;"></i>
+        <div class="free-delivery-progress" style="margin-bottom: 8px; padding: 4px 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+                <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-dark);">🚚 Free Delivery</span>
+                <span style="font-size: 0.8rem; font-weight: 600; color: ${progressPercent >= 100 ? '#1e8e3e' : 'var(--text-gray)'};">
+                    ${progressPercent >= 100 ? '🎉 Unlocked!' : `Add ₹${threshold - totalPrice} more`}
+                </span>
+            </div>
+
+            <div style="position: relative; margin-bottom: 16px;">
+                <!-- Track -->
+                <div class="progress-bar-bg" style="width: 100%; background: #E2E8F0; height: 4px; border-radius: 2px; position: relative;">
+                    <!-- Fill -->
+                    <div class="progress-bar-fill" style="position: absolute; left: 0; top: 0; width: ${progressPercent}%; background: ${progressPercent >= 100 ? '#1e8e3e' : '#D84A3A'}; height: 100%; border-radius: 2px; transition: width 0.5s ease;">
+                        <!-- Current Progress Circle -->
+                        ${progressPercent > 0 && progressPercent < 100 ? `<div style="position: absolute; right: -4px; top: -2px; width: 8px; height: 8px; background: #D84A3A; border-radius: 50%;"></div>` : ''}
                     </div>
-                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-dark);">Free Delivery Progress</span>
+                    <!-- Target Circle -->
+                    <div style="position: absolute; right: -4px; top: -2px; width: 8px; height: 8px; background: #fff; border: 1px solid ${progressPercent >= 100 ? '#1e8e3e' : '#D84A3A'}; border-radius: 50%; box-sizing: border-box;"></div>
                 </div>
-                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-gray);">₹${totalPrice} <span style="font-weight: 400; color: #999;">of</span> ₹${threshold}</span>
+                
+                <!-- Amounts -->
+                <div style="position: absolute; left: 0; top: 8px; font-size: 0.75rem; font-weight: 700; color: var(--text-dark);">₹${totalPrice}</div>
+                <div style="position: absolute; right: 0; top: 8px; font-size: 0.75rem; font-weight: 600; color: var(--text-gray);">₹${threshold}</div>
             </div>
-
-            <div class="progress-bar-bg" style="width: 100%; background: #F1F5F9; height: 8px; border-radius: 4px; overflow: visible; margin-bottom: 8px; position: relative;">
-                <div class="progress-bar-fill" style="position: relative; width: ${progressPercent}%; background: ${progressPercent >= 100 ? '#1e8e3e' : 'linear-gradient(90deg, #B22222, #D84A3A)'}; height: 100%; border-radius: 4px; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;">
-                    ${progressPercent > 0 && progressPercent < 100 ? `<div style="position: absolute; right: -5px; top: -2px; width: 12px; height: 12px; background: #fff; border: 2px solid #D84A3A; border-radius: 50%; box-shadow: 0 0 6px rgba(216, 74, 58, 0.6);"></div>` : ''}
-                </div>
-            </div>
-
-            <p style="margin: 0; font-size: 0.8rem; color: ${progressPercent >= 100 ? '#1e8e3e' : 'var(--text-dark)'}; font-weight: 500; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                ${progressPercent >= 100 ? '🎉 Congratulations! FREE Delivery unlocked.' : `Add <strong>₹${threshold - totalPrice}</strong> more for FREE Delivery 🚚`}
-            </p>
         </div>
     `;
 
