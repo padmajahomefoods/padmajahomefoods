@@ -150,6 +150,40 @@
             font-size: 3rem;
             color: var(--border);
         }
+        
+        /* Admin Toast Notification */
+        .admin-toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .admin-toast {
+            background-color: #10B981;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateX(120%);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .admin-toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        .admin-toast i {
+            font-size: 1.2rem;
+        }
     </style>
 </head>
 <body style="background-color: #FAFAFA; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; min-height: 100vh;">
@@ -309,6 +343,31 @@
 <script src="admin.js"></script>
 
 <script>
+function showAdminToast(message) {
+    let container = document.getElementById('adminToastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'adminToastContainer';
+        container.className = 'admin-toast-container';
+        document.body.appendChild(container);
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = 'admin-toast';
+    toast.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+    
+    container.appendChild(toast);
+    
+    // Trigger animation
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
 let allOrders = [];
 let currentOrder = null;
 
@@ -583,7 +642,7 @@ async function saveOrderStatus() {
             
         if (error) throw error;
         
-        alert('Order status updated successfully!');
+        showAdminToast('Order status updated successfully.');
         
         // Update local state
         currentOrder.status = newStatus;
