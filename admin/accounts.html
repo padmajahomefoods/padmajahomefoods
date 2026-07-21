@@ -1101,7 +1101,7 @@ function openCustomerProfile(c) {
     c.ords.sort((a,b)=>new Date(b.created_at) - new Date(a.created_at)).forEach(o => {
         html += `<tr>
             <td>${new Date(o.created_at).toLocaleDateString()}</td>
-            <td style="font-family:monospace; color:var(--primary); cursor:pointer;" onclick="window.open('orders.html', '_blank')">${o.order_number} <i class="fas fa-external-link-alt" style="font-size:0.7rem;"></i></td>
+            <td style="font-family:monospace; color:var(--primary); cursor:pointer;" onclick="window.open('orders.html?order=' + '${o.order_number}', '_blank')">${o.order_number} <i class="fas fa-external-link-alt" style="font-size:0.7rem;"></i></td>
             <td><span style="background:#eee; padding:2px 6px; border-radius:4px;">${o.status}</span></td>
             <td style="font-weight:600;">₹${Number(o.total_amount).toLocaleString()}</td>
         </tr>`;
@@ -1230,7 +1230,7 @@ function openCalDrilldown(day, month, year, data) {
     data.list.forEach(o => {
         const name = getCustomerName(o);
         const testBadge = o.is_test_order ? `<span class="test-badge">TEST</span>` : '';
-        html += `<tr onclick="window.open('orders.html', '_blank')">
+        html += `<tr onclick="window.open('orders.html?order=${o.order_number}', '_blank')" style="cursor:pointer;">
             <td style="font-family:monospace; color:var(--primary);">${o.order_number}${testBadge}</td>
             <td>${name}</td>
             <td style="font-weight:600;">₹${Number(o.total_amount).toLocaleString('en-IN')}</td>

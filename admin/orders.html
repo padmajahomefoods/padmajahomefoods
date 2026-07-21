@@ -461,6 +461,26 @@ async function loadOrders() {
         
         console.log(`loadOrders() - Final Array (count: ${allOrders.length}) passed to renderer:`, allOrders);
         renderOrdersList(allOrders);
+        
+        // Check for order in URL and auto-select
+        const params = new URLSearchParams(window.location.search);
+        const targetOrderNo = params.get('order');
+        if (targetOrderNo) {
+            const targetOrder = allOrders.find(o => o.order_number === targetOrderNo);
+            if (targetOrder) {
+                // Find its element in the DOM to highlight it
+                const listItems = document.querySelectorAll('.order-list-item');
+                let targetEl = null;
+                listItems.forEach(el => {
+                    if (el.innerHTML.includes(targetOrderNo)) {
+                        targetEl = el;
+                    }
+                });
+                selectOrder(targetOrder.id, targetEl);
+                // Also optionally scroll to it
+                if(targetEl) targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
     } catch (err) {
         console.error('Failed to load orders:', err);
     }
