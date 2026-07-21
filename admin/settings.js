@@ -173,7 +173,7 @@ async function saveShippingSettings() {
     try {
         const res = await SettingsService.updateSetting('delivery', payload);
         if (res.success) {
-            showToast('Shipping Settings saved successfully!', 'success');
+            showToast('Shipping settings updated successfully', 'success');
             // Update in-memory config so current session reflects it
             if (typeof CONFIG !== 'undefined' && CONFIG.DELIVERY) {
                 CONFIG.DELIVERY.FREE_DELIVERY_THRESHOLD = threshold;
@@ -193,18 +193,13 @@ async function saveShippingSettings() {
 }
 
 // Toast Notification Helper
-function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
-    if (!toast) return;
-    
-    toast.textContent = message;
-    toast.className = `toast toast-${type} active`;
-    
-    // Add font awesome icon based on type
-    const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
-    toast.innerHTML = `<i class="fas ${icon}"></i> ${message}`;
-    
-    setTimeout(() => {
-        toast.className = 'toast';
-    }, 3000);
+function showToast(msg, type = 'info') {
+    const c = document.getElementById('adminToastContainer');
+    if (!c) return;
+    const t = document.createElement('div');
+    t.className = 'admin-toast ' + type;
+    const i = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+    t.innerHTML = '<i class="fas ' + i + '"></i> <span>' + msg + '</span>';
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
 }
