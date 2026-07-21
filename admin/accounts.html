@@ -105,13 +105,14 @@
         .test-badge { background: #FFF5F5; color: #E53E3E; border: 1px solid #FEB2B2; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 5px; }
 
         @media print {
-            body { background: white; }
-            .analytics-controls, .launcher-header, .admin-tabs, .admin-header-actions, .drilldown-modal { display: none !important; }
-            .print-header { display: block; }
-            .card { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; }
-            .charts-grid, .tables-grid { display: block; }
-            .chart-container, .table-card { break-inside: avoid; margin-bottom: 20px; page-break-inside: avoid; border: 1px solid #ccc; box-shadow: none; }
-            #printArea { padding: 0; }
+            body { background: white; margin: 0; padding: 0; }
+            body * { visibility: hidden; }
+            #dashboard { margin: 0 !important; padding: 0 !important; }
+            #printArea, #printArea * { visibility: visible; }
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 20px; }
+            .card, .table-card, .chart-container { break-inside: avoid; page-break-inside: avoid; border: 1px solid #eee; box-shadow: none; margin-bottom: 20px; }
+            .analytics-controls, .launcher-header, .admin-tabs, .drilldown-modal, .export-actions { display: none !important; }
         }
     </style>
 </head>
@@ -1245,24 +1246,34 @@ function openCalDrilldown(day, month, year, data) {
 
 // --- EXPORT FUNCTIONALITY ---
 function getExportFileName(ext) {
-    const period = document.getElementById('periodSelect').value;
-    const { start, end } = getDateRange(period);
-    let name = "PHF_Accounting_";
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const fullMonths = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    
-    if (period === 'thisMonth' || period === 'lastMonth') {
-        name += fullMonths[start.getMonth()] + "_" + start.getFullYear();
-    } else if (period === 'thisYear' || period === 'lastYear') {
-        name += start.getFullYear();
-    } else if (period === 'today' || period === 'yesterday') {
-        name += ("0"+start.getDate()).slice(-2) + "-" + months[start.getMonth()] + "-" + start.getFullYear();
-    } else {
-        const sD = ("0"+start.getDate()).slice(-2) + "-" + months[start.getMonth()] + "-" + start.getFullYear();
-        const eD = ("0"+end.getDate()).slice(-2) + "-" + months[end.getMonth()] + "-" + end.getFullYear();
-        name += (sD === eD) ? sD : sD + "_to_" + eD;
+    try {
+        const periodSelect = document.getElementById('dateRange');
+        if (!periodSelect || !periodSelect.value) {
+            return "PHF_Accounting_Report." + ext;
+        }
+        
+        const period = periodSelect.value;
+        const { start, end } = getDateRange(period);
+        let name = "PHF_Accounting_";
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const fullMonths = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        
+        if (period === 'this_month' || period === 'last_month') {
+            name += fullMonths[start.getMonth()] + "_" + start.getFullYear();
+        } else if (period === 'this_year' || period === 'last_year') {
+            name += start.getFullYear();
+        } else if (period === 'today' || period === 'yesterday') {
+            name += ("0"+start.getDate()).slice(-2) + "-" + months[start.getMonth()] + "-" + start.getFullYear();
+        } else {
+            const sD = ("0"+start.getDate()).slice(-2) + "-" + months[start.getMonth()] + "-" + start.getFullYear();
+            const eD = ("0"+end.getDate()).slice(-2) + "-" + months[end.getMonth()] + "-" + end.getFullYear();
+            name += (sD === eD) ? sD : sD + "_to_" + eD;
+        }
+        return name + "." + ext;
+    } catch (err) {
+        console.error("Filename generation error:", err);
+        return "PHF_Accounting_Report." + ext;
     }
-    return name + "." + ext;
 }
 
 function getFinancialSummary() {
