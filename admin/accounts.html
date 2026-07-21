@@ -236,7 +236,6 @@
                                 <th>Product</th>
                                 <th>Units Sold</th>
                                 <th>Revenue</th>
-                                <th>Est. Profit</th>
                                 <th>Unique Customers</th>
                                 <th>Last Sold</th>
                             </tr>
@@ -283,10 +282,11 @@
                                 <th>Status</th>
                                 <th style="text-align:right;">Prod. Value</th>
                                 <th style="text-align:right;">Ship Charged</th>
+                                <th style="text-align:right; color:#E53E3E;">Raw Material Cost</th>
                                 <th style="text-align:right; color:#E53E3E;">Courier Cost</th>
                                 <th style="text-align:right; color:#E53E3E;">Gateway</th>
                                 <th style="text-align:right; font-weight:700;">Total Paid</th>
-                                <th style="text-align:right; color:#10B981;">Net Profit</th>
+                                <th style="text-align:right; color:#10B981;">Gross Profit</th>
                             </tr>
                         </thead>
                         <tbody id="monthReportBody"></tbody>
@@ -307,7 +307,7 @@
                             <th>Orders</th>
                             <th>Gross Revenue</th>
                             <th>Shipping Charged</th>
-                            <th style="color:#E53E3E;">Total Expenses (COGS+Courier+Gateway+Manual)</th>
+                            <th style="color:#E53E3E;">Total Expenses (Raw Material Cost+Courier+Gateway+Manual)</th>
                             <th style="color:#10B981;">Net Profit</th>
                         </tr>
                     </thead>
@@ -351,13 +351,11 @@
                         <div class="form-group">
                             <label>Category</label>
                             <select id="expCategory" required>
-                                <option value="Raw Materials">Raw Materials</option>
-                                <option value="Packing">Packing</option>
-                                <option value="Courier">Courier / Shipping</option>
-                                <option value="Fuel">Fuel</option>
-                                <option value="Marketing">Marketing</option>
                                 <option value="Electricity">Electricity</option>
-                                <option value="Internet">Internet</option>
+                                <option value="Gas">Gas</option>
+                                <option value="Packaging Material">Packaging Material</option>
+                                <option value="Printer & Ink">Printer & Ink</option>
+                                <option value="Sticker Paper">Sticker Paper</option>
                                 <option value="Equipment">Equipment</option>
                                 <option value="Maintenance">Maintenance</option>
                                 <option value="Miscellaneous">Miscellaneous</option>
@@ -618,32 +616,17 @@ function calculateOrderProfit(o) {
     
     const shipChg = Math.max(0, Number(delCharge) - Number(delDiscount));
     
-    // Calculate estProd
+    // Calculate estProd (Raw Material Cost)
     let estProd = 0;
-    if (o.estimated_product_cost !== null && o.estimated_product_cost !== undefined) {
+    if (o.estimated_product_cost !== null && o.estimated_product_cost !== undefined && o.estimated_product_cost !== '') {
         estProd = Number(o.estimated_product_cost);
-    } else {
-        // Fallback: sum of cost_price * quantity
-        const items = rawItems.filter(i => i.order_id === o.id);
-        if (items.length > 0) {
-            items.forEach(i => {
-                const prod = rawProducts.find(p => p.name === i.product_name);
-                if (prod && prod.cost_price) {
-                    estProd += (Number(prod.cost_price) * Number(i.quantity || 1));
-                } else {
-                    estProd += (Number(i.total || 0) * ASSUMPTIONS.COGS_PERCENT);
-                }
-            });
-        } else {
-            estProd = rev * ASSUMPTIONS.COGS_PERCENT;
-        }
     }
 
-    const courier = o.actual_courier_cost !== null && o.actual_courier_cost !== undefined ? Number(o.actual_courier_cost) : 0;
+    const courier = o.actual_courier_cost !== null && o.actual_courier_cost !== undefined && o.actual_courier_cost !== '' ? Number(o.actual_courier_cost) : 0;
     
     let gateway = 0;
     if (o.payment_method !== 'cod' && o.payment_id) {
-        gateway = o.gateway_charges !== null && o.gateway_charges !== undefined ? Number(o.gateway_charges) : (rev * ASSUMPTIONS.GATEWAY_FEE);
+        gateway = o.gateway_charges !== null && o.gateway_charges !== undefined && o.gateway_charges !== '' ? Number(o.gateway_charges) : 0;
     }
 
     const net = rev - estProd - courier - gateway;
@@ -738,8 +721,8 @@ function updateOverviewCards() {
 
         const manualExp = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
         const totalExp = manualExp + estProdTot + courierTot + gatewayTot;
-        const gross = rev - estProdTot; // Gross profit excludes operational costs
-        const net = rev - totalExp;
+        const gross = rev - estProdTot - courierTot - gatewayTot;
+        const net = gross - manualExp;
 
         return { rev, orders: orders.length, totalExp, gross, net, codAmt, freeShipCnt, freeShipExp };
     };
@@ -905,19 +888,12 @@ function renderTopProducts() {
     const tbody = document.querySelector('#topProductsTable tbody');
     tbody.innerHTML = '';
     pList.forEach(p => {
-        // Approximate product level profit
-        const prodDef = rawProducts.find(rp => rp.name === p.name);
-        // If cost_price exists, use it to estimate profit for the units sold. 
-        // We don't have perfect unit cost tracking historically per item yet.
-        const costPerc = ASSUMPTIONS.COGS_PERCENT;
-        const estProfit = p.r - (p.r * costPerc);
         const lsDate = p.lastSold ? p.lastSold.toLocaleDateString('en-IN') : 'N/A';
         
         tbody.innerHTML += `<tr>
             <td style="font-weight:500;">${p.name}</td>
             <td>${p.q}</td>
             <td style="color:var(--primary); font-weight:600;">₹${p.r.toLocaleString('en-IN')}</td>
-            <td style="color:#10B981; font-weight:600;">₹${estProfit.toLocaleString('en-IN')}</td>
             <td>${p.custs.size}</td>
             <td style="font-size:0.85rem;">${lsDate}</td>
         </tr>`;
@@ -935,7 +911,7 @@ function renderMonthReport() {
         return;
     }
     
-    let tOrd=0, tProdVal=0, tShipChg=0, tCour=0, tGate=0, tPaid=0, tNet=0;
+    let tOrd=0, tProdVal=0, tShipChg=0, tProdCost=0, tCour=0, tGate=0, tPaid=0, tGross=0;
     
     filteredData.orders.forEach(o => {
         const p = calculateOrderProfit(o);
@@ -943,8 +919,11 @@ function renderMonthReport() {
         const prodVal = p.rev - p.shipChg; // Revenue minus shipping charged
         const testBadge = o.is_test_order ? `<span class="test-badge">TEST</span>` : '';
         
-        tOrd++; tProdVal += prodVal; tShipChg += p.shipChg; tCour += p.courier;
-        tGate += p.gateway; tPaid += p.rev; tNet += p.net;
+        // Gross Profit for the order
+        const orderGross = p.rev - p.estProd - p.courier - p.gateway;
+        
+        tOrd++; tProdVal += prodVal; tShipChg += p.shipChg; tProdCost += p.estProd; tCour += p.courier;
+        tGate += p.gateway; tPaid += p.rev; tGross += orderGross;
         
         tbody.innerHTML += `<tr>
             <td style="white-space:nowrap;">${new Date(o.created_at).toLocaleDateString('en-IN')}</td>
@@ -954,10 +933,11 @@ function renderMonthReport() {
             <td><span style="font-size:0.75rem; background:#eee; padding:2px 6px; border-radius:4px;">${o.status.toUpperCase()}</span></td>
             <td style="text-align:right;">₹${prodVal.toLocaleString()}</td>
             <td style="text-align:right;">₹${p.shipChg.toLocaleString()}</td>
+            <td style="text-align:right; color:#E53E3E;">₹${p.estProd.toLocaleString()}</td>
             <td style="text-align:right; color:#E53E3E;">₹${p.courier.toLocaleString()}</td>
             <td style="text-align:right; color:#E53E3E;">₹${p.gateway.toLocaleString()}</td>
             <td style="text-align:right; font-weight:600;">₹${p.rev.toLocaleString()}</td>
-            <td style="text-align:right; color:#10B981; font-weight:600;">₹${p.net.toLocaleString()}</td>
+            <td style="text-align:right; color:#10B981; font-weight:600;">₹${orderGross.toLocaleString()}</td>
         </tr>`;
     });
     
@@ -965,10 +945,11 @@ function renderMonthReport() {
         <td colspan="5" style="text-align:right;"><strong>TOTALS (${tOrd} Orders):</strong></td>
         <td style="text-align:right;">₹${tProdVal.toLocaleString()}</td>
         <td style="text-align:right;">₹${tShipChg.toLocaleString()}</td>
+        <td style="text-align:right; color:#E53E3E;">₹${tProdCost.toLocaleString()}</td>
         <td style="text-align:right; color:#E53E3E;">₹${tCour.toLocaleString()}</td>
         <td style="text-align:right; color:#E53E3E;">₹${tGate.toLocaleString()}</td>
         <td style="text-align:right; font-weight:700;">₹${tPaid.toLocaleString()}</td>
-        <td style="text-align:right; color:#10B981; font-weight:700;">₹${tNet.toLocaleString()}</td>
+        <td style="text-align:right; color:#10B981; font-weight:700;">₹${tGross.toLocaleString()}</td>
     </tr>`;
 }
 

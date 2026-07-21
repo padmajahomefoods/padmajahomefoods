@@ -337,10 +337,10 @@
                             </div>
                             
                             <div id="deliveredFields" class="tracking-fields">
-                                <div class="form-group">
-                                    <label>Estimated Product Cost (₹)</label>
-                                    <input type="number" id="estProductCost" placeholder="e.g. 450">
-                                    <small style="color: var(--text-gray); font-size: 0.75rem;">Total cost of goods (ingredients + labor).</small>
+                                <div class="form-group" style="margin-top: 15px; border: 1px solid #E2E8F0; padding: 12px; border-radius: 6px; background: #F8FAFC; margin-bottom: 15px;">
+                                    <label style="color: var(--primary);">Raw Material Cost (₹) <span style="font-size: 0.75rem; color: #718096; font-weight: normal;">(Admin only)</span></label>
+                                    <input type="number" id="estProductCost" placeholder="e.g. 290">
+                                    <small style="color: var(--text-gray); font-size: 0.75rem;">Enter only the raw materials used for this order. Do NOT include packing materials, courier, gateway charges, electricity, gas or equipment.</small>
                                 </div>
                                 <div class="form-group">
                                     <label>Gateway Charges (₹)</label>
@@ -631,15 +631,8 @@ function selectOrder(orderId, element) {
     document.getElementById('isTestOrder').checked = !!currentOrder.is_test_order;
     document.getElementById('testReason').value = currentOrder.test_reason || 'Development';
     
-    // Calculate or prefill Est Product Cost
-    if (currentOrder.estimated_product_cost) {
-        document.getElementById('estProductCost').value = currentOrder.estimated_product_cost;
-    } else {
-        // Attempt to estimate based on active products if not yet saved (we need to fetch rawProducts in the real app, but for now we'll just leave it blank or 50% fallback)
-        const est = currentOrder.total_amount ? (currentOrder.total_amount * 0.5) : '';
-        document.getElementById('estProductCost').placeholder = `e.g. ${est} (Est 50%)`;
-        document.getElementById('estProductCost').value = '';
-    }
+    document.getElementById('estProductCost').value = currentOrder.estimated_product_cost || '';
+    document.getElementById('estProductCost').placeholder = 'e.g. 290';
 
     if (currentOrder.is_test_order) {
         document.getElementById('detailTestBadge').style.display = 'inline-block';
