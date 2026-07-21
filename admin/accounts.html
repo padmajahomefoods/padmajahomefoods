@@ -1303,6 +1303,32 @@ function getCity(o) {
     return '';
 }
 
+function getPaymentInfo(o) {
+    let method = "Cash on Delivery (COD)";
+    if (o.payment_id || (o.payment_method && o.payment_method.toLowerCase().includes('razorpay'))) {
+        method = "Razorpay";
+    }
+
+    let status = "Pending";
+    if (o.payment_status) {
+        status = o.payment_status.charAt(0).toUpperCase() + o.payment_status.slice(1);
+    } else {
+        if (o.status === 'failed' || o.status === 'payment_failed') {
+            status = 'Failed';
+        } else if (o.status === 'cancelled') {
+            status = 'Refunded';
+        } else if (o.payment_id || o.status === 'delivered') {
+            status = 'Paid';
+        }
+    }
+    
+    return {
+        method: method,
+        status: status,
+        id: o.payment_id || ''
+    };
+}
+
 function exportExcel() {
     const wb = XLSX.utils.book_new();
     const sum = getFinancialSummary();
@@ -1333,7 +1359,7 @@ function exportExcel() {
     XLSX.utils.book_append_sheet(wb, wsOverview, "Overview");
     
     // Sheet 2: Orders
-    const ordersData = [["Date", "Order ID", "Customer Name", "Mobile Number", "City", "Products", "Quantity", "Product Amount", "Shipping Charged", "Gross Amount", "Payment Method", "Payment Status", "Order Status", "Raw Material Cost", "Courier Cost", "Gateway Charges", "Net Profit", "Test Order", "Accounting Notes"]];
+    const ordersData = [["Date", "Order ID", "Customer Name", "City", "Products", "Quantity", "Product Amount", "Shipping Charged", "Gross Amount", "Payment Method", "Payment Status", "Payment ID", "Order Status", "Raw Material Cost", "Courier Cost", "Gateway Charges", "Net Profit", "Test Order", "Accounting Notes"]];
     
     filteredData.orders.forEach(o => {
         const p = calculateOrderProfit(o);
@@ -1342,22 +1368,23 @@ function exportExcel() {
         const orderGross = p.rev - p.estProd - p.courier - p.gateway;
         
         const city = getCity(o);
+        const payInfo = getPaymentInfo(o);
         const items = filteredData.items.filter(i => i.order_id === o.id);
         const productsStr = items.map(i => i.product_name).join(', ');
         const totalQty = items.reduce((s, i) => s + (i.quantity || 1), 0);
         
         ordersData.push([
             new Date(o.created_at).toLocaleDateString('en-IN'), o.order_number, name,
-            o.whatsapp_number || '', city, productsStr, totalQty, 
+            city, productsStr, totalQty, 
             `₹${prodVal.toLocaleString('en-IN')}`, `₹${p.shipChg.toLocaleString('en-IN')}`, `₹${p.rev.toLocaleString('en-IN')}`, 
-            (o.payment_method||'').toUpperCase(), o.payment_status || '', o.status.toUpperCase(), 
+            payInfo.method, payInfo.status, payInfo.id, o.status.toUpperCase(), 
             `₹${p.estProd.toLocaleString('en-IN')}`, `₹${p.courier.toLocaleString('en-IN')}`, `₹${p.gateway.toLocaleString('en-IN')}`, 
             `₹${orderGross.toLocaleString('en-IN')}`, o.is_test_order ? 'Yes' : 'No', o.accounting_notes || ''
         ]);
     });
     const wsOrders = XLSX.utils.aoa_to_sheet(ordersData);
     wsOrders['!views'] = [{state: 'frozen', ySplit: 1}];
-    wsOrders['!cols'] = [{wch: 12}, {wch: 18}, {wch: 20}, {wch: 15}, {wch: 15}, {wch: 30}, {wch: 10}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 18}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 10}, {wch: 25}];
+    wsOrders['!cols'] = [{wch: 12}, {wch: 18}, {wch: 20}, {wch: 15}, {wch: 30}, {wch: 10}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 25}, {wch: 15}, {wch: 18}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 10}, {wch: 25}];
     XLSX.utils.book_append_sheet(wb, wsOrders, "Orders");
     
     // Sheet 3: Business Expenses
