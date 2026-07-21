@@ -727,7 +727,16 @@ async function saveOrderStatus() {
         updatePayload.accounting_notes = document.getElementById('accountingNotes').value || null;
         
         // Audit log
-        const currentUser = Auth.getUser() ? Auth.getUser().email : 'Admin';
+        let currentUser = 'Admin';
+        try {
+            if (typeof Auth !== 'undefined' && typeof Auth.getCurrentUser === 'function') {
+                const user = await Auth.getCurrentUser();
+                if (user && user.email) currentUser = user.email;
+            }
+        } catch(e) {
+            console.error('Failed to get current user for audit', e);
+        }
+        
         updatePayload.accounting_updated_by = currentUser;
         updatePayload.accounting_updated_at = new Date().toISOString();
     }
