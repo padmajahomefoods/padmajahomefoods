@@ -1244,62 +1244,231 @@ function openCalDrilldown(day, month, year, data) {
 }
 
 // --- EXPORT FUNCTIONALITY ---
+function getExportFileName(ext) {
+    const period = document.getElementById('periodSelect').value;
+    const { start, end } = getDateRange(period);
+    let name = "PHF_Accounting_";
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const fullMonths = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    
+    if (period === 'thisMonth' || period === 'lastMonth') {
+        name += fullMonths[start.getMonth()] + "_" + start.getFullYear();
+    } else if (period === 'thisYear' || period === 'lastYear') {
+        name += start.getFullYear();
+    } else if (period === 'today' || period === 'yesterday') {
+        name += ("0"+start.getDate()).slice(-2) + "-" + months[start.getMonth()] + "-" + start.getFullYear();
+    } else {
+        const sD = ("0"+start.getDate()).slice(-2) + "-" + months[start.getMonth()] + "-" + start.getFullYear();
+        const eD = ("0"+end.getDate()).slice(-2) + "-" + months[end.getMonth()] + "-" + end.getFullYear();
+        name += (sD === eD) ? sD : sD + "_to_" + eD;
+    }
+    return name + "." + ext;
+}
+
+function getFinancialSummary() {
+    let rev=0, shipChg=0, rawCost=0, courCost=0, gate=0;
+    filteredData.orders.forEach(o => {
+        const p = calculateOrderProfit(o);
+        rev += p.rev; shipChg += p.shipChg; rawCost += p.estProd; courCost += p.courier; gate += p.gateway;
+    });
+    const manualExp = filteredData.expenses.reduce((s, e) => s + Number(e.amount), 0);
+    const prodRev = rev - shipChg;
+    const totalExp = manualExp + rawCost + courCost + gate;
+    const netProfit = rev - totalExp;
+    const orderCount = filteredData.orders.length;
+    const aov = orderCount ? (rev / orderCount) : 0;
+    return { rev, prodRev, shipChg, rawCost, courCost, gate, manualExp, totalExp, netProfit, orderCount, aov };
+}
+
 function exportExcel() {
     const wb = XLSX.utils.book_new();
+    const sum = getFinancialSummary();
+    const incTest = document.getElementById('includeTestOrders').checked ? 'Yes' : 'No';
+    const repDate = document.getElementById('reportDateRange').textContent;
     
-    // Base sheet depends on current tab
-    if(currentTab === 'month') {
-        const table = document.getElementById('monthReportTable');
-        const ws = XLSX.utils.table_to_sheet(table);
-        XLSX.utils.book_append_sheet(wb, ws, "Month Report");
-    } else if (currentTab === 'year') {
-        const table = document.getElementById('yearReportTable');
-        const ws = XLSX.utils.table_to_sheet(table);
-        XLSX.utils.book_append_sheet(wb, ws, "Year Report");
-    } else if (currentTab === 'customers') {
-        const table = document.getElementById('customerTable');
-        const ws = XLSX.utils.table_to_sheet(table);
-        XLSX.utils.book_append_sheet(wb, ws, "Customers");
-    } else {
-        // Default to Overview + Top Products
-        const overviewData = [
-            ["Padmaja Home Foods - Accounting Report"],
-            ["Date Range:", document.getElementById('reportDateRange').textContent],
-            ["Generated:", new Date().toLocaleString()],
-            [],
-            ["Metric", "Value"],
-            ["Gross Revenue", document.getElementById('cardRevenue').textContent],
-            ["Total Orders", document.getElementById('cardOrders').textContent],
-            ["Net Profit", document.getElementById('cardNet').textContent],
-            ["Total Expenses", document.getElementById('cardExpenses').textContent]
-        ];
-        const wsOverview = XLSX.utils.aoa_to_sheet(overviewData);
-        XLSX.utils.book_append_sheet(wb, wsOverview, "Overview");
-        
-        const table = document.getElementById('topProductsTable');
-        const wsProducts = XLSX.utils.table_to_sheet(table);
-        XLSX.utils.book_append_sheet(wb, wsProducts, "Top Products");
-    }
+    // Sheet 1: Overview
+    const overviewData = [
+        ["Padmaja Home Foods"], ["Business Accounting Report"], [],
+        ["Report Period:", repDate],
+        ["Generated On:", new Date().toLocaleString('en-IN')],
+        ["Include Test Orders:", incTest], [],
+        ["Financial Summary", ""],
+        ["Gross Revenue", sum.rev],
+        ["Product Revenue", sum.prodRev],
+        ["Shipping Collected", sum.shipChg],
+        ["Raw Material Cost", sum.rawCost],
+        ["Courier Cost", sum.courCost],
+        ["Gateway Charges", sum.gate],
+        ["Manual Business Expenses", sum.manualExp],
+        ["Total Expenses", sum.totalExp],
+        ["Net Profit", sum.netProfit],
+        ["Total Orders", sum.orderCount],
+        ["Average Order Value", sum.aov]
+    ];
+    const wsOverview = XLSX.utils.aoa_to_sheet(overviewData);
+    // formatting
+    wsOverview['!cols'] = [{wch: 30}, {wch: 20}];
+    XLSX.utils.book_append_sheet(wb, wsOverview, "Overview");
     
-    XLSX.writeFile(wb, `PHF_Accounting_${new Date().toISOString().split('T')[0]}.xlsx`);
+    // Sheet 2: Orders
+    const ordersData = [["Date", "Order ID", "Customer Name", "Phone Number", "Payment Method", "Payment Status", "Order Status", "Product Value", "Shipping Charged", "Order Total", "Raw Material Cost", "Courier Cost", "Gateway Charges", "Net Profit", "Accounting Notes"]];
+    filteredData.orders.forEach(o => {
+        const p = calculateOrderProfit(o);
+        const name = getCustomerName(o);
+        const prodVal = p.rev - p.shipChg;
+        const orderGross = p.rev - p.estProd - p.courier - p.gateway;
+        ordersData.push([
+            new Date(o.created_at).toLocaleDateString('en-IN'), o.order_number, name,
+            o.whatsapp_number || '', (o.payment_method||'').toUpperCase(), o.payment_status || '',
+            o.status.toUpperCase(), prodVal, p.shipChg, p.rev, p.estProd, p.courier, p.gateway, orderGross, o.accounting_notes || ''
+        ]);
+    });
+    const wsOrders = XLSX.utils.aoa_to_sheet(ordersData);
+    XLSX.utils.book_append_sheet(wb, wsOrders, "Orders");
+    
+    // Sheet 3: Business Expenses
+    const expData = [["Date", "Category", "Description", "Amount"]];
+    filteredData.expenses.forEach(e => {
+        expData.push([new Date(e.expense_date).toLocaleDateString('en-IN'), e.category, e.notes || '', Number(e.amount)]);
+    });
+    const wsExp = XLSX.utils.aoa_to_sheet(expData);
+    XLSX.utils.book_append_sheet(wb, wsExp, "Business Expenses");
+    
+    // Sheet 4: Customers
+    const custMap = {};
+    filteredData.orders.forEach(o => {
+        const p = o.whatsapp_number || 'Unknown';
+        if(!custMap[p]) custMap[p] = { name: getCustomerName(o), phone: p, ord:0, rev:0, last: null };
+        custMap[p].ord++; custMap[p].rev += calculateOrderProfit(o).rev;
+        const d = new Date(o.created_at);
+        if(!custMap[p].last || d > custMap[p].last) custMap[p].last = d;
+    });
+    const custData = [["Customer Name", "Phone Number", "Total Orders", "Lifetime Spend", "Average Order Value", "Last Order Date"]];
+    Object.values(custMap).sort((a,b)=>b.rev-a.rev).forEach(c => {
+        custData.push([c.name, c.phone, c.ord, c.rev, (c.rev/c.ord).toFixed(2), c.last.toLocaleDateString('en-IN')]);
+    });
+    const wsCust = XLSX.utils.aoa_to_sheet(custData);
+    XLSX.utils.book_append_sheet(wb, wsCust, "Customers");
+    
+    // Sheet 5: Top Products
+    const pMap = {};
+    filteredData.items.forEach(i => {
+        if(!pMap[i.product_name]) pMap[i.product_name] = { q:0, r:0 };
+        pMap[i.product_name].q += (i.quantity||1); pMap[i.product_name].r += Number(i.total);
+    });
+    const prodData = [["Product Name", "Quantity Sold", "Revenue"]];
+    Object.keys(pMap).map(k => ({n:k, q:pMap[k].q, r:pMap[k].r})).sort((a,b)=>b.q-a.q).forEach(p => {
+        prodData.push([p.n, p.q, p.r]);
+    });
+    const wsProd = XLSX.utils.aoa_to_sheet(prodData);
+    XLSX.utils.book_append_sheet(wb, wsProd, "Top Products");
+    
+    XLSX.writeFile(wb, getExportFileName('xlsx'));
 }
 
 function exportPDF() {
-    const element = document.getElementById('printArea');
+    const sum = getFinancialSummary();
+    const incTest = document.getElementById('includeTestOrders').checked ? 'Yes' : 'No';
+    const repDate = document.getElementById('reportDateRange').textContent;
+    
+    const div = document.createElement('div');
+    div.style.padding = '20px';
+    div.style.fontFamily = 'Arial, sans-serif';
+    div.style.color = '#333';
+    
+    const style = `
+        <style>
+            .pdf-title { font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #1e293b; }
+            .pdf-sub { font-size: 16px; margin-bottom: 20px; color: #64748b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+            .pdf-h2 { font-size: 18px; font-weight: bold; margin-top: 25px; margin-bottom: 10px; color: #1e293b; }
+            .pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
+            .pdf-table th, .pdf-table td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+            .pdf-table th { background: #f8fafc; font-weight: bold; color: #334155; }
+            .pdf-table tr:nth-child(even) { background: #fdfdfd; }
+            .right { text-align: right !important; }
+            .bold { font-weight: bold; }
+        </style>
+    `;
+    
+    let html = style + `
+        <div class="pdf-title">Padmaja Home Foods</div>
+        <div class="pdf-sub">Business Accounting Report</div>
+        
+        <table class="pdf-table" style="width: 50%;">
+            <tr><th style="width: 40%;">Report Period</th><td>${repDate}</td></tr>
+            <tr><th>Generated On</th><td>${new Date().toLocaleString('en-IN')}</td></tr>
+            <tr><th>Include Test Orders</th><td>${incTest}</td></tr>
+        </table>
+        
+        <div class="pdf-h2">Financial Summary</div>
+        <table class="pdf-table" style="width: 50%;">
+            <tr><th style="width: 60%;">Gross Revenue</th><td class="right">₹${sum.rev.toLocaleString('en-IN')}</td></tr>
+            <tr><th>Product Revenue</th><td class="right">₹${sum.prodRev.toLocaleString('en-IN')}</td></tr>
+            <tr><th>Shipping Collected</th><td class="right">₹${sum.shipChg.toLocaleString('en-IN')}</td></tr>
+            <tr><th>Raw Material Cost</th><td class="right">₹${sum.rawCost.toLocaleString('en-IN')}</td></tr>
+            <tr><th>Courier Cost</th><td class="right">₹${sum.courCost.toLocaleString('en-IN')}</td></tr>
+            <tr><th>Gateway Charges</th><td class="right">₹${sum.gate.toLocaleString('en-IN')}</td></tr>
+            <tr><th>Manual Business Expenses</th><td class="right">₹${sum.manualExp.toLocaleString('en-IN')}</td></tr>
+            <tr><th class="bold">Total Expenses</th><td class="right bold">₹${sum.totalExp.toLocaleString('en-IN')}</td></tr>
+            <tr><th class="bold" style="color:#10B981;">Net Profit</th><td class="right bold" style="color:#10B981;">₹${sum.netProfit.toLocaleString('en-IN')}</td></tr>
+            <tr><th>Total Orders</th><td class="right">${sum.orderCount}</td></tr>
+            <tr><th>Average Order Value</th><td class="right">₹${sum.aov.toLocaleString('en-IN')}</td></tr>
+        </table>
+    `;
+    
+    // Expense Breakdown
+    html += `<div class="pdf-h2">Expense Breakdown</div><table class="pdf-table">
+        <thead><tr><th>Category</th><th class="right">Amount</th></tr></thead><tbody>`;
+    const expMap = {};
+    filteredData.expenses.forEach(e => { expMap[e.category] = (expMap[e.category]||0) + Number(e.amount); });
+    Object.keys(expMap).forEach(k => { html += `<tr><td>${k}</td><td class="right">₹${expMap[k].toLocaleString('en-IN')}</td></tr>`; });
+    if(Object.keys(expMap).length === 0) html += `<tr><td colspan="2">No manual expenses.</td></tr>`;
+    html += `</tbody></table>`;
+    
+    // Top Selling Products
+    html += `<div class="pdf-h2">Top Selling Products</div><table class="pdf-table">
+        <thead><tr><th>Product Name</th><th class="right">Quantity Sold</th><th class="right">Revenue</th></tr></thead><tbody>`;
+    const pMap = {};
+    filteredData.items.forEach(i => {
+        if(!pMap[i.product_name]) pMap[i.product_name] = { q:0, r:0 };
+        pMap[i.product_name].q += (i.quantity||1); pMap[i.product_name].r += Number(i.total);
+    });
+    Object.keys(pMap).map(k => ({n:k, q:pMap[k].q, r:pMap[k].r})).sort((a,b)=>b.q-a.q).slice(0,10).forEach(p => {
+        html += `<tr><td>${p.n}</td><td class="right">${p.q}</td><td class="right">₹${p.r.toLocaleString('en-IN')}</td></tr>`;
+    });
+    if(Object.keys(pMap).length === 0) html += `<tr><td colspan="3">No products sold.</td></tr>`;
+    html += `</tbody></table>`;
+    
+    // Recent Orders (Latest 10)
+    html += `<div class="pdf-h2">Recent Orders (Latest 10)</div><table class="pdf-table">
+        <thead><tr><th>Date</th><th>Order ID</th><th>Customer</th><th class="right">Amount</th><th class="right">Gross Profit</th></tr></thead><tbody>`;
+    filteredData.orders.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,10).forEach(o => {
+        const p = calculateOrderProfit(o);
+        const orderGross = p.rev - p.estProd - p.courier - p.gateway;
+        html += `<tr>
+            <td>${new Date(o.created_at).toLocaleDateString('en-IN')}</td>
+            <td>${o.order_number}</td>
+            <td>${getCustomerName(o)}</td>
+            <td class="right">₹${p.rev.toLocaleString('en-IN')}</td>
+            <td class="right" style="color:#10B981;">₹${orderGross.toLocaleString('en-IN')}</td>
+        </tr>`;
+    });
+    if(filteredData.orders.length === 0) html += `<tr><td colspan="5">No orders.</td></tr>`;
+    html += `</tbody></table>`;
+    
+    div.innerHTML = html;
+    document.body.appendChild(div);
+    
     const opt = {
         margin:       10,
-        filename:     `PHF_Accounting_${new Date().toISOString().split('T')[0]}.pdf`,
+        filename:     getExportFileName('pdf'),
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' } // landscape better for wide tables
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     
-    const header = document.querySelector('.print-header');
-    header.style.display = 'block';
-    document.getElementById('printTitle').textContent = "Business Accounting: " + currentTab.toUpperCase();
-    
-    html2pdf().set(opt).from(element).save().then(() => {
-        header.style.display = 'none';
+    html2pdf().set(opt).from(div).save().then(() => {
+        document.body.removeChild(div);
     });
 }
 </script>
