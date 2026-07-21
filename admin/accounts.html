@@ -1400,20 +1400,29 @@ function exportExcel() {
     // Sheet 4: Customers
     const custMap = {};
     filteredData.orders.forEach(o => {
-        const p = o.whatsapp_number || 'Unknown';
-        if(!custMap[p]) custMap[p] = { name: getCustomerName(o), phone: p, ord:0, rev:0, first: null, last: null };
+        let name = getCustomerName(o);
+        let p = o.customer_id || o.profile_id || o.whatsapp_number || name.toLowerCase().trim();
+        
+        if (!p || p === 'unknown') {
+             p = name.toLowerCase().trim();
+        }
+        if (!p || p === 'unknown customer' || p === 'unknown' || p === '') {
+            p = 'Guest_' + o.id; 
+        }
+
+        if(!custMap[p]) custMap[p] = { name: name, ord:0, rev:0, first: null, last: null };
         custMap[p].ord++; custMap[p].rev += calculateOrderProfit(o).rev;
         const d = new Date(o.created_at);
         if(!custMap[p].last || d > custMap[p].last) custMap[p].last = d;
         if(!custMap[p].first || d < custMap[p].first) custMap[p].first = d;
     });
-    const custData = [["Customer Name", "Mobile Number", "Total Orders", "Lifetime Spend", "Average Order Value", "Customer Since", "Last Order Date"]];
+    const custData = [["Customer Name", "Total Orders", "Lifetime Spend", "Average Order Value", "Customer Since", "Last Order Date"]];
     Object.values(custMap).sort((a,b)=>b.rev-a.rev).forEach(c => {
-        custData.push([c.name, c.phone, c.ord, `₹${c.rev.toLocaleString('en-IN')}`, `₹${(c.rev/c.ord).toFixed(2)}`, c.first.toLocaleDateString('en-IN'), c.last.toLocaleDateString('en-IN')]);
+        custData.push([c.name, c.ord, `₹${c.rev.toLocaleString('en-IN')}`, `₹${(c.rev/c.ord).toFixed(2)}`, c.first.toLocaleDateString('en-IN'), c.last.toLocaleDateString('en-IN')]);
     });
     const wsCust = XLSX.utils.aoa_to_sheet(custData);
     wsCust['!views'] = [{state: 'frozen', ySplit: 1}];
-    wsCust['!cols'] = [{wch: 20}, {wch: 15}, {wch: 12}, {wch: 15}, {wch: 20}, {wch: 15}, {wch: 15}];
+    wsCust['!cols'] = [{wch: 25}, {wch: 12}, {wch: 15}, {wch: 20}, {wch: 15}, {wch: 15}];
     XLSX.utils.book_append_sheet(wb, wsCust, "Customers");
     
     // Sheet 5: Top Products
