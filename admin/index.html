@@ -408,6 +408,11 @@ function showDashboard() {
     console.log("Admin Dashboard - calling loadDashboardStats()");
     loadDashboardStats();
     console.log("Admin Dashboard - loadDashboardStats() called (async)");
+    
+    // Initialize real-time notifications on successful login
+    if (typeof initOrderNotifications === 'function') {
+        initOrderNotifications();
+    }
 }
 
 async function loadDashboardStats() {
