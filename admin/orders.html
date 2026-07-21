@@ -240,7 +240,10 @@
                                 <h2 style="margin: 0 0 5px 0; color: var(--primary);" id="detailOrderNumber">PHF000</h2>
                                 <p style="margin: 0; color: var(--text-gray); font-size: 0.9rem;" id="detailDate">Date</p>
                             </div>
-                            <span class="status-badge" style="background: #EBF8FF; color: #3182CE;" id="detailStatus">Status</span>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <span class="status-badge" style="background: #FFF5F5; color: #E53E3E; border: 1px solid #FEB2B2; display: none;" id="detailTestBadge"><i class="fas fa-vial"></i> TEST ORDER</span>
+                                <span class="status-badge" style="background: #EBF8FF; color: #3182CE;" id="detailStatus">Status</span>
+                            </div>
                         </div>
 
                         <div class="details-grid">
@@ -325,6 +328,41 @@
                                 <div class="form-group">
                                     <label>Tracking URL</label>
                                     <input type="url" id="trackingUrl" placeholder="https://...">
+                                </div>
+                            </div>
+                            
+                            <div id="deliveredFields" class="tracking-fields">
+                                <div class="form-group">
+                                    <label>Actual Courier Cost (₹)</label>
+                                    <input type="number" id="actualCourierCost" placeholder="e.g. 85">
+                                </div>
+                                <div class="form-group">
+                                    <label>Estimated Product Cost (₹)</label>
+                                    <input type="number" id="estProductCost" placeholder="e.g. 450">
+                                    <small style="color: var(--text-gray); font-size: 0.75rem;">Total cost of goods (ingredients + labor).</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Gateway Charges (₹)</label>
+                                    <input type="number" id="gatewayCharges" placeholder="e.g. 15">
+                                </div>
+                                <div class="form-group">
+                                    <label>Accounting Notes</label>
+                                    <input type="text" id="accountingNotes" placeholder="Any specific notes for accounting...">
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
+                                <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; cursor: pointer; margin-bottom: 10px;">
+                                    <input type="checkbox" id="isTestOrder" onchange="toggleTestReason()"> Mark as Test Order
+                                </label>
+                                <div class="form-group" id="testReasonGroup" style="display: none;">
+                                    <label>Test Reason</label>
+                                    <select id="testReason">
+                                        <option value="Payment Gateway Testing">Payment Gateway Testing</option>
+                                        <option value="UI Testing">UI Testing</option>
+                                        <option value="Development">Development</option>
+                                        <option value="Other">Other</option>
+                                    </select>
                                 </div>
                             </div>
                             
@@ -444,9 +482,10 @@ function renderOrdersList(ordersToRender) {
         const name = parts[0] || 'Guest Customer';
         const mobile = parts[2] || order.whatsapp_number || '';
         
+        const testBadge = order.is_test_order ? `<span class="status-badge" style="background:#FFF5F5; border: 1px solid #FEB2B2; color:#E53E3E; font-size:0.6rem; margin-left: 6px;"><i class="fas fa-vial"></i> TEST</span>` : '';
         div.innerHTML = `
             <div style="display:flex; justify-content:space-between;">
-                <h4>${order.order_number}</h4>
+                <h4>${order.order_number}${testBadge}</h4>
                 <span style="font-size:0.8rem; color:var(--text-gray);">${new Date(order.created_at).toLocaleDateString('en-IN')}</span>
             </div>
             <p>${name}</p>
@@ -584,16 +623,53 @@ function selectOrder(orderId, element) {
     document.getElementById('trackingNumber').value = currentOrder.tracking_number || '';
     document.getElementById('trackingUrl').value = currentOrder.tracking_url || '';
     
+    // Accounting Fields
+    document.getElementById('actualCourierCost').value = currentOrder.actual_courier_cost || '';
+    document.getElementById('gatewayCharges').value = currentOrder.gateway_charges || '';
+    document.getElementById('accountingNotes').value = currentOrder.accounting_notes || '';
+    document.getElementById('isTestOrder').checked = !!currentOrder.is_test_order;
+    document.getElementById('testReason').value = currentOrder.test_reason || 'Development';
+    
+    // Calculate or prefill Est Product Cost
+    if (currentOrder.estimated_product_cost) {
+        document.getElementById('estProductCost').value = currentOrder.estimated_product_cost;
+    } else {
+        // Attempt to estimate based on active products if not yet saved (we need to fetch rawProducts in the real app, but for now we'll just leave it blank or 50% fallback)
+        const est = currentOrder.total_amount ? (currentOrder.total_amount * 0.5) : '';
+        document.getElementById('estProductCost').placeholder = `e.g. ${est} (Est 50%)`;
+        document.getElementById('estProductCost').value = '';
+    }
+
+    if (currentOrder.is_test_order) {
+        document.getElementById('detailTestBadge').style.display = 'inline-block';
+    } else {
+        document.getElementById('detailTestBadge').style.display = 'none';
+    }
+    
     toggleTrackingFields();
+    toggleTestReason();
+}
+
+function toggleTestReason() {
+    const isTest = document.getElementById('isTestOrder').checked;
+    document.getElementById('testReasonGroup').style.display = isTest ? 'block' : 'none';
 }
 
 function toggleTrackingFields() {
     const status = document.getElementById('statusSelect').value;
     const trackingFields = document.getElementById('trackingFields');
+    const deliveredFields = document.getElementById('deliveredFields');
+    
     if (status === 'shipped') {
         trackingFields.style.display = 'block';
     } else {
         trackingFields.style.display = 'none';
+    }
+    
+    if (status === 'delivered') {
+        deliveredFields.style.display = 'block';
+    } else {
+        deliveredFields.style.display = 'none';
     }
 }
 
@@ -626,10 +702,34 @@ async function saveOrderStatus() {
         status: newStatus
     };
     
+    // Accounting / Test Fields
+    updatePayload.is_test_order = document.getElementById('isTestOrder').checked;
+    if (updatePayload.is_test_order) {
+        updatePayload.test_reason = document.getElementById('testReason').value;
+    } else {
+        updatePayload.test_reason = null;
+    }
+    
     if (newStatus === 'shipped') {
         updatePayload.courier_name = courier;
         updatePayload.tracking_number = trackingNo;
         updatePayload.tracking_url = trackingUrl;
+    }
+    
+    if (newStatus === 'delivered') {
+        const cCost = document.getElementById('actualCourierCost').value;
+        const pCost = document.getElementById('estProductCost').value;
+        const gCharge = document.getElementById('gatewayCharges').value;
+        
+        updatePayload.actual_courier_cost = cCost ? parseFloat(cCost) : null;
+        updatePayload.estimated_product_cost = pCost ? parseFloat(pCost) : null;
+        updatePayload.gateway_charges = gCharge ? parseFloat(gCharge) : null;
+        updatePayload.accounting_notes = document.getElementById('accountingNotes').value || null;
+        
+        // Audit log
+        const currentUser = Auth.getUser() ? Auth.getUser().email : 'Admin';
+        updatePayload.accounting_updated_by = currentUser;
+        updatePayload.accounting_updated_at = new Date().toISOString();
     }
     
     try {
@@ -648,13 +748,28 @@ async function saveOrderStatus() {
         
         // Update local state
         currentOrder.status = newStatus;
+        currentOrder.is_test_order = updatePayload.is_test_order;
+        currentOrder.test_reason = updatePayload.test_reason;
+        
         if(newStatus === 'shipped') {
             currentOrder.courier_name = courier;
             currentOrder.tracking_number = trackingNo;
             currentOrder.tracking_url = trackingUrl;
         }
         
+        if (newStatus === 'delivered') {
+            currentOrder.actual_courier_cost = updatePayload.actual_courier_cost;
+            currentOrder.estimated_product_cost = updatePayload.estimated_product_cost;
+            currentOrder.gateway_charges = updatePayload.gateway_charges;
+            currentOrder.accounting_notes = updatePayload.accounting_notes;
+        }
+        
         document.getElementById('detailStatus').textContent = newStatus.toUpperCase();
+        if (currentOrder.is_test_order) {
+            document.getElementById('detailTestBadge').style.display = 'inline-block';
+        } else {
+            document.getElementById('detailTestBadge').style.display = 'none';
+        }
         
         // Re-apply current search and status filters instead of rendering all orders
         filterOrders();

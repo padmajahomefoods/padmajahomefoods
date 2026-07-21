@@ -302,6 +302,9 @@
                         <div class="admin-form-group"><label>Availability <span class="required">*</span></label><select id="prodAvailable" required><option value="true">In Stock</option><option value="false">Out of Stock</option></select></div>
                     </div>
                     <div class="admin-form-row">
+                        <div class="admin-form-group full"><label>Estimated Cost Price (per Kg) (Rs) <span style="color:var(--gray-400);font-weight:400">(optional, for accounting)</span></label><input type="number" id="prodCostPrice" min="0" placeholder="e.g. 150"></div>
+                    </div>
+                    <div class="admin-form-row">
                         <div class="admin-form-group"><label>100g Price (Rs) <span style="color:var(--gray-400);font-weight:400">(optional)</span></label><input type="number" id="prodPrice100g" min="1" placeholder="Leave blank if not sold in 100g"></div>
                         <div class="admin-form-group"><label>250g Price (Rs) <span class="required">*</span></label><input type="number" id="prodPrice250" required min="1" placeholder="e.g. 149"></div>
                     </div>
@@ -672,6 +675,7 @@
         document.getElementById('prodPrice250').value = p.price250 || '';
         document.getElementById('prodPrice500').value = p.price500 || '';
         document.getElementById('prodPrice1000').value = p.price1000 || '';
+        document.getElementById('prodCostPrice').value = p.costPrice || '';
         document.getElementById('prodDesc').value = p.desc || '';
         document.getElementById('prodBadge').value = p.badge || '';
 
@@ -698,6 +702,7 @@
         const price250 = parseInt(document.getElementById('prodPrice250').value) || 0;
         const price500 = parseInt(document.getElementById('prodPrice500').value) || 0;
         const price1000 = parseInt(document.getElementById('prodPrice1000').value) || 0;
+        const costPrice = parseInt(document.getElementById('prodCostPrice').value) || 0;
         const image = document.getElementById('prodImage').value.trim();
         const desc = document.getElementById('prodDesc').value.trim();
         const badge = document.getElementById('prodBadge').value;
@@ -730,7 +735,8 @@
             price100g: price100g,
             price250: price250,
             price500: price500,
-            price1000: price1000
+            price1000: price1000,
+            costPrice: costPrice
         };
 
         try {
