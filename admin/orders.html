@@ -336,7 +336,7 @@
                                 <input type="number" id="actualCourierCost" placeholder="e.g. 85">
                             </div>
                             
-                            <div id="deliveredFields" class="tracking-fields">
+                            <div>
                                 <div class="form-group" style="margin-top: 15px; border: 1px solid #E2E8F0; padding: 12px; border-radius: 6px; background: #F8FAFC; margin-bottom: 15px;">
                                     <label style="color: var(--primary);">Raw Material Cost (₹) <span style="font-size: 0.75rem; color: #718096; font-weight: normal;">(Admin only)</span></label>
                                     <input type="number" id="estProductCost" placeholder="e.g. 290">
@@ -652,18 +652,10 @@ function toggleTestReason() {
 function toggleTrackingFields() {
     const status = document.getElementById('statusSelect').value;
     const trackingFields = document.getElementById('trackingFields');
-    const deliveredFields = document.getElementById('deliveredFields');
-    
     if (status === 'shipped') {
         trackingFields.style.display = 'block';
     } else {
         trackingFields.style.display = 'none';
-    }
-    
-    if (status === 'delivered') {
-        deliveredFields.style.display = 'block';
-    } else {
-        deliveredFields.style.display = 'none';
     }
 }
 
@@ -714,28 +706,27 @@ async function saveOrderStatus() {
     const cCost = document.getElementById('actualCourierCost').value;
     updatePayload.actual_courier_cost = cCost ? parseFloat(cCost) : null;
     
-    if (newStatus === 'delivered') {
-        const pCost = document.getElementById('estProductCost').value;
-        const gCharge = document.getElementById('gatewayCharges').value;
-        
-        updatePayload.estimated_product_cost = pCost ? parseFloat(pCost) : null;
-        updatePayload.gateway_charges = gCharge ? parseFloat(gCharge) : null;
-        updatePayload.accounting_notes = document.getElementById('accountingNotes').value || null;
-        
-        // Audit log
-        let currentUser = 'Admin';
-        try {
-            if (typeof Auth !== 'undefined' && typeof Auth.getCurrentUser === 'function') {
-                const user = await Auth.getCurrentUser();
-                if (user && user.email) currentUser = user.email;
-            }
-        } catch(e) {
-            console.error('Failed to get current user for audit', e);
+    // Always save accounting fields
+    const pCost = document.getElementById('estProductCost').value;
+    const gCharge = document.getElementById('gatewayCharges').value;
+    
+    updatePayload.estimated_product_cost = pCost ? parseFloat(pCost) : null;
+    updatePayload.gateway_charges = gCharge ? parseFloat(gCharge) : null;
+    updatePayload.accounting_notes = document.getElementById('accountingNotes').value || null;
+    
+    // Audit log
+    let currentUser = 'Admin';
+    try {
+        if (typeof Auth !== 'undefined' && typeof Auth.getCurrentUser === 'function') {
+            const user = await Auth.getCurrentUser();
+            if (user && user.email) currentUser = user.email;
         }
-        
-        updatePayload.accounting_updated_by = currentUser;
-        updatePayload.accounting_updated_at = new Date().toISOString();
+    } catch(e) {
+        console.error('Failed to get current user for audit', e);
     }
+    
+    updatePayload.accounting_updated_by = currentUser;
+    updatePayload.accounting_updated_at = new Date().toISOString();
     
     try {
         const { error } = await fetchAdminData(
@@ -763,12 +754,9 @@ async function saveOrderStatus() {
         }
         
         currentOrder.actual_courier_cost = updatePayload.actual_courier_cost;
-        
-        if (newStatus === 'delivered') {
-            currentOrder.estimated_product_cost = updatePayload.estimated_product_cost;
-            currentOrder.gateway_charges = updatePayload.gateway_charges;
-            currentOrder.accounting_notes = updatePayload.accounting_notes;
-        }
+        currentOrder.estimated_product_cost = updatePayload.estimated_product_cost;
+        currentOrder.gateway_charges = updatePayload.gateway_charges;
+        currentOrder.accounting_notes = updatePayload.accounting_notes;
         
         document.getElementById('detailStatus').textContent = newStatus.toUpperCase();
         if (currentOrder.is_test_order) {
