@@ -331,11 +331,12 @@
                                 </div>
                             </div>
                             
+                            <div class="form-group" style="margin-top: 15px; border: 1px solid #E2E8F0; padding: 12px; border-radius: 6px; background: #F8FAFC;">
+                                <label style="color: var(--primary);">Actual Courier Charge (₹) <span style="font-size: 0.75rem; color: #718096; font-weight: normal;">(Admin only)</span></label>
+                                <input type="number" id="actualCourierCost" placeholder="e.g. 85">
+                            </div>
+                            
                             <div id="deliveredFields" class="tracking-fields">
-                                <div class="form-group">
-                                    <label>Actual Courier Cost (₹)</label>
-                                    <input type="number" id="actualCourierCost" placeholder="e.g. 85">
-                                </div>
                                 <div class="form-group">
                                     <label>Estimated Product Cost (₹)</label>
                                     <input type="number" id="estProductCost" placeholder="e.g. 450">
@@ -716,12 +717,14 @@ async function saveOrderStatus() {
         updatePayload.tracking_url = trackingUrl;
     }
     
+    // Always save actual courier cost if entered
+    const cCost = document.getElementById('actualCourierCost').value;
+    updatePayload.actual_courier_cost = cCost ? parseFloat(cCost) : null;
+    
     if (newStatus === 'delivered') {
-        const cCost = document.getElementById('actualCourierCost').value;
         const pCost = document.getElementById('estProductCost').value;
         const gCharge = document.getElementById('gatewayCharges').value;
         
-        updatePayload.actual_courier_cost = cCost ? parseFloat(cCost) : null;
         updatePayload.estimated_product_cost = pCost ? parseFloat(pCost) : null;
         updatePayload.gateway_charges = gCharge ? parseFloat(gCharge) : null;
         updatePayload.accounting_notes = document.getElementById('accountingNotes').value || null;
@@ -766,8 +769,9 @@ async function saveOrderStatus() {
             currentOrder.tracking_url = trackingUrl;
         }
         
+        currentOrder.actual_courier_cost = updatePayload.actual_courier_cost;
+        
         if (newStatus === 'delivered') {
-            currentOrder.actual_courier_cost = updatePayload.actual_courier_cost;
             currentOrder.estimated_product_cost = updatePayload.estimated_product_cost;
             currentOrder.gateway_charges = updatePayload.gateway_charges;
             currentOrder.accounting_notes = updatePayload.accounting_notes;

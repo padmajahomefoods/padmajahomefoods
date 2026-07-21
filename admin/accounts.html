@@ -627,7 +627,7 @@ function calculateOrderProfit(o) {
         }
     }
 
-    const courier = o.actual_courier_cost !== null && o.actual_courier_cost !== undefined ? Number(o.actual_courier_cost) : ASSUMPTIONS.SHIPPING_COST_EST;
+    const courier = o.actual_courier_cost !== null && o.actual_courier_cost !== undefined ? Number(o.actual_courier_cost) : 0;
     
     let gateway = 0;
     if (o.payment_method !== 'cod' && o.payment_id) {
