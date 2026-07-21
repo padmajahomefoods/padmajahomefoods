@@ -57,7 +57,8 @@ const SupabaseAdapter = {
             price100g: row.price_100g,
             price250: row.price_250 || 0,
             price500: row.price_500 || 0,
-            price1000: row.price_1000 || 0
+            price1000: row.price_1000 || 0,
+            costPrice: row.cost_price || 0
         };
     },
 
@@ -76,7 +77,8 @@ const SupabaseAdapter = {
             price_100g: product.price100g || null,
             price_250: product.price250 || 0,
             price_500: product.price500 || 0,
-            price_1000: product.price1000 || 0
+            price_1000: product.price1000 || 0,
+            cost_price: product.costPrice || 0
         };
     },
 
