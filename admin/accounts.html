@@ -449,6 +449,7 @@ let rawItems = [];
 let rawExpenses = [];
 let rawProducts = [];
 let rawCategories = [];
+let rawProfiles = [];
 
 let filteredData = {
     orders: [], items: [], expenses: [],
@@ -485,12 +486,13 @@ function switchTab(tabId) {
 
 async function fetchAllData() {
     try {
-        const [ordersRes, itemsRes, expRes, prodRes, catRes] = await Promise.all([
+        const [ordersRes, itemsRes, expRes, prodRes, catRes, profRes] = await Promise.all([
             fetchAdminData(CONFIG.TABLES.ORDERS, 'select', { order: { column: 'created_at', ascending: false } }),
             fetchAdminData(CONFIG.TABLES.ORDER_ITEMS, 'select'),
             fetchAdminData('expenses', 'select', { order: { column: 'expense_date', ascending: false } }),
             fetchAdminData(CONFIG.TABLES.PRODUCTS, 'select'),
-            fetchAdminData(CONFIG.TABLES.CATEGORIES, 'select')
+            fetchAdminData(CONFIG.TABLES.CATEGORIES, 'select'),
+            fetchAdminData('profiles', 'select')
         ]);
 
         if (ordersRes.error) throw ordersRes.error;
@@ -500,6 +502,7 @@ async function fetchAllData() {
         rawExpenses = expRes.data || [];
         rawProducts = prodRes.data || [];
         rawCategories = catRes.data || [];
+        rawProfiles = profRes.data || [];
         
         document.getElementById('loader').style.display = 'none';
     } catch (err) {
@@ -601,15 +604,34 @@ function getDateBounds(range) {
 
 function calculateOrderProfit(o) {
     const rev = Number(o.total_amount || 0);
-    const shipChg = Number(o.delivery_charge || 0);
+    const shipChg = Math.max(0, Number(o.delivery_charge || 0) - Number(o.delivery_discount || 0));
     
-    // Use DB fields, fallback to assumptions if null
-    const estProd = o.estimated_product_cost !== null ? Number(o.estimated_product_cost) : (rev * ASSUMPTIONS.COGS_PERCENT);
-    const courier = o.actual_courier_cost !== null ? Number(o.actual_courier_cost) : ASSUMPTIONS.SHIPPING_COST_EST;
+    // Calculate estProd
+    let estProd = 0;
+    if (o.estimated_product_cost !== null && o.estimated_product_cost !== undefined) {
+        estProd = Number(o.estimated_product_cost);
+    } else {
+        // Fallback: sum of cost_price * quantity
+        const items = rawItems.filter(i => i.order_id === o.id);
+        if (items.length > 0) {
+            items.forEach(i => {
+                const prod = rawProducts.find(p => p.name === i.product_name);
+                if (prod && prod.cost_price) {
+                    estProd += (Number(prod.cost_price) * Number(i.quantity || 1));
+                } else {
+                    estProd += (Number(i.total || 0) * ASSUMPTIONS.COGS_PERCENT);
+                }
+            });
+        } else {
+            estProd = rev * ASSUMPTIONS.COGS_PERCENT;
+        }
+    }
+
+    const courier = o.actual_courier_cost !== null && o.actual_courier_cost !== undefined ? Number(o.actual_courier_cost) : ASSUMPTIONS.SHIPPING_COST_EST;
     
     let gateway = 0;
     if (o.payment_method !== 'cod' && o.payment_id) {
-        gateway = o.gateway_charges !== null ? Number(o.gateway_charges) : (rev * ASSUMPTIONS.GATEWAY_FEE);
+        gateway = o.gateway_charges !== null && o.gateway_charges !== undefined ? Number(o.gateway_charges) : (rev * ASSUMPTIONS.GATEWAY_FEE);
     }
 
     const net = rev - estProd - courier - gateway;
@@ -632,7 +654,13 @@ function applyFilters(start, end, prevStart, prevEnd) {
     const passesSearch = (o) => {
         if(!q) return true;
         const n = getCustomerName(o).toLowerCase();
-        const p = (o.whatsapp_number||'').toLowerCase();
+        
+        let p = (o.whatsapp_number || '').toLowerCase();
+        if (o.user_id) {
+            const prof = rawProfiles.find(pr => pr.id === o.user_id);
+            if (prof && prof.phone) p = prof.phone.toLowerCase();
+        }
+        
         const id = (o.order_number||'').toLowerCase();
         return n.includes(q) || p.includes(q) || id.includes(q);
     };
@@ -690,7 +718,7 @@ function updateOverviewCards() {
             gatewayTot += p.gateway;
             
             if (o.payment_method === 'cod' || !o.payment_id) codAmt += p.rev;
-            if (p.shipChg === 0) {
+            if (p.shipChg === 0 && p.courier > 0) {
                 freeShipCnt++;
                 freeShipExp += p.courier;
             }
@@ -1010,7 +1038,12 @@ function drillToMonth(monthStr) {
 function renderCustomers() {
     const cMap = {};
     filteredData.orders.forEach(o => {
-        const phone = o.whatsapp_number || 'Unknown';
+        let phone = o.whatsapp_number || 'Unknown';
+        if (o.user_id) {
+            const prof = rawProfiles.find(p => p.id === o.user_id);
+            if (prof && prof.phone) phone = prof.phone;
+        }
+        
         const name = getCustomerName(o);
         const cid = phone + '_' + name; // Group by phone+name combination to be safe
         
