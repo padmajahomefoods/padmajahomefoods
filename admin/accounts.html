@@ -1291,6 +1291,18 @@ function getFinancialSummary() {
     return { rev, prodRev, shipChg, rawCost, courCost, gate, manualExp, totalExp, netProfit, orderCount, aov };
 }
 
+function getCity(o) {
+    if (!o.delivery_address) return '';
+    let addr = o.delivery_address;
+    if (typeof addr === 'string') {
+        try { addr = JSON.parse(addr); } catch(e) {}
+    }
+    if (typeof addr === 'object' && addr !== null && addr.city) {
+        return addr.city;
+    }
+    return '';
+}
+
 function exportExcel() {
     const wb = XLSX.utils.book_new();
     const sum = getFinancialSummary();
@@ -1304,74 +1316,93 @@ function exportExcel() {
         ["Generated On:", new Date().toLocaleString('en-IN')],
         ["Include Test Orders:", incTest], [],
         ["Financial Summary", ""],
-        ["Gross Revenue", sum.rev],
-        ["Product Revenue", sum.prodRev],
-        ["Shipping Collected", sum.shipChg],
-        ["Raw Material Cost", sum.rawCost],
-        ["Courier Cost", sum.courCost],
-        ["Gateway Charges", sum.gate],
-        ["Manual Business Expenses", sum.manualExp],
-        ["Total Expenses", sum.totalExp],
-        ["Net Profit", sum.netProfit],
+        ["Gross Revenue", `₹${sum.rev.toLocaleString('en-IN')}`],
+        ["Product Revenue", `₹${sum.prodRev.toLocaleString('en-IN')}`],
+        ["Shipping Collected", `₹${sum.shipChg.toLocaleString('en-IN')}`],
+        ["Raw Material Cost", `₹${sum.rawCost.toLocaleString('en-IN')}`],
+        ["Courier Cost", `₹${sum.courCost.toLocaleString('en-IN')}`],
+        ["Gateway Charges", `₹${sum.gate.toLocaleString('en-IN')}`],
+        ["Manual Business Expenses", `₹${sum.manualExp.toLocaleString('en-IN')}`],
+        ["Total Expenses", `₹${sum.totalExp.toLocaleString('en-IN')}`],
+        ["Net Profit", `₹${sum.netProfit.toLocaleString('en-IN')}`],
         ["Total Orders", sum.orderCount],
-        ["Average Order Value", sum.aov]
+        ["Average Order Value", `₹${sum.aov.toLocaleString('en-IN')}`]
     ];
     const wsOverview = XLSX.utils.aoa_to_sheet(overviewData);
-    // formatting
     wsOverview['!cols'] = [{wch: 30}, {wch: 20}];
     XLSX.utils.book_append_sheet(wb, wsOverview, "Overview");
     
     // Sheet 2: Orders
-    const ordersData = [["Date", "Order ID", "Customer Name", "Phone Number", "Payment Method", "Payment Status", "Order Status", "Product Value", "Shipping Charged", "Order Total", "Raw Material Cost", "Courier Cost", "Gateway Charges", "Net Profit", "Accounting Notes"]];
+    const ordersData = [["Date", "Order ID", "Customer Name", "Mobile Number", "City", "Products", "Quantity", "Product Amount", "Shipping Charged", "Gross Amount", "Payment Method", "Payment Status", "Order Status", "Raw Material Cost", "Courier Cost", "Gateway Charges", "Net Profit", "Test Order", "Accounting Notes"]];
+    
     filteredData.orders.forEach(o => {
         const p = calculateOrderProfit(o);
         const name = getCustomerName(o);
         const prodVal = p.rev - p.shipChg;
         const orderGross = p.rev - p.estProd - p.courier - p.gateway;
+        
+        const city = getCity(o);
+        const items = filteredData.items.filter(i => i.order_id === o.id);
+        const productsStr = items.map(i => i.product_name).join(', ');
+        const totalQty = items.reduce((s, i) => s + (i.quantity || 1), 0);
+        
         ordersData.push([
             new Date(o.created_at).toLocaleDateString('en-IN'), o.order_number, name,
-            o.whatsapp_number || '', (o.payment_method||'').toUpperCase(), o.payment_status || '',
-            o.status.toUpperCase(), prodVal, p.shipChg, p.rev, p.estProd, p.courier, p.gateway, orderGross, o.accounting_notes || ''
+            o.whatsapp_number || '', city, productsStr, totalQty, 
+            `₹${prodVal.toLocaleString('en-IN')}`, `₹${p.shipChg.toLocaleString('en-IN')}`, `₹${p.rev.toLocaleString('en-IN')}`, 
+            (o.payment_method||'').toUpperCase(), o.payment_status || '', o.status.toUpperCase(), 
+            `₹${p.estProd.toLocaleString('en-IN')}`, `₹${p.courier.toLocaleString('en-IN')}`, `₹${p.gateway.toLocaleString('en-IN')}`, 
+            `₹${orderGross.toLocaleString('en-IN')}`, o.is_test_order ? 'Yes' : 'No', o.accounting_notes || ''
         ]);
     });
     const wsOrders = XLSX.utils.aoa_to_sheet(ordersData);
+    wsOrders['!views'] = [{state: 'frozen', ySplit: 1}];
+    wsOrders['!cols'] = [{wch: 12}, {wch: 18}, {wch: 20}, {wch: 15}, {wch: 15}, {wch: 30}, {wch: 10}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 18}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 10}, {wch: 25}];
     XLSX.utils.book_append_sheet(wb, wsOrders, "Orders");
     
     // Sheet 3: Business Expenses
-    const expData = [["Date", "Category", "Description", "Amount"]];
+    const expData = [["Date", "Category", "Description", "Amount", "Notes"]];
     filteredData.expenses.forEach(e => {
-        expData.push([new Date(e.expense_date).toLocaleDateString('en-IN'), e.category, e.notes || '', Number(e.amount)]);
+        expData.push([new Date(e.expense_date).toLocaleDateString('en-IN'), e.category, e.notes || '', `₹${Number(e.amount).toLocaleString('en-IN')}`, e.notes || '']);
     });
     const wsExp = XLSX.utils.aoa_to_sheet(expData);
+    wsExp['!views'] = [{state: 'frozen', ySplit: 1}];
+    wsExp['!cols'] = [{wch: 15}, {wch: 20}, {wch: 30}, {wch: 15}, {wch: 30}];
     XLSX.utils.book_append_sheet(wb, wsExp, "Business Expenses");
     
     // Sheet 4: Customers
     const custMap = {};
     filteredData.orders.forEach(o => {
         const p = o.whatsapp_number || 'Unknown';
-        if(!custMap[p]) custMap[p] = { name: getCustomerName(o), phone: p, ord:0, rev:0, last: null };
+        if(!custMap[p]) custMap[p] = { name: getCustomerName(o), phone: p, ord:0, rev:0, first: null, last: null };
         custMap[p].ord++; custMap[p].rev += calculateOrderProfit(o).rev;
         const d = new Date(o.created_at);
         if(!custMap[p].last || d > custMap[p].last) custMap[p].last = d;
+        if(!custMap[p].first || d < custMap[p].first) custMap[p].first = d;
     });
-    const custData = [["Customer Name", "Phone Number", "Total Orders", "Lifetime Spend", "Average Order Value", "Last Order Date"]];
+    const custData = [["Customer Name", "Mobile Number", "Total Orders", "Lifetime Spend", "Average Order Value", "Customer Since", "Last Order Date"]];
     Object.values(custMap).sort((a,b)=>b.rev-a.rev).forEach(c => {
-        custData.push([c.name, c.phone, c.ord, c.rev, (c.rev/c.ord).toFixed(2), c.last.toLocaleDateString('en-IN')]);
+        custData.push([c.name, c.phone, c.ord, `₹${c.rev.toLocaleString('en-IN')}`, `₹${(c.rev/c.ord).toFixed(2)}`, c.first.toLocaleDateString('en-IN'), c.last.toLocaleDateString('en-IN')]);
     });
     const wsCust = XLSX.utils.aoa_to_sheet(custData);
+    wsCust['!views'] = [{state: 'frozen', ySplit: 1}];
+    wsCust['!cols'] = [{wch: 20}, {wch: 15}, {wch: 12}, {wch: 15}, {wch: 20}, {wch: 15}, {wch: 15}];
     XLSX.utils.book_append_sheet(wb, wsCust, "Customers");
     
     // Sheet 5: Top Products
     const pMap = {};
     filteredData.items.forEach(i => {
-        if(!pMap[i.product_name]) pMap[i.product_name] = { q:0, r:0 };
+        if(!pMap[i.product_name]) pMap[i.product_name] = { q:0, r:0, ords: new Set() };
         pMap[i.product_name].q += (i.quantity||1); pMap[i.product_name].r += Number(i.total);
+        pMap[i.product_name].ords.add(i.order_id);
     });
-    const prodData = [["Product Name", "Quantity Sold", "Revenue"]];
-    Object.keys(pMap).map(k => ({n:k, q:pMap[k].q, r:pMap[k].r})).sort((a,b)=>b.q-a.q).forEach(p => {
-        prodData.push([p.n, p.q, p.r]);
+    const prodData = [["Product Name", "Units Sold", "Revenue", "Orders Count"]];
+    Object.keys(pMap).map(k => ({n:k, q:pMap[k].q, r:pMap[k].r, c:pMap[k].ords.size})).sort((a,b)=>b.q-a.q).forEach(p => {
+        prodData.push([p.n, p.q, `₹${p.r.toLocaleString('en-IN')}`, p.c]);
     });
     const wsProd = XLSX.utils.aoa_to_sheet(prodData);
+    wsProd['!views'] = [{state: 'frozen', ySplit: 1}];
+    wsProd['!cols'] = [{wch: 35}, {wch: 15}, {wch: 15}, {wch: 15}];
     XLSX.utils.book_append_sheet(wb, wsProd, "Top Products");
     
     XLSX.writeFile(wb, getExportFileName('xlsx'));
