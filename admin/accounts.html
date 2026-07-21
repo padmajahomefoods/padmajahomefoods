@@ -604,7 +604,19 @@ function getDateBounds(range) {
 
 function calculateOrderProfit(o) {
     const rev = Number(o.total_amount || 0);
-    const shipChg = Math.max(0, Number(o.delivery_charge || 0) - Number(o.delivery_discount || 0));
+    
+    let delCharge = o.delivery_charge || 0;
+    let delDiscount = o.delivery_discount || 0;
+    
+    if (o.notes && typeof o.notes === 'string' && o.notes.includes('Subtotal:')) {
+        const parts = o.notes.split('|').map(s => s.trim());
+        parts.forEach(p => {
+            if (p.startsWith('Delivery:')) delCharge = parseFloat(p.replace('Delivery:', '').trim()) || delCharge;
+            if (p.startsWith('Discount:')) delDiscount = parseFloat(p.replace('Discount:', '').trim()) || delDiscount;
+        });
+    }
+    
+    const shipChg = Math.max(0, Number(delCharge) - Number(delDiscount));
     
     // Calculate estProd
     let estProd = 0;
