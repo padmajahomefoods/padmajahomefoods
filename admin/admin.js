@@ -109,6 +109,7 @@ async function fetchAdminData(table, action = 'select', options = {}) {
                 action,
                 match: options.match,
                 inFilter: options.inFilter,
+                or: options.or,
                 order: options.order,
                 payload: options.payload,
                 selectColumns: options.selectColumns || '*'

@@ -309,26 +309,38 @@ async function handleCustomerDetection(e) {
         return;
     }
 
-    let isValid = false;
-    let matchQuery = {};
-    if (isMobile && val.length >= 10) {
-        isValid = true;
-        matchQuery = { phone: val };
-    } else if (!isMobile && val.includes('@') && val.length >= 5) {
-        isValid = true;
-        matchQuery = { email: val };
-    }
+    let isValidMobile = mobileVal.length >= 10;
+    let isValidEmail = emailVal.includes('@') && emailVal.length >= 5;
 
-    if (isValid) {
+    if (isValidMobile || isValidEmail) {
         if (_customerAutoDetectTimeout) clearTimeout(_customerAutoDetectTimeout);
         statusSpan.style.display = 'none';
         
         _customerAutoDetectTimeout = setTimeout(async () => {
             try {
+                let orFilters = [];
+                if (isValidMobile) orFilters.push(`phone.eq.${mobileVal}`);
+                if (isValidEmail) orFilters.push(`email.eq.${emailVal}`);
+
                 const { data, error } = await fetchAdminData(CONFIG.TABLES.PROFILES, 'select', {
-                    match: matchQuery
+                    or: orFilters.join(',')
                 });
+
                 if (!error && data && data.length > 0) {
+                    // Conflict check: > 1 user means mobile and email belong to different accounts
+                    if (data.length > 1) {
+                        _lastDetectedUserId = null;
+                        statusSpan.innerHTML = '⚠️ Mobile Number and Email belong to different customers.';
+                        statusSpan.className = 'status-warning';
+                        statusSpan.style.color = 'var(--spice-red, #E34A4A)';
+                        statusSpan.style.padding = '8px';
+                        statusSpan.style.marginTop = '10px';
+                        statusSpan.style.background = 'rgba(227, 74, 74, 0.1)';
+                        statusSpan.style.borderRadius = '4px';
+                        statusSpan.style.display = 'block';
+                        return;
+                    }
+
                     const c = data[0];
                     
                     if (_lastDetectedUserId === c.id) {
