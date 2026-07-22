@@ -944,6 +944,8 @@ async function saveManualOrder() {
             accounting_notes: notes,
             notes: generatedNotes,
             created_at: orderDate,
+            payment_method: method,
+            payment_status: status,
             
             // Metadata for CRM
             user_id: (linkType === 'existing' && linkedUserId) ? linkedUserId : null,

@@ -280,6 +280,7 @@
                             </div>
                             <div class="detail-box">
                                 <h5>Payment & Delivery</h5>
+                                <p><strong>Payment Method:</strong> <span id="detailPaymentMethod">N/A</span></p>
                                 <p><strong>Payment Status:</strong> <span id="detailPaymentStatus">Success</span></p>
                                 <p><strong>Payment ID:</strong> <span id="detailPaymentId" style="font-family:monospace;font-size:0.85rem;">N/A</span></p>
                                 <p><strong>Address:</strong></p>
@@ -677,15 +678,30 @@ function selectOrder(orderId, element) {
 
     document.getElementById('detailAddress').innerHTML = formatAddress(currentOrder.delivery_address);
 
-    let paymentStatusText = 'Pending';
-    if (currentOrder.status === 'failed' || currentOrder.status === 'payment_failed') {
-        paymentStatusText = 'Failed';
-    } else if (currentOrder.status === 'pending' || currentOrder.status === 'processing') {
-        paymentStatusText = 'Pending';
-    } else if (currentOrder.status === 'confirmed' && currentOrder.payment_id) {
-        paymentStatusText = 'Paid (Razorpay)';
+    // Payment Info
+    let paymentMethodText = 'N/A';
+    if (currentOrder.payment_method) {
+        paymentMethodText = currentOrder.payment_method;
     } else if (currentOrder.payment_id) {
-        paymentStatusText = 'Paid (Razorpay)';
+        paymentMethodText = 'Razorpay';
+    } else {
+        paymentMethodText = 'Cash on Delivery (COD)';
+    }
+    document.getElementById('detailPaymentMethod').textContent = paymentMethodText;
+
+    let paymentStatusText = 'Pending';
+    if (currentOrder.payment_status) {
+        paymentStatusText = currentOrder.payment_status.charAt(0).toUpperCase() + currentOrder.payment_status.slice(1);
+    } else {
+        if (currentOrder.status === 'failed' || currentOrder.status === 'payment_failed') {
+            paymentStatusText = 'Failed';
+        } else if (currentOrder.status === 'pending' || currentOrder.status === 'processing') {
+            paymentStatusText = 'Pending';
+        } else if (currentOrder.status === 'confirmed' && currentOrder.payment_id) {
+            paymentStatusText = 'Paid (Razorpay)';
+        } else if (currentOrder.payment_id) {
+            paymentStatusText = 'Paid (Razorpay)';
+        }
     }
     
     document.getElementById('detailPaymentStatus').textContent = paymentStatusText;
