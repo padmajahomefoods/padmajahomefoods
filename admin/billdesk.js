@@ -250,52 +250,91 @@ window.selectCustomer = async function selectCustomer(id, name, phone, email) {
     }
 }
 
-function handleCustomerMobileInput() {
+let _lastDetectedUserId = null;
+
+async function handleCustomerDetection(e) {
     const mobileInput = document.getElementById('customerMobile');
+    const emailInput = document.getElementById('customerEmail');
     const statusSpan = document.getElementById('customerAutoDetectStatus');
-    const val = mobileInput.value.trim();
     
-    if (val.length >= 10) {
-        if (_customerAutoDetectTimeout) clearTimeout(_customerAutoDetectTimeout);
+    const isMobile = e.target.id === 'customerMobile';
+    const val = e.target.value.trim();
+    
+    const mobileVal = mobileInput ? mobileInput.value.trim() : '';
+    const emailVal = emailInput ? emailInput.value.trim() : '';
+    
+    // Reset if both are effectively empty
+    if (!mobileVal && !emailVal) {
         statusSpan.style.display = 'none';
-        
-        _customerAutoDetectTimeout = setTimeout(async () => {
-            try {
-                const { data, error } = await fetchAdminData(CONFIG.TABLES.PROFILES, 'select', {
-                    match: { phone: val }
-                });
-                if (!error && data && data.length > 0) {
-                    const c = data[0];
-                    statusSpan.style.display = 'block';
-                    
-                    document.getElementById('moCustomerLinkType').value = 'existing';
-                    document.getElementById('moLinkedUserId').value = c.id;
-                    document.getElementById('moLinkedCustomerType').value = 'registered';
-                    document.getElementById('moCustomerSearch').value = `${c.full_name || 'No Name'} (${c.phone})`;
-                    
-                    if (c.full_name && !document.getElementById('customerName').value) {
-                        document.getElementById('customerName').value = c.full_name;
-                    }
-                }
-            } catch(e) {
-                console.error("Auto-detect failed:", e);
-            }
-        }, 300);
-    } else {
-        statusSpan.style.display = 'none';
+        _lastDetectedUserId = null;
         if (document.getElementById('moLinkedUserId').value && document.getElementById('moLinkedCustomerType').value === 'registered') {
             document.getElementById('moCustomerLinkType').value = 'guest';
             document.getElementById('moLinkedUserId').value = '';
             document.getElementById('moLinkedCustomerType').value = 'guest';
             document.getElementById('moCustomerSearch').value = '';
         }
+        return;
+    }
+
+    let isValid = false;
+    let matchQuery = {};
+    if (isMobile && val.length >= 10) {
+        isValid = true;
+        matchQuery = { phone: val };
+    } else if (!isMobile && val.includes('@') && val.length >= 5) {
+        isValid = true;
+        matchQuery = { email: val };
+    }
+
+    if (isValid) {
+        if (_customerAutoDetectTimeout) clearTimeout(_customerAutoDetectTimeout);
+        statusSpan.style.display = 'none';
+        
+        _customerAutoDetectTimeout = setTimeout(async () => {
+            try {
+                const { data, error } = await fetchAdminData(CONFIG.TABLES.PROFILES, 'select', {
+                    match: matchQuery
+                });
+                if (!error && data && data.length > 0) {
+                    const c = data[0];
+                    
+                    if (_lastDetectedUserId === c.id) {
+                        statusSpan.style.display = 'block';
+                        return; // Prevent duplicate fetch/overwrite
+                    }
+                    _lastDetectedUserId = c.id;
+                    
+                    // Display success block
+                    statusSpan.style.display = 'block';
+                    document.getElementById('autoDetectName').textContent = c.full_name || 'No Name';
+                    document.getElementById('autoDetectEmail').textContent = c.email || 'No Email';
+                    document.getElementById('autoDetectMobile').textContent = c.phone || 'No Mobile';
+                    
+                    if (window.selectCustomer) {
+                        await window.selectCustomer(c.id, c.full_name, c.phone, c.email);
+                    }
+                } else {
+                    _lastDetectedUserId = null;
+                }
+            } catch(err) {
+                console.error("Auto-detect failed:", err);
+            }
+        }, 300);
+    } else {
+        if (_customerAutoDetectTimeout) clearTimeout(_customerAutoDetectTimeout);
+        statusSpan.style.display = 'none';
+        _lastDetectedUserId = null;
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     const mobileInput = document.getElementById('customerMobile');
+    const emailInput = document.getElementById('customerEmail');
     if (mobileInput) {
-        mobileInput.addEventListener('input', handleCustomerMobileInput);
+        mobileInput.addEventListener('input', handleCustomerDetection);
+    }
+    if (emailInput) {
+        emailInput.addEventListener('input', handleCustomerDetection);
     }
     
     const linkTypeSelect = document.getElementById('moCustomerLinkType');

@@ -47,11 +47,18 @@
         <div>
             <label for="customerMobile"><i class="fas fa-phone"></i> Mobile Number</label>
             <input type="text" id="customerMobile" placeholder="Optional" autocomplete="off" maxlength="10">
-            <div id="customerAutoDetectStatus" style="color: var(--whatsapp-green, #1DA851); font-size: 0.8rem; margin-top: 5px; display: none;"><i class="fas fa-check-circle"></i> Existing customer detected</div>
         </div>
         <div>
             <label for="customerEmail"><i class="fas fa-envelope"></i> Email Address</label>
             <input type="email" id="customerEmail" placeholder="Optional" autocomplete="off">
+            
+            <div id="customerAutoDetectStatus" style="color: #059669; font-size: 0.85rem; margin-top: 10px; display: none; background: #ECFDF5; padding: 10px; border: 1px solid #A7F3D0; border-radius: 6px;">
+                <div style="font-weight: 600; margin-bottom: 5px;"><i class="fas fa-check-circle"></i> Existing customer found</div>
+                <div id="autoDetectName" style="color: #1F2937;"></div>
+                <div id="autoDetectEmail" style="color: #4B5563;"></div>
+                <div id="autoDetectMobile" style="color: #4B5563;"></div>
+                <div style="margin-top: 5px; font-weight: 500; font-size: 0.8rem;"><i class="fas fa-info-circle"></i> Profile & saved address loaded.</div>
+            </div>
         </div>
         <div>
             <label for="customerCity"><i class="fas fa-city"></i> City</label>
