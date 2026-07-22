@@ -83,6 +83,142 @@ function formatCurrency(value) {
 }
 
 // ============================================
+// CUSTOMER LINKING & AUTO-DETECT
+// ============================================
+let _customerSearchTimeout = null;
+let _customerAutoDetectTimeout = null;
+
+function _escapeHtml(unsafe) {
+    return (unsafe || '').toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function toggleCustomerSearch() {
+    const type = document.getElementById('moCustomerLinkType').value;
+    const searchBox = document.getElementById('moCustomerSearchBox');
+    if (type === 'existing') {
+        searchBox.style.display = 'block';
+        document.getElementById('moCustomerSearch').focus();
+    } else {
+        searchBox.style.display = 'none';
+        document.getElementById('moCustomerSearch').value = '';
+        document.getElementById('moCustomerResults').innerHTML = '';
+        document.getElementById('moCustomerResults').style.display = 'none';
+        document.getElementById('moLinkedUserId').value = '';
+        document.getElementById('moLinkedCustomerType').value = 'guest';
+    }
+}
+
+async function searchCustomers() {
+    const query = document.getElementById('moCustomerSearch').value.trim();
+    const resultsContainer = document.getElementById('moCustomerResults');
+    if (query.length < 2) {
+        resultsContainer.innerHTML = '';
+        resultsContainer.style.display = 'none';
+        return;
+    }
+    
+    if (_customerSearchTimeout) clearTimeout(_customerSearchTimeout);
+    
+    _customerSearchTimeout = setTimeout(async () => {
+        try {
+            resultsContainer.style.display = 'block';
+            resultsContainer.innerHTML = '<div style="padding: 10px; color: #666; font-size: 0.9rem;">Searching...</div>';
+            
+            const { data, error } = await fetchAdminData(CONFIG.TABLES.PROFILES, 'select', {
+                or: `full_name.ilike.%${query}%,phone.ilike.%${query}%`
+            });
+            
+            if (error) throw error;
+            
+            if (!data || data.length === 0) {
+                resultsContainer.innerHTML = '<div style="padding: 10px; color: #999; font-size: 0.9rem;">No customers found.</div>';
+                return;
+            }
+            
+            let html = '';
+            data.slice(0, 10).forEach(c => {
+                const name = c.full_name || 'No Name';
+                const phone = c.phone || 'No Phone';
+                html += `
+                    <div style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 0.9rem;" 
+                         onclick="selectCustomer('${c.id}', '${name.replace(/'/g, "\\'")}', '${phone.replace(/'/g, "\\'")}')"
+                         onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='transparent'">
+                        <strong><i class="fas fa-user"></i> ${_escapeHtml(name)}</strong><br>
+                        <span style="color: #666;"><i class="fas fa-phone"></i> ${_escapeHtml(phone)}</span>
+                    </div>
+                `;
+            });
+            resultsContainer.innerHTML = html;
+        } catch(err) {
+            console.error('Customer search failed:', err);
+            resultsContainer.innerHTML = '<div style="padding: 10px; color: var(--spice-red); font-size: 0.9rem;">Search failed.</div>';
+        }
+    }, 300);
+}
+
+function selectCustomer(id, name, phone) {
+    document.getElementById('moLinkedUserId').value = id;
+    document.getElementById('moLinkedCustomerType').value = 'registered';
+    document.getElementById('moCustomerSearch').value = `${name} (${phone})`;
+    document.getElementById('moCustomerResults').style.display = 'none';
+    
+    document.getElementById('customerName').value = name;
+    if (phone && phone !== 'No Phone') {
+        document.getElementById('customerMobile').value = phone;
+        document.getElementById('customerAutoDetectStatus').style.display = 'none'; // Clear auto-detect if manually selected
+    }
+}
+
+function handleCustomerMobileInput() {
+    const mobileInput = document.getElementById('customerMobile');
+    const statusSpan = document.getElementById('customerAutoDetectStatus');
+    const val = mobileInput.value.trim();
+    
+    if (val.length >= 10) {
+        if (_customerAutoDetectTimeout) clearTimeout(_customerAutoDetectTimeout);
+        statusSpan.style.display = 'none';
+        
+        _customerAutoDetectTimeout = setTimeout(async () => {
+            try {
+                const { data, error } = await fetchAdminData(CONFIG.TABLES.PROFILES, 'select', {
+                    match: { phone: val }
+                });
+                if (!error && data && data.length > 0) {
+                    const c = data[0];
+                    statusSpan.style.display = 'block';
+                    
+                    document.getElementById('moCustomerLinkType').value = 'existing';
+                    document.getElementById('moLinkedUserId').value = c.id;
+                    document.getElementById('moLinkedCustomerType').value = 'registered';
+                    document.getElementById('moCustomerSearch').value = `${c.full_name || 'No Name'} (${c.phone})`;
+                    
+                    if (c.full_name && !document.getElementById('customerName').value) {
+                        document.getElementById('customerName').value = c.full_name;
+                    }
+                }
+            } catch(e) {
+                console.error("Auto-detect failed:", e);
+            }
+        }, 300);
+    } else {
+        statusSpan.style.display = 'none';
+        if (document.getElementById('moLinkedUserId').value && document.getElementById('moLinkedCustomerType').value === 'registered') {
+            document.getElementById('moCustomerLinkType').value = 'guest';
+            document.getElementById('moLinkedUserId').value = '';
+            document.getElementById('moLinkedCustomerType').value = 'guest';
+            document.getElementById('moCustomerSearch').value = '';
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const mobileInput = document.getElementById('customerMobile');
+    if (mobileInput) {
+        mobileInput.addEventListener('input', handleCustomerMobileInput);
+    }
+});
+
+// ============================================
 // LOAD PRODUCTS FROM products.json
 // ============================================
 async function loadProducts() {
@@ -581,6 +717,42 @@ async function saveManualOrder() {
 
         const generatedNotes = `${customerName || 'Guest Customer'} | | ${mobile} | Payment: ${method} - ${status}`;
 
+        const linkType = document.getElementById('moCustomerLinkType') ? document.getElementById('moCustomerLinkType').value : 'guest';
+        const linkedUserId = document.getElementById('moLinkedUserId') ? document.getElementById('moLinkedUserId').value : '';
+        const linkedCustomerType = document.getElementById('moLinkedCustomerType') ? document.getElementById('moLinkedCustomerType').value : 'guest';
+
+        // 0. Duplicate Protection
+        try {
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            
+            const { data: todaysOrders } = await fetchAdminData(CONFIG.TABLES.ORDERS, 'select', {
+                 match: { total_amount: grandTotal }
+            });
+            
+            if (todaysOrders) {
+                const similar = todaysOrders.find(o => {
+                    const isToday = o.created_at && o.created_at.startsWith(today);
+                    if (!isToday) return false;
+                    
+                    if (linkType === 'existing' && linkedUserId) {
+                        return o.user_id === linkedUserId;
+                    } else {
+                        return o.delivery_address && o.delivery_address.full_name === customerName;
+                    }
+                });
+                
+                if (similar) {
+                    if (!confirm("A similar manual order already exists for this customer today.\n\nSave anyway?")) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-check"></i> Save Order';
+                        return; // Abort
+                    }
+                }
+            }
+        } catch(e) {
+            console.error("Duplicate check failed, proceeding anyway", e);
+        }
+
         const orderPayload = {
             order_number: orderNumber,
             total_amount: grandTotal,
@@ -592,7 +764,12 @@ async function saveManualOrder() {
             order_source: source,
             accounting_notes: notes,
             notes: generatedNotes,
-            created_at: orderDate
+            created_at: orderDate,
+            
+            // Metadata for CRM
+            user_id: (linkType === 'existing' && linkedUserId) ? linkedUserId : null,
+            customer_type: linkedCustomerType,
+            linked_by_admin: linkType === 'existing'
         };
 
         console.log("SENDING PAYLOAD TO DB:", JSON.stringify(orderPayload, null, 2));

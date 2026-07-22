@@ -46,7 +46,8 @@
         </div>
         <div>
             <label for="customerMobile"><i class="fas fa-phone"></i> Mobile Number</label>
-            <input type="text" id="customerMobile" placeholder="Optional" autocomplete="off">
+            <input type="text" id="customerMobile" placeholder="Optional" autocomplete="off" maxlength="10">
+            <div id="customerAutoDetectStatus" style="color: var(--whatsapp-green, #1DA851); font-size: 0.8rem; margin-top: 5px; display: none;"><i class="fas fa-check-circle"></i> Existing customer detected</div>
         </div>
         <div>
             <label for="customerCity"><i class="fas fa-city"></i> City</label>
@@ -195,6 +196,21 @@
                 <button onclick="closeManualOrderModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;">&times;</button>
             </div>
             
+            <div class="admin-form-group" style="margin-bottom: 15px;">
+                <label>Link Order To</label>
+                <select id="moCustomerLinkType" onchange="toggleCustomerSearch()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <option value="guest">Guest Customer (Default)</option>
+                    <option value="existing">Existing Customer</option>
+                </select>
+            </div>
+            
+            <div id="moCustomerSearchBox" style="display: none; margin-bottom: 15px;">
+                <input type="text" id="moCustomerSearch" placeholder="Search by name, email, or mobile..." onkeyup="searchCustomers()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 5px;">
+                <div id="moCustomerResults" style="max-height: 150px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; display: none; background: #fff;"></div>
+                <input type="hidden" id="moLinkedUserId" value="">
+                <input type="hidden" id="moLinkedCustomerType" value="guest">
+            </div>
+
             <div class="admin-form-group" style="margin-bottom: 15px;">
                 <label>Order Source <span class="required">*</span></label>
                 <select id="moSource" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
