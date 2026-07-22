@@ -1156,6 +1156,40 @@ async function loadOrdersTab() {
             const total = Number(order.total_amount).toLocaleString('en-IN');
             const itemCount = order.order_items?.length || 0;
             
+            function formatAddress(address) {
+                if (!address) return '';
+                let obj;
+                if (typeof address === 'string') {
+                    if (address.trim().startsWith('{')) {
+                        try { obj = JSON.parse(address); } catch(e) { return escapeHTML(address); }
+                    } else {
+                        return escapeHTML(address);
+                    }
+                } else {
+                    obj = address;
+                }
+                
+                const lines = [];
+                if (obj.full_name) lines.push(obj.full_name);
+                if (obj.phone) lines.push(obj.phone);
+                if (obj.email) lines.push(obj.email);
+                if (obj.address_line1) lines.push(obj.address_line1);
+                if (obj.address_line2) lines.push(obj.address_line2);
+                
+                const csp = [];
+                if (obj.city) csp.push(obj.city);
+                if (obj.state) csp.push(obj.state);
+                let cspStr = csp.join(', ');
+                if (obj.pincode) cspStr += (cspStr ? ' - ' : '') + obj.pincode;
+                if (cspStr) lines.push(cspStr);
+                
+                if (lines.length === 0) {
+                    return obj.full_address ? escapeHTML(obj.full_address) : escapeHTML(JSON.stringify(obj));
+                }
+                
+                return lines.map(l => escapeHTML(l)).join('<br>');
+            }
+            
             let sourceBadge = '';
             if (order.order_source === 'whatsapp') {
                 sourceBadge = '<span style="display:inline-flex; align-items:center; gap:5px; background:var(--whatsapp-green, #1DA851); color:white; padding:2px 8px; border-radius:12px; font-size:0.75rem; margin-top:5px;"><i class="fab fa-whatsapp"></i> WhatsApp Order</span>';
@@ -1178,7 +1212,7 @@ async function loadOrdersTab() {
                     <div class="order-card-body">
                         <p class="order-items-count">${itemCount} item${itemCount !== 1 ? 's' : ''}</p>
                         <p class="order-total">Total: <strong>₹${total}</strong></p>
-                        ${order.delivery_address ? `<p class="order-address"><i class="fas fa-map-marker-alt"></i> ${escapeHTML(order.delivery_address.city || '')}</p>` : ''}
+                        ${order.delivery_address ? `<p class="order-address" style="margin-top: 10px; line-height: 1.4;"><i class="fas fa-map-marker-alt" style="margin-right: 5px;"></i><span style="display: inline-block; vertical-align: top;">${formatAddress(order.delivery_address)}</span></p>` : ''}
                     </div>
                     <div class="order-card-items">
                         ${(order.order_items || []).map(item => `
