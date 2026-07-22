@@ -14,9 +14,8 @@
             gap: 20px;
         }
         .orders-list-col {
-            flex: 1;
-            min-width: 0;
-            flex-basis: 35%;
+            flex: 0 0 350px;
+            max-width: 350px;
             background: white;
             border-radius: 12px;
             border: 1px solid var(--border);
@@ -30,8 +29,13 @@
                 height: auto;
             }
             .orders-list-col {
-                flex-basis: auto;
+                flex: none;
+                max-width: 100%;
+                width: 100%;
                 height: 50vh;
+            }
+            .order-details-col {
+                padding: 15px;
             }
             .details-grid {
                 grid-template-columns: 1fr !important;
@@ -535,16 +539,15 @@ function renderOrdersList(ordersToRender) {
         
         const testBadge = order.is_test_order ? `<span class="status-badge" style="background:#FFF5F5; border: 1px solid #FEB2B2; color:#E53E3E; font-size:0.6rem;"><i class="fas fa-vial"></i> TEST</span>` : '';
         div.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items: flex-start; flex-wrap: wrap; gap: 5px;">
-                <h4 style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0; line-height: 1.2;">
-                    ${order.order_number}
-                    ${sourceBadge}
-                    ${testBadge}
-                </h4>
-                <span style="font-size:0.8rem; color:var(--text-gray); white-space: nowrap;">${new Date(order.created_at).toLocaleDateString('en-IN')}</span>
+            <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 5px;">
+                <h4 style="margin: 0; font-size: 0.95rem;">${order.order_number}</h4>
+                <span style="font-size:0.75rem; color:var(--text-gray);">${new Date(order.created_at).toLocaleDateString('en-IN')}</span>
             </div>
-            <p style="margin-top: 5px;">${name}</p>
-            <p style="margin-top:5px;"><span class="status-badge" style="background:#EDF2F7; font-size:0.7rem;">${(order.status||'Unknown').toUpperCase()}</span></p>
+            <div style="margin-bottom: 5px; display: flex; gap: 5px; flex-wrap: wrap;">
+                ${sourceBadge} ${testBadge}
+            </div>
+            <p style="margin: 0 0 5px 0; font-size: 0.85rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${name}</p>
+            <p style="margin: 0;"><span class="status-badge" style="background:#EDF2F7; font-size:0.7rem;">${(order.status||'Unknown').toUpperCase()}</span></p>
         `;
         div.addEventListener('click', (e) => {
             console.log("[DEBUG] click handler fired on order card. Order ID:", order.id);
