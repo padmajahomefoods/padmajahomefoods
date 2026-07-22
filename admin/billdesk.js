@@ -584,32 +584,12 @@ async function saveManualOrder() {
             // Assign order_id to items
             itemsPayload.forEach(i => i.order_id = newOrderId);
             
+            // 1. DATABASE LOGIC ONLY
             try {
                 const itemsRes = await fetchAdminData(CONFIG.TABLES.ORDER_ITEMS, 'insert', { payload: itemsPayload });
                 if (itemsRes.error) {
                     throw itemsRes.error;
                 }
-                
-                // Show success, close modal
-                closeManualOrderModal();
-                alert('Manual Order Saved Successfully.');
-                
-                if (typeof loadOrders === 'function') {
-                    loadOrders();
-                }
-                
-                // Clear all
-                document.getElementById('customerName').value = '';
-                document.getElementById('customerMobile').value = '';
-                document.getElementById('customerCity').value = '';
-                document.getElementById('customerAddress').value = '';
-                document.getElementById('moNotes').value = '';
-                billItems = [];
-                _userEditedDeliveryCharge = false;
-                document.getElementById('deliveryCharge').value = 0;
-                renderCart();
-                closeBill(); 
-                
             } catch (err) {
                 // Rollback Order
                 console.error('Order items failed, rolling back order', err);
@@ -620,6 +600,35 @@ async function saveManualOrder() {
                 } catch(e) {}
                 await fetchAdminData(CONFIG.TABLES.ORDERS, 'delete', { match: { id: newOrderId } });
                 throw new Error(`Failed to save order items. Order rolled back.\nDetails: ${errorMsg}`);
+            }
+
+            // 2. UI SUCCESS WORKFLOW
+            try {
+                closeManualOrderModal();
+                alert('Manual Order Saved Successfully.');
+                
+                if (typeof loadOrders === 'function') {
+                    loadOrders();
+                }
+                
+                // Clear all input fields
+                document.getElementById('customerName').value = '';
+                document.getElementById('customerMobile').value = '';
+                document.getElementById('customerCity').value = '';
+                document.getElementById('customerAddress').value = '';
+                document.getElementById('moNotes').value = '';
+                
+                // Reset cart state
+                billItems = [];
+                _userEditedDeliveryCharge = false;
+                document.getElementById('deliveryCharge').value = 0;
+                
+                // Update UI correctly for the bill desk
+                if (typeof updateCartSummary === 'function') updateCartSummary();
+                if (typeof closeBill === 'function') closeBill(); 
+                
+            } catch (uiErr) {
+                console.error("Non-fatal UI error during cleanup:", uiErr);
             }
         } else {
             throw new Error('Failed to create order record. No data returned.');
