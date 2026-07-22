@@ -198,14 +198,14 @@
             
             <div class="admin-form-group" style="margin-bottom: 15px;">
                 <label>Link Order To</label>
-                <select id="moCustomerLinkType" onchange="toggleCustomerSearch()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                <select id="moCustomerLinkType" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
                     <option value="guest">Guest Customer (Default)</option>
                     <option value="existing">Existing Customer</option>
                 </select>
             </div>
             
             <div id="moCustomerSearchBox" style="display: none; margin-bottom: 15px;">
-                <input type="text" id="moCustomerSearch" placeholder="Search by name, email, or mobile..." onkeyup="searchCustomers()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 5px;">
+                <input type="text" id="moCustomerSearch" placeholder="Search by name, email, or mobile..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 5px;">
                 <div id="moCustomerResults" style="max-height: 150px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; display: none; background: #fff;"></div>
                 <input type="hidden" id="moLinkedUserId" value="">
                 <input type="hidden" id="moLinkedCustomerType" value="guest">

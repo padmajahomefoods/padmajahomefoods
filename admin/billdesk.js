@@ -156,7 +156,7 @@ async function searchCustomers() {
     }, 300);
 }
 
-function selectCustomer(id, name, phone) {
+window.selectCustomer = function selectCustomer(id, name, phone) {
     document.getElementById('moLinkedUserId').value = id;
     document.getElementById('moLinkedCustomerType').value = 'registered';
     document.getElementById('moCustomerSearch').value = `${name} (${phone})`;
@@ -215,6 +215,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileInput = document.getElementById('customerMobile');
     if (mobileInput) {
         mobileInput.addEventListener('input', handleCustomerMobileInput);
+    }
+    
+    const linkTypeSelect = document.getElementById('moCustomerLinkType');
+    if (linkTypeSelect) {
+        linkTypeSelect.addEventListener('change', toggleCustomerSearch);
+    }
+    
+    const searchInput = document.getElementById('moCustomerSearch');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', searchCustomers);
     }
 });
 
