@@ -118,7 +118,8 @@ async function fetchAdminData(table, action = 'select', options = {}) {
         const result = await res.json();
         
         if (!res.ok) {
-            throw new Error(result.error || 'Unknown admin API error');
+            console.error("ADMIN API RAW ERROR:", result);
+            throw new Error(JSON.stringify(result));
         }
 
         return { data: result.data, error: null };

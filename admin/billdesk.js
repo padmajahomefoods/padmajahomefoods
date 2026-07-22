@@ -545,6 +545,8 @@ async function saveManualOrder() {
             state: 'Andhra Pradesh'
         };
 
+        const generatedNotes = `${customerName || 'Guest Customer'} | | ${mobile} | Payment: ${method} - ${status}`;
+
         const orderPayload = {
             order_number: orderNumber,
             user_id: null,
@@ -553,15 +555,15 @@ async function saveManualOrder() {
             status: orderStatus,
             razorpay_order_id: null,
             payment_id: null,
-            whatsapp_number: mobile, 
             is_test_order: false,
             order_source: source,
-            payment_method: method,
-            payment_status: status.toLowerCase(),
             accounting_notes: notes,
+            notes: generatedNotes,
             created_at: orderDate
         };
 
+        console.log("SENDING PAYLOAD TO DB:", JSON.stringify(orderPayload, null, 2));
+        
         // Pseudo-atomic logic: Insert Order, if success insert Items, if items fail rollback Order
         const orderRes = await fetchAdminData(CONFIG.TABLES.ORDERS, 'insert', { payload: orderPayload });
         if (orderRes && orderRes.length > 0) {
