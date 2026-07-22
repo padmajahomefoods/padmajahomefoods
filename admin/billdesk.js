@@ -108,6 +108,8 @@ function toggleCustomerSearch() {
     }
 }
 
+let _currentSearchRequestId = 0;
+
 async function searchCustomers() {
     const query = document.getElementById('moCustomerSearch').value.trim();
     const resultsContainer = document.getElementById('moCustomerResults');
@@ -120,18 +122,41 @@ async function searchCustomers() {
     if (_customerSearchTimeout) clearTimeout(_customerSearchTimeout);
     
     _customerSearchTimeout = setTimeout(async () => {
+        const requestId = ++_currentSearchRequestId;
+        
         try {
             resultsContainer.style.display = 'block';
             resultsContainer.innerHTML = '<div style="padding: 10px; color: #666; font-size: 0.9rem;">Searching...</div>';
             
-            const { data, error } = await fetchAdminData(CONFIG.TABLES.PROFILES, 'select', {
-                or: `full_name.ilike.%${query}%,phone.ilike.%${query}%`
+            let res = await fetchAdminData(CONFIG.TABLES.PROFILES, 'select', {
+                or: `full_name.ilike.%${query}%,phone.ilike.%${query}%,email.ilike.%${query}%`
             });
             
-            if (error) throw error;
+            if (res.error && res.message && res.message.includes('email')) {
+                res = await fetchAdminData(CONFIG.TABLES.PROFILES, 'select', {
+                    or: `full_name.ilike.%${query}%,phone.ilike.%${query}%`
+                });
+            } else if (res.error && !res.data) {
+                res = await fetchAdminData(CONFIG.TABLES.PROFILES, 'select', {
+                    or: `full_name.ilike.%${query}%,phone.ilike.%${query}%`
+                });
+            }
             
-            if (!data || data.length === 0) {
-                resultsContainer.innerHTML = '<div style="padding: 10px; color: #999; font-size: 0.9rem;">No customers found.</div>';
+            if (requestId !== _currentSearchRequestId) return;
+            
+            if (res.error && !res.data) throw new Error(res.message || res.error);
+            let data = res.data || [];
+            
+            const lowerQuery = query.toLowerCase();
+            data = data.filter(c => {
+                const n = (c.full_name || '').toLowerCase();
+                const p = (c.phone || '').toLowerCase();
+                const e = (c.email || '').toLowerCase();
+                return n.includes(lowerQuery) || p.includes(lowerQuery) || e.includes(lowerQuery);
+            });
+            
+            if (data.length === 0) {
+                resultsContainer.innerHTML = '<div style="padding: 10px; color: #999; font-size: 0.9rem;">No matching customers found.</div>';
                 return;
             }
             
@@ -139,17 +164,21 @@ async function searchCustomers() {
             data.slice(0, 10).forEach(c => {
                 const name = c.full_name || 'No Name';
                 const phone = c.phone || 'No Phone';
+                const email = c.email ? ` | ${c.email}` : '';
+                
+                // Do not display "No Name" if it doesn't match the query directly, though our filter already enforces strict matching.
                 html += `
                     <div style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 0.9rem;" 
                          onclick="selectCustomer('${c.id}', '${name.replace(/'/g, "\\'")}', '${phone.replace(/'/g, "\\'")}')"
                          onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='transparent'">
                         <strong><i class="fas fa-user"></i> ${_escapeHtml(name)}</strong><br>
-                        <span style="color: #666;"><i class="fas fa-phone"></i> ${_escapeHtml(phone)}</span>
+                        <span style="color: #666;"><i class="fas fa-phone"></i> ${_escapeHtml(phone)}${_escapeHtml(email)}</span>
                     </div>
                 `;
             });
             resultsContainer.innerHTML = html;
         } catch(err) {
+            if (requestId !== _currentSearchRequestId) return;
             console.error('Customer search failed:', err);
             resultsContainer.innerHTML = '<div style="padding: 10px; color: var(--spice-red); font-size: 0.9rem;">Search failed.</div>';
         }
