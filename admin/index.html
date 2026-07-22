@@ -429,6 +429,7 @@ async function loadDashboardStats() {
         let pendingShipmentsCount = 0;
 
         (orders || []).forEach(order => {
+            if (order.is_deleted) return;
             const orderDate = new Date(order.created_at);
             
             if (['confirmed', 'preparing', 'packed', 'ready to dispatch'].includes(order.status?.toLowerCase())) {

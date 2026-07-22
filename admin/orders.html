@@ -244,6 +244,7 @@
                             <option value="delivered">Delivered</option>
                             <option value="cancelled">Cancelled</option>
                             <option value="payment_failed">Payment Failed</option>
+                            <option value="deleted">Deleted</option>
                         </select>
                     </div>
                     <div class="orders-list" id="ordersList">
@@ -393,9 +394,42 @@
                             
                             <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="saveOrderStatus()">Save Status</button>
                         </div>
+                        
+                        <div style="margin-top: 40px; border-top: 1px solid #FEE2E2; padding-top: 20px; text-align: right;">
+                            <button id="btnDeleteOrder" onclick="openDeleteModal()" style="background: none; border: 1px solid #FCA5A5; color: #DC2626; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s;"><i class="fas fa-trash-alt"></i> Delete Order</button>
+                            <button id="btnRestoreOrder" onclick="openRestoreModal()" style="display: none; background: #ECFDF5; border: 1px solid #6EE7B7; color: #059669; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s;"><i class="fas fa-recycle"></i> Restore Order</button>
+                        </div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<div id="deleteOrderModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <h3 style="margin: 0 0 15px 0; color: #DC2626; display: flex; align-items: center; gap: 8px;"><i class="fas fa-exclamation-triangle"></i> Delete Order</h3>
+        <p style="margin: 0 0 5px 0; font-size: 0.9rem;"><strong>Order ID:</strong> <span id="delModalOrderId"></span></p>
+        <p style="margin: 0 0 5px 0; font-size: 0.9rem;"><strong>Customer Name:</strong> <span id="delModalName"></span></p>
+        <p style="margin: 0 0 15px 0; font-size: 0.9rem;"><strong>Total Amount:</strong> <span id="delModalAmount"></span></p>
+        <p style="font-size: 0.9rem; color: #4B5563; margin-bottom: 15px; line-height: 1.4;">This action hides the order from the normal Orders list.<br>It can be restored later.</p>
+        <p style="font-size: 0.9rem; margin-bottom: 5px; font-weight: 500;">Type DELETE to continue.</p>
+        <input type="text" id="deleteConfirmInput" placeholder="DELETE" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 20px; text-transform: uppercase;" onkeyup="validateDeleteInput()">
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button onclick="closeDeleteModal()" style="padding: 8px 16px; background: white; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">Cancel</button>
+            <button id="btnConfirmDelete" onclick="confirmDeleteOrder()" disabled style="padding: 8px 16px; background: #DC2626; color: white; border: none; border-radius: 6px; cursor: not-allowed; opacity: 0.5; transition: all 0.2s;">Delete Order</button>
+        </div>
+    </div>
+</div>
+
+<div id="restoreOrderModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <h3 style="margin: 0 0 15px 0; color: #059669; display: flex; align-items: center; gap: 8px;"><i class="fas fa-recycle"></i> Restore Order</h3>
+        <p style="font-size: 0.95rem; margin-bottom: 20px;">Restore this order?</p>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button onclick="closeRestoreModal()" style="padding: 8px 16px; background: white; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">Cancel</button>
+            <button id="btnConfirmRestore" onclick="confirmRestoreOrder()" style="padding: 8px 16px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer;">Restore</button>
         </div>
     </div>
 </div>
@@ -598,6 +632,15 @@ function selectOrder(orderId, element) {
     document.getElementById('detailEmail').textContent = parts[1] || 'N/A';
     document.getElementById('detailMobile').textContent = parts[2] || currentOrder.whatsapp_number || 'N/A';
     
+    // Toggle Delete / Restore buttons based on is_deleted
+    if (currentOrder.is_deleted) {
+        document.getElementById('btnDeleteOrder').style.display = 'none';
+        document.getElementById('btnRestoreOrder').style.display = 'inline-block';
+    } else {
+        document.getElementById('btnDeleteOrder').style.display = 'inline-block';
+        document.getElementById('btnRestoreOrder').style.display = 'none';
+    }
+    
     function formatAddress(address) {
         if (!address) return 'N/A';
         let obj;
@@ -757,12 +800,19 @@ function filterOrders() {
     const sourceFilter = document.getElementById('sourceFilter') ? document.getElementById('sourceFilter').value : 'all';
     
     const filtered = allOrders.filter(o => {
+        // Handle Soft Deletes
+        if (statusFilter === 'deleted') {
+            if (o.is_deleted !== true) return false;
+        } else {
+            if (o.is_deleted === true) return false;
+        }
+        
         const parts = o.notes ? o.notes.toLowerCase() : '';
         const phone = o.whatsapp_number ? o.whatsapp_number.toLowerCase() : '';
         const matchesSearch = (o.order_number||'').toLowerCase().includes(q) || parts.includes(q) || phone.includes(q);
         
         const orderStatus = (o.status || 'pending').toLowerCase();
-        const matchesStatus = statusFilter === 'all' || orderStatus === statusFilter;
+        const matchesStatus = statusFilter === 'all' || statusFilter === 'deleted' || orderStatus === statusFilter;
         
         const orderSource = (o.order_source || 'website').toLowerCase();
         let matchesSource = true;
@@ -872,6 +922,125 @@ async function saveOrderStatus() {
         alert('Failed to update status: ' + err.message);
     }
 }
+
+// ----------------------------------------------------------------------
+// Soft Delete Logic
+// ----------------------------------------------------------------------
+function openDeleteModal() {
+    if(!currentOrder) return;
+    document.getElementById('delModalOrderId').textContent = currentOrder.order_number;
+    const parts = currentOrder.notes ? currentOrder.notes.split('|').map(s=>s.trim()) : [];
+    document.getElementById('delModalName').textContent = parts[0] || 'Guest Customer';
+    document.getElementById('delModalAmount').textContent = '₹' + Number(currentOrder.total_amount).toLocaleString('en-IN');
+    
+    document.getElementById('deleteConfirmInput').value = '';
+    document.getElementById('btnConfirmDelete').disabled = true;
+    document.getElementById('btnConfirmDelete').style.opacity = '0.5';
+    document.getElementById('btnConfirmDelete').style.cursor = 'not-allowed';
+    
+    document.getElementById('deleteOrderModal').style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteOrderModal').style.display = 'none';
+}
+
+function validateDeleteInput() {
+    const val = document.getElementById('deleteConfirmInput').value.trim().toUpperCase();
+    const btn = document.getElementById('btnConfirmDelete');
+    if (val === 'DELETE') {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+    } else {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+    }
+}
+
+async function confirmDeleteOrder() {
+    if(!currentOrder) return;
+    const btn = document.getElementById('btnConfirmDelete');
+    btn.disabled = true;
+    btn.textContent = 'Deleting...';
+    
+    try {
+        const { error } = await fetchAdminData(CONFIG.TABLES.ORDERS, 'update', {
+            match: { id: currentOrder.id },
+            payload: { is_deleted: true }
+        });
+        
+        if (error) throw error;
+        
+        showAdminToast('Order moved to Deleted Orders.');
+        currentOrder.is_deleted = true;
+        closeDeleteModal();
+        
+        // Refresh UI
+        filterOrders();
+        
+        // Hide details pane if it's no longer matching filter
+        const statusFilter = document.getElementById('statusFilter').value;
+        if (statusFilter !== 'deleted') {
+            document.getElementById('emptyDetails').style.display = 'flex';
+            document.getElementById('fullDetails').style.display = 'none';
+        } else {
+            selectOrder(currentOrder.id, document.querySelector('.order-list-item.active'));
+        }
+    } catch (err) {
+        alert('Failed to delete order: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Delete Order';
+    }
+}
+
+function openRestoreModal() {
+    if(!currentOrder) return;
+    document.getElementById('restoreOrderModal').style.display = 'flex';
+}
+
+function closeRestoreModal() {
+    document.getElementById('restoreOrderModal').style.display = 'none';
+}
+
+async function confirmRestoreOrder() {
+    if(!currentOrder) return;
+    const btn = document.getElementById('btnConfirmRestore');
+    btn.disabled = true;
+    btn.textContent = 'Restoring...';
+    
+    try {
+        const { error } = await fetchAdminData(CONFIG.TABLES.ORDERS, 'update', {
+            match: { id: currentOrder.id },
+            payload: { is_deleted: false }
+        });
+        
+        if (error) throw error;
+        
+        showAdminToast('Order restored successfully.');
+        currentOrder.is_deleted = false;
+        closeRestoreModal();
+        
+        // Refresh UI
+        filterOrders();
+        
+        const statusFilter = document.getElementById('statusFilter').value;
+        if (statusFilter === 'deleted') {
+            document.getElementById('emptyDetails').style.display = 'flex';
+            document.getElementById('fullDetails').style.display = 'none';
+        } else {
+            selectOrder(currentOrder.id, document.querySelector('.order-list-item.active'));
+        }
+        
+    } catch (err) {
+        alert('Failed to restore order: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Restore';
+    }
+}
+
 </script>
 
 </body>

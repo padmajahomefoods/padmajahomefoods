@@ -153,6 +153,11 @@
                 <option value="custom">Custom Range</option>
             </select>
             
+            <select class="filter-select" id="statusFilter" onchange="handleFilterChange()">
+                <option value="active">Active Orders</option>
+                <option value="deleted">Deleted Orders</option>
+            </select>
+            
             <div class="custom-date-group" id="customDateGroup">
                 <input type="date" id="dateStart" class="filter-select">
                 <span>to</span>
@@ -644,24 +649,25 @@ function getCustomerName(o) {
 
 function applyFilters(start, end, prevStart, prevEnd) {
     const includeTest = document.getElementById('includeTestOrders').checked;
-    const q = document.getElementById('globalSearch').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : 'active';
+    const q = document.getElementById('globalSearch').value.toLowerCase().trim();
     
     const isOkOrder = (o) => o.status !== 'cancelled' && o.status !== 'failed' && o.status !== 'payment_failed';
     const passesSearch = (o) => {
         if(!q) return true;
         const n = getCustomerName(o).toLowerCase();
-        
         let p = (o.whatsapp_number || '').toLowerCase();
         if (o.user_id) {
             const prof = rawProfiles.find(pr => pr.id === o.user_id);
             if (prof && prof.phone) p = prof.phone.toLowerCase();
         }
-        
         const id = (o.order_number||'').toLowerCase();
         return n.includes(q) || p.includes(q) || id.includes(q);
     };
 
     const filterBase = (o) => {
+        if (statusFilter === 'deleted' && o.is_deleted !== true) return false;
+        if (statusFilter !== 'deleted' && o.is_deleted === true) return false;
         if(!includeTest && o.is_test_order) return false;
         if(!passesSearch(o)) return false;
         return isOkOrder(o);
@@ -1178,6 +1184,9 @@ function renderCalendar() {
     const includeTest = document.getElementById('includeTestOrders').checked;
     const monthOrders = rawOrders.filter(o => {
         const d = new Date(o.created_at);
+        const statusFilter = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : 'active';
+        if (statusFilter === 'deleted' && o.is_deleted !== true) return false;
+        if (statusFilter !== 'deleted' && o.is_deleted === true) return false;
         if(!includeTest && o.is_test_order) return false;
         return d.getFullYear() === year && d.getMonth() === month && o.status !== 'cancelled' && o.status !== 'failed';
     });
