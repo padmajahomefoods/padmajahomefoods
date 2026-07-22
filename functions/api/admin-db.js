@@ -100,6 +100,9 @@ export async function onRequestPost(context) {
             if (inFilter && inFilter.column && inFilter.values) {
                 queryParams.append(inFilter.column, `in.(${inFilter.values.join(',')})`);
             }
+            if (body.or) {
+                queryParams.append('or', `(${body.or})`);
+            }
             if (order && order.column) {
                 const dir = order.ascending === false ? 'desc' : 'asc';
                 queryParams.append('order', `${order.column}.${dir}`);
