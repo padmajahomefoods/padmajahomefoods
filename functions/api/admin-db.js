@@ -71,7 +71,7 @@ export async function onRequestPost(context) {
         }
 
         // --- SECURITY FIX: Strict Table Allowlist ---
-        const ALLOWED_TABLES = ['products', 'categories', 'orders', 'order_items', 'profiles', 'addresses', 'settings'];
+        const ALLOWED_TABLES = ['products', 'categories', 'orders', 'order_items', 'profiles', 'addresses', 'settings', 'expenses'];
         if (!ALLOWED_TABLES.includes(table)) {
             console.error(`[admin-db] SECURITY ALERT: Attempted to access forbidden table: ${table}`);
             return new Response(JSON.stringify({ error: 'Forbidden table access' }), { status: 403, headers: corsHeaders });
