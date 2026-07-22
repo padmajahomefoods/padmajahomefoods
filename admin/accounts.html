@@ -374,7 +374,7 @@
                         </div>
                         <div class="form-group">
                             <label>Amount (₹)</label>
-                            <input type="number" id="expAmount" step="1" required min="1">
+                            <input type="number" id="expAmount" step="0.01" required min="0">
                         </div>
                         <div class="form-group">
                             <label>Payment Method</label>
@@ -764,16 +764,16 @@ function updateOverviewCards() {
     const units = filteredData.items.reduce((s, i) => s + (i.quantity||1), 0);
     document.getElementById('cardUnits').textContent = units;
     
-    document.getElementById('cardPendingPayments').textContent = `₹${cur.pendingAmt.toLocaleString('en-IN')}`;
+    document.getElementById('cardPendingPayments').textContent = `₹${cur.pendingAmt.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById('cardFreeShip').textContent = `${cur.freeShipCnt} Orders`;
-    document.getElementById('cardFreeShipExp').textContent = `₹${cur.freeShipExp.toLocaleString('en-IN')}`;
+    document.getElementById('cardFreeShipExp').textContent = `₹${cur.freeShipExp.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 }
 
 function setCard(id, current, prev, prefix, inverse = false) {
     const elVal = document.getElementById(`card${id}`);
     const elTrn = document.getElementById(`trend${id}`);
     if(!elVal) return;
-    elVal.textContent = prefix + (prefix === '₹' ? current.toLocaleString('en-IN') : current);
+    elVal.textContent = prefix + (prefix === '₹' ? current.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : current);
     
     if (!elTrn) return;
     if (prev === 0) {
@@ -915,7 +915,7 @@ function renderTopProducts() {
         tbody.innerHTML += `<tr>
             <td style="font-weight:500;">${p.name}</td>
             <td>${p.q}</td>
-            <td style="color:var(--primary); font-weight:600;">₹${p.r.toLocaleString('en-IN')}</td>
+            <td style="color:var(--primary); font-weight:600;">₹${p.r.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             <td>${p.custs.size}</td>
             <td style="font-size:0.85rem;">${lsDate}</td>
         </tr>`;
@@ -953,25 +953,25 @@ function renderMonthReport() {
             <td>${name}</td>
             <td>${(o.payment_method||'').toUpperCase()}</td>
             <td><span style="font-size:0.75rem; background:#eee; padding:2px 6px; border-radius:4px;">${o.status.toUpperCase()}</span></td>
-            <td style="text-align:right;">₹${prodVal.toLocaleString()}</td>
-            <td style="text-align:right;">₹${p.shipChg.toLocaleString()}</td>
-            <td style="text-align:right; color:#E53E3E;">₹${p.estProd.toLocaleString()}</td>
-            <td style="text-align:right; color:#E53E3E;">₹${p.courier.toLocaleString()}</td>
-            <td style="text-align:right; color:#E53E3E;">₹${p.gateway.toLocaleString()}</td>
-            <td style="text-align:right; font-weight:600;">₹${p.rev.toLocaleString()}</td>
-            <td style="text-align:right; color:#10B981; font-weight:600;">₹${orderGross.toLocaleString()}</td>
+            <td style="text-align:right;">₹${prodVal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td style="text-align:right;">₹${p.shipChg.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td style="text-align:right; color:#E53E3E;">₹${p.estProd.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td style="text-align:right; color:#E53E3E;">₹${p.courier.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td style="text-align:right; color:#E53E3E;">₹${p.gateway.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td style="text-align:right; font-weight:600;">₹${p.rev.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td style="text-align:right; color:#10B981; font-weight:600;">₹${orderGross.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
         </tr>`;
     });
     
     tfoot.innerHTML = `<tr>
         <td colspan="5" style="text-align:right;"><strong>TOTALS (${tOrd} Orders):</strong></td>
-        <td style="text-align:right;">₹${tProdVal.toLocaleString()}</td>
-        <td style="text-align:right;">₹${tShipChg.toLocaleString()}</td>
-        <td style="text-align:right; color:#E53E3E;">₹${tProdCost.toLocaleString()}</td>
-        <td style="text-align:right; color:#E53E3E;">₹${tCour.toLocaleString()}</td>
-        <td style="text-align:right; color:#E53E3E;">₹${tGate.toLocaleString()}</td>
-        <td style="text-align:right; font-weight:700;">₹${tPaid.toLocaleString()}</td>
-        <td style="text-align:right; color:#10B981; font-weight:700;">₹${tGross.toLocaleString()}</td>
+        <td style="text-align:right;">₹${tProdVal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+        <td style="text-align:right;">₹${tShipChg.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+        <td style="text-align:right; color:#E53E3E;">₹${tProdCost.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+        <td style="text-align:right; color:#E53E3E;">₹${tCour.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+        <td style="text-align:right; color:#E53E3E;">₹${tGate.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+        <td style="text-align:right; font-weight:700;">₹${tPaid.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+        <td style="text-align:right; color:#10B981; font-weight:700;">₹${tGross.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
     </tr>`;
 }
 
@@ -1015,20 +1015,20 @@ function renderYearReport() {
         tbody.innerHTML += `<tr onclick="drillToMonth('${m}')" title="Click to view full Month Report">
             <td style="font-weight:600; color:var(--primary);">${monthName}</td>
             <td>${dt.ord}</td>
-            <td>₹${dt.rev.toLocaleString('en-IN')}</td>
-            <td>₹${dt.shipChg.toLocaleString('en-IN')}</td>
-            <td style="color:#E53E3E;">₹${dt.exp.toLocaleString('en-IN')}</td>
-            <td style="color:#10B981; font-weight:600;">₹${dt.net.toLocaleString('en-IN')}</td>
+            <td>₹${dt.rev.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td>₹${dt.shipChg.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td style="color:#E53E3E;">₹${dt.exp.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td style="color:#10B981; font-weight:600;">₹${dt.net.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
         </tr>`;
     });
     
     tfoot.innerHTML = `<tr>
         <td><strong>TOTAL YTD</strong></td>
         <td>${tOrd}</td>
-        <td>₹${tRev.toLocaleString()}</td>
-        <td>₹${tShip.toLocaleString()}</td>
-        <td style="color:#E53E3E;">₹${tExp.toLocaleString()}</td>
-        <td style="color:#10B981;">₹${tNet.toLocaleString()}</td>
+        <td>₹${tRev.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+        <td>₹${tShip.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+        <td style="color:#E53E3E;">₹${tExp.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+        <td style="color:#10B981;">₹${tNet.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
     </tr>`;
 }
 
@@ -1087,7 +1087,7 @@ function renderCustomers() {
             <td style="font-weight:600; color:var(--primary);">${c.name}</td>
             <td>${c.phone}</td>
             <td>${c.ords.length}</td>
-            <td style="font-weight:600;">₹${c.spend.toLocaleString('en-IN')}</td>
+            <td style="font-weight:600;">₹${c.spend.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             <td>₹${aov}</td>
             <td style="font-size:0.85rem;">${c.first ? c.first.toLocaleDateString() : '-'}</td>
             <td style="font-size:0.85rem;">${c.last ? c.last.toLocaleDateString() : '-'}</td>
@@ -1110,7 +1110,7 @@ function openCustomerProfile(c) {
             <p style="margin:0; font-size:0.9rem; color:#666;">Customer since ${c.first.toLocaleDateString()}</p>
         </div>
         <div style="background:#F8FAFC; padding:15px; border-radius:8px; border:1px solid #eee;">
-            <p style="margin:0 0 5px 0;"><strong>Lifetime Spend:</strong> <span style="color:#10B981;">₹${c.spend.toLocaleString()}</span></p>
+            <p style="margin:0 0 5px 0;"><strong>Lifetime Spend:</strong> <span style="color:#10B981;">₹${c.spend.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></p>
             <p style="margin:0; font-size:0.9rem; color:#666;">Total Orders: ${c.ords.length} | Avg: ₹${(c.spend/c.ords.length).toFixed(0)}</p>
         </div>
     </div>
@@ -1125,7 +1125,7 @@ function openCustomerProfile(c) {
             <td>${new Date(o.created_at).toLocaleDateString()}</td>
             <td style="font-family:monospace; color:var(--primary); cursor:pointer;" onclick="window.open('orders.html?order=' + '${o.order_number}', '_blank')">${o.order_number} <i class="fas fa-external-link-alt" style="font-size:0.7rem;"></i></td>
             <td><span style="background:#eee; padding:2px 6px; border-radius:4px;">${o.status}</span></td>
-            <td style="font-weight:600;">₹${Number(o.total_amount).toLocaleString()}</td>
+            <td style="font-weight:600;">₹${Number(o.total_amount).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
         </tr>`;
     });
     
@@ -1147,7 +1147,7 @@ function renderExpensesList() {
             <td><span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:0.8rem;">${e.category}</span></td>
             <td>${e.notes || '-'}</td>
             <td>${e.payment_method || '-'}</td>
-            <td style="text-align:right; font-weight:600; color:var(--danger);">₹${Number(e.amount).toLocaleString('en-IN')}</td>
+            <td style="text-align:right; font-weight:600; color:var(--danger);">₹${Number(e.amount).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
         </tr>`;
     });
 }
@@ -1228,7 +1228,7 @@ function renderCalendar() {
         let content = `<div class="cal-date">${i}</div>`;
         if (dayMap[i]) {
             content += `<div class="cal-metric"><span>Ord:</span> <strong>${dayMap[i].ord}</strong></div>`;
-            content += `<div class="cal-metric revenue"><span>Rev:</span> <strong>₹${dayMap[i].rev.toLocaleString('en-IN')}</strong></div>`;
+            content += `<div class="cal-metric revenue"><span>Rev:</span> <strong>₹${dayMap[i].rev.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></div>`;
             div.onclick = () => openCalDrilldown(i, month, year, dayMap[i]);
         }
         
@@ -1248,7 +1248,7 @@ function openCalDrilldown(day, month, year, data) {
     
     let html = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
         <div style="background:#F8FAFC; padding:15px; border-radius:8px;"><strong>Total Orders:</strong> ${data.ord}</div>
-        <div style="background:#ECFDF5; padding:15px; border-radius:8px; color:#065F46;"><strong>Total Revenue:</strong> ₹${data.rev.toLocaleString('en-IN')}</div>
+        <div style="background:#ECFDF5; padding:15px; border-radius:8px; color:#065F46;"><strong>Total Revenue:</strong> ₹${data.rev.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
     </div>`;
     
     html += `<table class="analytics-table"><thead><tr><th>Order</th><th>Customer</th><th>Amount</th><th>Status</th></tr></thead><tbody>`;
@@ -1258,7 +1258,7 @@ function openCalDrilldown(day, month, year, data) {
         html += `<tr onclick="window.open('orders.html?order=${o.order_number}', '_blank')" style="cursor:pointer;">
             <td style="font-family:monospace; color:var(--primary);">${o.order_number}${testBadge}</td>
             <td>${name}</td>
-            <td style="font-weight:600;">₹${Number(o.total_amount).toLocaleString('en-IN')}</td>
+            <td style="font-weight:600;">₹${Number(o.total_amount).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             <td><span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:0.75rem;">${o.status.toUpperCase()}</span></td>
         </tr>`;
     });
@@ -1368,17 +1368,17 @@ function exportExcel() {
         ["Generated On:", new Date().toLocaleString('en-IN')],
         ["Include Test Orders:", incTest], [],
         ["Financial Summary", ""],
-        ["Gross Revenue", `₹${sum.rev.toLocaleString('en-IN')}`],
-        ["Product Revenue", `₹${sum.prodRev.toLocaleString('en-IN')}`],
-        ["Shipping Collected", `₹${sum.shipChg.toLocaleString('en-IN')}`],
-        ["Raw Material Cost", `₹${sum.rawCost.toLocaleString('en-IN')}`],
-        ["Courier Cost", `₹${sum.courCost.toLocaleString('en-IN')}`],
-        ["Gateway Charges", `₹${sum.gate.toLocaleString('en-IN')}`],
-        ["Manual Business Expenses", `₹${sum.manualExp.toLocaleString('en-IN')}`],
-        ["Total Expenses", `₹${sum.totalExp.toLocaleString('en-IN')}`],
-        ["Net Profit", `₹${sum.netProfit.toLocaleString('en-IN')}`],
+        ["Gross Revenue", `₹${sum.rev.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`],
+        ["Product Revenue", `₹${sum.prodRev.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`],
+        ["Shipping Collected", `₹${sum.shipChg.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`],
+        ["Raw Material Cost", `₹${sum.rawCost.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`],
+        ["Courier Cost", `₹${sum.courCost.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`],
+        ["Gateway Charges", `₹${sum.gate.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`],
+        ["Manual Business Expenses", `₹${sum.manualExp.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`],
+        ["Total Expenses", `₹${sum.totalExp.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`],
+        ["Net Profit", `₹${sum.netProfit.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`],
         ["Total Orders", sum.orderCount],
-        ["Average Order Value", `₹${sum.aov.toLocaleString('en-IN')}`]
+        ["Average Order Value", `₹${sum.aov.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`]
     ];
     const wsOverview = XLSX.utils.aoa_to_sheet(overviewData);
     wsOverview['!cols'] = [{wch: 30}, {wch: 20}];
@@ -1402,10 +1402,10 @@ function exportExcel() {
         ordersData.push([
             new Date(o.created_at).toLocaleDateString('en-IN'), o.order_number, name,
             city, productsStr, totalQty, 
-            `₹${prodVal.toLocaleString('en-IN')}`, `₹${p.shipChg.toLocaleString('en-IN')}`, `₹${p.rev.toLocaleString('en-IN')}`, 
+            `₹${prodVal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, `₹${p.shipChg.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, `₹${p.rev.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, 
             payInfo.method, payInfo.status, payInfo.id, o.status.toUpperCase(), 
-            `₹${p.estProd.toLocaleString('en-IN')}`, `₹${p.courier.toLocaleString('en-IN')}`, `₹${p.gateway.toLocaleString('en-IN')}`, 
-            `₹${orderGross.toLocaleString('en-IN')}`, o.is_test_order ? 'Yes' : 'No', o.accounting_notes || ''
+            `₹${p.estProd.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, `₹${p.courier.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, `₹${p.gateway.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, 
+            `₹${orderGross.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, o.is_test_order ? 'Yes' : 'No', o.accounting_notes || ''
         ]);
     });
     const wsOrders = XLSX.utils.aoa_to_sheet(ordersData);
@@ -1416,7 +1416,7 @@ function exportExcel() {
     // Sheet 3: Business Expenses
     const expData = [["Date", "Category", "Description", "Amount", "Notes"]];
     filteredData.expenses.forEach(e => {
-        expData.push([new Date(e.expense_date).toLocaleDateString('en-IN'), e.category, e.notes || '', `₹${Number(e.amount).toLocaleString('en-IN')}`, e.notes || '']);
+        expData.push([new Date(e.expense_date).toLocaleDateString('en-IN'), e.category, e.notes || '', `₹${Number(e.amount).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, e.notes || '']);
     });
     const wsExp = XLSX.utils.aoa_to_sheet(expData);
     wsExp['!views'] = [{state: 'frozen', ySplit: 1}];
@@ -1444,7 +1444,7 @@ function exportExcel() {
     });
     const custData = [["Customer Name", "Total Orders", "Lifetime Spend", "Average Order Value", "Customer Since", "Last Order Date"]];
     Object.values(custMap).sort((a,b)=>b.rev-a.rev).forEach(c => {
-        custData.push([c.name, c.ord, `₹${c.rev.toLocaleString('en-IN')}`, `₹${(c.rev/c.ord).toFixed(2)}`, c.first.toLocaleDateString('en-IN'), c.last.toLocaleDateString('en-IN')]);
+        custData.push([c.name, c.ord, `₹${c.rev.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, `₹${(c.rev/c.ord).toFixed(2)}`, c.first.toLocaleDateString('en-IN'), c.last.toLocaleDateString('en-IN')]);
     });
     const wsCust = XLSX.utils.aoa_to_sheet(custData);
     wsCust['!views'] = [{state: 'frozen', ySplit: 1}];
@@ -1460,7 +1460,7 @@ function exportExcel() {
     });
     const prodData = [["Product Name", "Units Sold", "Revenue", "Orders Count"]];
     Object.keys(pMap).map(k => ({n:k, q:pMap[k].q, r:pMap[k].r, c:pMap[k].ords.size})).sort((a,b)=>b.q-a.q).forEach(p => {
-        prodData.push([p.n, p.q, `₹${p.r.toLocaleString('en-IN')}`, p.c]);
+        prodData.push([p.n, p.q, `₹${p.r.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, p.c]);
     });
     const wsProd = XLSX.utils.aoa_to_sheet(prodData);
     wsProd['!views'] = [{state: 'frozen', ySplit: 1}];
@@ -1506,17 +1506,17 @@ function exportPDF() {
         
         <div class="pdf-h2">Financial Summary</div>
         <table class="pdf-table" style="width: 50%;">
-            <tr><th style="width: 60%;">Gross Revenue</th><td class="right">₹${sum.rev.toLocaleString('en-IN')}</td></tr>
-            <tr><th>Product Revenue</th><td class="right">₹${sum.prodRev.toLocaleString('en-IN')}</td></tr>
-            <tr><th>Shipping Collected</th><td class="right">₹${sum.shipChg.toLocaleString('en-IN')}</td></tr>
-            <tr><th>Raw Material Cost</th><td class="right">₹${sum.rawCost.toLocaleString('en-IN')}</td></tr>
-            <tr><th>Courier Cost</th><td class="right">₹${sum.courCost.toLocaleString('en-IN')}</td></tr>
-            <tr><th>Gateway Charges</th><td class="right">₹${sum.gate.toLocaleString('en-IN')}</td></tr>
-            <tr><th>Manual Business Expenses</th><td class="right">₹${sum.manualExp.toLocaleString('en-IN')}</td></tr>
-            <tr><th class="bold">Total Expenses</th><td class="right bold">₹${sum.totalExp.toLocaleString('en-IN')}</td></tr>
-            <tr><th class="bold" style="color:#10B981;">Net Profit</th><td class="right bold" style="color:#10B981;">₹${sum.netProfit.toLocaleString('en-IN')}</td></tr>
+            <tr><th style="width: 60%;">Gross Revenue</th><td class="right">₹${sum.rev.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+            <tr><th>Product Revenue</th><td class="right">₹${sum.prodRev.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+            <tr><th>Shipping Collected</th><td class="right">₹${sum.shipChg.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+            <tr><th>Raw Material Cost</th><td class="right">₹${sum.rawCost.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+            <tr><th>Courier Cost</th><td class="right">₹${sum.courCost.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+            <tr><th>Gateway Charges</th><td class="right">₹${sum.gate.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+            <tr><th>Manual Business Expenses</th><td class="right">₹${sum.manualExp.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+            <tr><th class="bold">Total Expenses</th><td class="right bold">₹${sum.totalExp.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+            <tr><th class="bold" style="color:#10B981;">Net Profit</th><td class="right bold" style="color:#10B981;">₹${sum.netProfit.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
             <tr><th>Total Orders</th><td class="right">${sum.orderCount}</td></tr>
-            <tr><th>Average Order Value</th><td class="right">₹${sum.aov.toLocaleString('en-IN')}</td></tr>
+            <tr><th>Average Order Value</th><td class="right">₹${sum.aov.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
         </table>
     `;
     
@@ -1525,7 +1525,7 @@ function exportPDF() {
         <thead><tr><th>Category</th><th class="right">Amount</th></tr></thead><tbody>`;
     const expMap = {};
     filteredData.expenses.forEach(e => { expMap[e.category] = (expMap[e.category]||0) + Number(e.amount); });
-    Object.keys(expMap).forEach(k => { html += `<tr><td>${k}</td><td class="right">₹${expMap[k].toLocaleString('en-IN')}</td></tr>`; });
+    Object.keys(expMap).forEach(k => { html += `<tr><td>${k}</td><td class="right">₹${expMap[k].toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`; });
     if(Object.keys(expMap).length === 0) html += `<tr><td colspan="2">No manual expenses.</td></tr>`;
     html += `</tbody></table>`;
     
@@ -1538,7 +1538,7 @@ function exportPDF() {
         pMap[i.product_name].q += (i.quantity||1); pMap[i.product_name].r += Number(i.total);
     });
     Object.keys(pMap).map(k => ({n:k, q:pMap[k].q, r:pMap[k].r})).sort((a,b)=>b.q-a.q).slice(0,10).forEach(p => {
-        html += `<tr><td>${p.n}</td><td class="right">${p.q}</td><td class="right">₹${p.r.toLocaleString('en-IN')}</td></tr>`;
+        html += `<tr><td>${p.n}</td><td class="right">${p.q}</td><td class="right">₹${p.r.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`;
     });
     if(Object.keys(pMap).length === 0) html += `<tr><td colspan="3">No products sold.</td></tr>`;
     html += `</tbody></table>`;
@@ -1553,8 +1553,8 @@ function exportPDF() {
             <td>${new Date(o.created_at).toLocaleDateString('en-IN')}</td>
             <td>${o.order_number}</td>
             <td>${getCustomerName(o)}</td>
-            <td class="right">₹${p.rev.toLocaleString('en-IN')}</td>
-            <td class="right" style="color:#10B981;">₹${orderGross.toLocaleString('en-IN')}</td>
+            <td class="right">₹${p.rev.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="right" style="color:#10B981;">₹${orderGross.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
         </tr>`;
     });
     if(filteredData.orders.length === 0) html += `<tr><td colspan="5">No orders.</td></tr>`;
