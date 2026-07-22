@@ -197,6 +197,7 @@ function addToBill(productId, productName) {
         billItems[existingIndex].total = billItems[existingIndex].price * billItems[existingIndex].qty;
     } else {
         billItems.push({
+            id: productId,
             name: productName,
             weight: weightLabel,
             price: price,
@@ -516,16 +517,16 @@ async function saveManualOrder() {
         
         const itemsPayload = [];
         billItems.forEach(item => {
-            const rowTotal = item.quantity * item.price;
+            const rowTotal = item.qty * item.price;
             subtotal += rowTotal;
-            totalWeight += parseWeight(item.weight) * item.quantity;
+            totalWeight += parseWeight(item.weight) * item.qty;
             
             itemsPayload.push({
                 product_id: item.id,
                 product_name: item.name,
                 weight: item.weight,
                 price: item.price,
-                quantity: item.quantity,
+                quantity: item.qty,
                 total: rowTotal
             });
         });
