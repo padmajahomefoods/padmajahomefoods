@@ -120,7 +120,21 @@ export async function onRequestPost(context) {
         else if (action === 'insert') {
             method = 'POST';
             fetchHeaders['Prefer'] = 'return=representation';
-            fetchBody = JSON.stringify(Array.isArray(payload) ? payload : [payload]);
+            
+            let insertPayload = Array.isArray(payload) ? payload : [payload];
+            
+            // SECURITY/CONSTRAINT FIX: Ensure user_id is never null for manual orders
+            // If the frontend didn't supply one, use the authenticated admin's ID
+            if (table === 'orders') {
+                insertPayload = insertPayload.map(item => {
+                    if (!item.user_id) {
+                        return { ...item, user_id: user.id };
+                    }
+                    return item;
+                });
+            }
+            
+            fetchBody = JSON.stringify(insertPayload);
         }
         else if (action === 'delete') {
             method = 'DELETE';
