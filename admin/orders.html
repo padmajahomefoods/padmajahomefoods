@@ -244,7 +244,7 @@
                             <option value="delivered">Delivered</option>
                             <option value="cancelled">Cancelled</option>
                             <option value="payment_failed">Payment Failed</option>
-                            <option value="deleted">Deleted</option>
+                            <option value="deleted">Deleted Orders</option>
                         </select>
                     </div>
                     <div class="orders-list" id="ordersList">
@@ -527,7 +527,7 @@ async function loadOrders() {
         }));
         
         console.log(`loadOrders() - Final Array (count: ${allOrders.length}) passed to renderer:`, allOrders);
-        renderOrdersList(allOrders);
+        filterOrders();
         
         // Check for order in URL and auto-select
         const params = new URLSearchParams(window.location.search);
