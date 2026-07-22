@@ -566,6 +566,7 @@ const Account = {
             .from(CONFIG.TABLES.ORDERS)
             .select('*')
             .eq('user_id', user.id)
+            .neq('is_deleted', true)
             .order('created_at', { ascending: false });
 
         if (ordersErr) {
