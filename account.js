@@ -175,7 +175,8 @@ const Account = {
             const profileData = {
                 id: data.user.id,
                 full_name: trimmedName,
-                phone: trimmedPhone
+                phone: trimmedPhone,
+                email: trimmedEmail
             };
 
             // Attempt 1: Direct upsert (works if user is auto-confirmed or RLS allows)
@@ -282,7 +283,8 @@ const Account = {
                 .insert({
                     id: user.id,
                     full_name: nameFromMeta || user.email?.split('@')[0] || '',
-                    phone: phoneFromMeta
+                    phone: phoneFromMeta,
+                    email: user.email
                 })
                 .select()
                 .single();
@@ -380,7 +382,8 @@ const Account = {
                     .insert({
                         id: user.id,
                         full_name: fallbackName,
-                        phone: fallbackPhone
+                        phone: fallbackPhone,
+                        email: user.email
                     })
                     .select()
                     .single();
