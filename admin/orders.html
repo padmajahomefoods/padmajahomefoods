@@ -598,15 +598,42 @@ function selectOrder(orderId, element) {
     document.getElementById('detailEmail').textContent = parts[1] || 'N/A';
     document.getElementById('detailMobile').textContent = parts[2] || currentOrder.whatsapp_number || 'N/A';
     
-    let addressStr = 'N/A';
-    if(currentOrder.delivery_address) {
-        if(typeof currentOrder.delivery_address === 'object') {
-            addressStr = currentOrder.delivery_address.full_address || JSON.stringify(currentOrder.delivery_address);
+    function formatAddress(address) {
+        if (!address) return 'N/A';
+        let obj;
+        if (typeof address === 'string') {
+            if (address.trim().startsWith('{')) {
+                try { obj = JSON.parse(address); } catch(e) { return address; }
+            } else {
+                return address;
+            }
         } else {
-            addressStr = currentOrder.delivery_address;
+            obj = address;
         }
+        
+        const lines = [];
+        if (obj.full_name) lines.push(obj.full_name);
+        if (obj.phone) lines.push(obj.phone);
+        if (obj.email) lines.push(obj.email);
+        if (obj.address_line1) lines.push(obj.address_line1);
+        if (obj.address_line2) lines.push(obj.address_line2);
+        
+        const csp = [];
+        if (obj.city) csp.push(obj.city);
+        if (obj.state) csp.push(obj.state);
+        let cspStr = csp.join(', ');
+        if (obj.pincode) cspStr += (cspStr ? ' - ' : '') + obj.pincode;
+        if (cspStr) lines.push(cspStr);
+        
+        if (lines.length === 0) {
+            return obj.full_address || JSON.stringify(obj);
+        }
+        
+        return lines.join('<br>');
     }
-    document.getElementById('detailAddress').textContent = addressStr;
+
+    document.getElementById('detailAddress').innerHTML = formatAddress(currentOrder.delivery_address);
+
     let paymentStatusText = 'Pending';
     if (currentOrder.status === 'failed' || currentOrder.status === 'payment_failed') {
         paymentStatusText = 'Failed';
