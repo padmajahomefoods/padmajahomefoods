@@ -1155,6 +1155,15 @@ async function loadOrdersTab() {
             const date = new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
             const total = Number(order.total_amount).toLocaleString('en-IN');
             const itemCount = order.order_items?.length || 0;
+            
+            let sourceBadge = '';
+            if (order.order_source === 'whatsapp') {
+                sourceBadge = '<span style="display:inline-flex; align-items:center; gap:5px; background:var(--whatsapp-green, #1DA851); color:white; padding:2px 8px; border-radius:12px; font-size:0.75rem; margin-top:5px;"><i class="fab fa-whatsapp"></i> WhatsApp Order</span>';
+            } else if (order.order_source === 'offline') {
+                sourceBadge = '<span style="display:inline-flex; align-items:center; gap:5px; background:#666; color:white; padding:2px 8px; border-radius:12px; font-size:0.75rem; margin-top:5px;"><i class="fas fa-store"></i> Offline Order</span>';
+            } else {
+                sourceBadge = '<span style="display:inline-flex; align-items:center; gap:5px; background:var(--primary); color:white; padding:2px 8px; border-radius:12px; font-size:0.75rem; margin-top:5px;"><i class="fas fa-globe"></i> Website Order</span>';
+            }
 
             html += `
                 <div class="order-card">
@@ -1162,6 +1171,7 @@ async function loadOrdersTab() {
                         <div>
                             <span class="order-number">${order.order_number}</span>
                             <span class="order-date">${date}</span>
+                            <div style="margin-top: 4px;">${sourceBadge}</div>
                         </div>
                         <span class="order-status ${statusClass}">${statusText}</span>
                     </div>
