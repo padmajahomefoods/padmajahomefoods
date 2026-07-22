@@ -9,6 +9,39 @@ let billItems = [];
 let _userEditedDeliveryCharge = false;
 
 // Helpers
+function showAdminToast(msg, type = 'success') {
+    if (!document.getElementById('adminToastStyles')) {
+        const style = document.createElement('style');
+        style.id = 'adminToastStyles';
+        style.textContent = `
+            .admin-toast-container { position: fixed; top: 80px; right: 24px; z-index: 3000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+            .admin-toast { pointer-events: auto; background: var(--deep-brown, #333); color: white; padding: 14px 20px; border-radius: var(--radius-md, 8px); font-weight: 500; font-size: 0.9rem; box-shadow: var(--shadow-xl, 0 10px 15px -3px rgba(0,0,0,0.1)); display: flex; align-items: center; gap: 10px; animation: toastSlide 0.3s ease forwards; max-width: 360px; word-break: break-word; margin-left: auto; transition: opacity 0.3s ease; }
+            .admin-toast.success { background: var(--whatsapp-green, #1DA851); }
+            .admin-toast.error { background: var(--spice-red, #E34A4A); }
+            @keyframes toastSlide { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    let c = document.getElementById('adminToastContainer');
+    if (!c) {
+        c = document.createElement('div');
+        c.id = 'adminToastContainer';
+        c.className = 'admin-toast-container';
+        document.body.appendChild(c);
+    }
+    
+    const t = document.createElement('div');
+    t.className = 'admin-toast ' + type;
+    t.innerHTML = (type === 'success' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-exclamation-circle"></i>') + ' <span>' + msg + '</span>';
+    c.appendChild(t);
+    
+    setTimeout(() => {
+        t.style.opacity = '0';
+        setTimeout(() => t.remove(), 300);
+    }, 3000);
+}
+
 function parseWeight(wStr) {
     if (!wStr) return 0;
     wStr = wStr.toLowerCase().replace(/[^0-9kg]/g, '');
@@ -605,7 +638,7 @@ async function saveManualOrder() {
             // 2. UI SUCCESS WORKFLOW
             try {
                 closeManualOrderModal();
-                alert('Manual Order Saved Successfully.');
+                showAdminToast('Order Saved Successfully', 'success');
                 
                 if (typeof loadOrders === 'function') {
                     loadOrders();
