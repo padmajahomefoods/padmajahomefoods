@@ -685,7 +685,7 @@ function selectOrder(orderId, element) {
     } else if (currentOrder.payment_id) {
         paymentMethodText = 'Razorpay';
     } else {
-        paymentMethodText = 'Cash on Delivery (COD)';
+        paymentMethodText = 'Cash';
     }
     document.getElementById('detailPaymentMethod').textContent = paymentMethodText;
 

@@ -218,7 +218,7 @@
                 
                 <div class="card"><h4>Avg Order Value</h4><div class="val" id="cardAov">₹0</div></div>
                 <div class="card"><h4>Products Sold</h4><div class="val" id="cardUnits">0</div></div>
-                <div class="card"><h4>Pending COD</h4><div class="val" id="cardCod">₹0</div></div>
+                <div class="card"><h4>Pending Payments</h4><div class="val" id="cardPendingPayments">₹0</div></div>
                 <div class="card"><h4>Free Shipping Given</h4><div class="val" id="cardFreeShip">0 Orders</div></div>
                 <div class="card"><h4>Free Ship Expense</h4><div class="val" id="cardFreeShipExp" style="color: #EF4444;">₹0</div></div>
             </div>
@@ -710,7 +710,8 @@ function renderAllViews() {
 
 function updateOverviewCards() {
     const calc = (orders, expenses) => {
-        let rev=0, estProdTot=0, courierTot=0, gatewayTot=0, codAmt=0, freeShipCnt=0, freeShipExp=0;
+        let rev=0, estProdTot=0, courierTot=0, gatewayTot=0, pendingAmt=0, freeShipCnt=0, freeShipExp=0;
+        let onlineRev=0;
         
         orders.forEach(o => {
             const p = calculateOrderProfit(o);
@@ -719,19 +720,28 @@ function updateOverviewCards() {
             courierTot += p.courier;
             gatewayTot += p.gateway;
             
-            if (o.payment_method === 'cod' || !o.payment_id) codAmt += p.rev;
-            if (p.shipChg === 0 && p.courier > 0) {
+            let isPending = false;
+            if (o.payment_status) {
+                isPending = o.payment_status.toLowerCase() === 'pending';
+            } else {
+                isPending = (o.status === 'pending' || o.status === 'processing') && !o.payment_id;
+            }
+            if (isPending) pendingAmt += p.rev;
+            
+            if (o.payment_id) onlineRev += p.rev;
+            
+            if (o.delivery_charge === 0 && o.total_amount > 0) {
                 freeShipCnt++;
                 freeShipExp += p.courier;
             }
         });
-
+        
         const manualExp = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
         const totalExp = manualExp + estProdTot + courierTot + gatewayTot;
         const gross = rev - estProdTot - courierTot - gatewayTot;
         const net = gross - manualExp;
-
-        return { rev, orders: orders.length, totalExp, gross, net, codAmt, freeShipCnt, freeShipExp };
+        
+        return { rev, orders: orders.length, totalExp, gross, net, pendingAmt, freeShipCnt, freeShipExp };
     };
 
     const cur = calc(filteredData.orders, filteredData.expenses);
@@ -749,7 +759,7 @@ function updateOverviewCards() {
     const units = filteredData.items.reduce((s, i) => s + (i.quantity||1), 0);
     document.getElementById('cardUnits').textContent = units;
     
-    document.getElementById('cardCod').textContent = `₹${cur.codAmt.toLocaleString('en-IN')}`;
+    document.getElementById('cardPendingPayments').textContent = `₹${cur.pendingAmt.toLocaleString('en-IN')}`;
     document.getElementById('cardFreeShip').textContent = `${cur.freeShipCnt} Orders`;
     document.getElementById('cardFreeShipExp').textContent = `₹${cur.freeShipExp.toLocaleString('en-IN')}`;
 }
@@ -1313,8 +1323,10 @@ function getCity(o) {
 }
 
 function getPaymentInfo(o) {
-    let method = "Cash on Delivery (COD)";
-    if (o.payment_id || (o.payment_method && o.payment_method.toLowerCase().includes('razorpay'))) {
+    let method = "Cash";
+    if (o.payment_method) {
+        method = o.payment_method;
+    } else if (o.payment_id || (o.payment_method && o.payment_method.toLowerCase().includes('razorpay'))) {
         method = "Razorpay";
     }
 
