@@ -549,7 +549,6 @@ async function saveManualOrder() {
 
         const orderPayload = {
             order_number: orderNumber,
-            user_id: null,
             total_amount: grandTotal,
             delivery_address: addressObj,
             status: orderStatus,
