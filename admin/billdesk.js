@@ -210,24 +210,57 @@ window.selectCustomer = async function selectCustomer(id, name, phone, email) {
     }
     
     try {
-        const { data, error } = await fetchAdminData(CONFIG.TABLES.ADDRESSES, 'select', {
+        let finalAddr = '';
+        let finalCity = '';
+        let foundSource = '';
+
+        // 1. Try addresses table first
+        const { data: addrData, error: addrErr } = await fetchAdminData(CONFIG.TABLES.ADDRESSES, 'select', {
             match: { user_id: id }
         });
         
-        let targetAddress = null;
-        if (!error && data && data.length > 0) {
-            targetAddress = data.find(a => a.is_default) || data[0];
+        if (!addrErr && addrData && addrData.length > 0) {
+            const targetAddress = addrData.find(a => a.is_default) || addrData[0];
+            finalAddr = targetAddress.address_line1 || '';
+            if (targetAddress.address_line2) finalAddr += ', ' + targetAddress.address_line2;
+            finalCity = targetAddress.city || '';
+            foundSource = 'addresses';
+        } else {
+            // 2. Fallback to past orders table (for legacy or manual orders)
+            const { data: orderData, error: orderErr } = await fetchAdminData(CONFIG.TABLES.ORDERS, 'select', {
+                match: { user_id: id }
+            });
+            
+            if (!orderErr && orderData && orderData.length > 0) {
+                // Sort newest first
+                orderData.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+                
+                const recentOrder = orderData.find(o => o.delivery_address);
+                if (recentOrder) {
+                    let dAddr = recentOrder.delivery_address;
+                    if (typeof dAddr === 'string' && dAddr.trim().startsWith('{')) {
+                        try { dAddr = JSON.parse(dAddr); } catch(e) {}
+                    }
+                    
+                    if (typeof dAddr === 'object' && dAddr !== null) {
+                        finalAddr = dAddr.address_line1 || dAddr.address || dAddr.full_address || '';
+                        finalCity = dAddr.city || '';
+                        foundSource = 'orders';
+                    } else if (typeof dAddr === 'string') {
+                        finalAddr = dAddr; 
+                        finalCity = '';
+                        foundSource = 'orders';
+                    }
+                }
+            }
         }
         
         const addrInput = document.getElementById('customerAddress');
         const cityInput = document.getElementById('customerCity');
         
-        if (targetAddress) {
-            if (addrInput) {
-                addrInput.value = targetAddress.address_line1 || '';
-                if (targetAddress.address_line2) addrInput.value += ', ' + targetAddress.address_line2;
-            }
-            if (cityInput) cityInput.value = targetAddress.city || '';
+        if (foundSource) {
+            if (addrInput) addrInput.value = finalAddr;
+            if (cityInput) cityInput.value = finalCity;
             
             if (addrHint) {
                 addrHint.innerHTML = '<i class="fas fa-check-circle"></i> Default address loaded';
