@@ -166,7 +166,23 @@ export async function onRequestPost(context) {
         if (!dbRes.ok) {
             const errText = await dbRes.text();
             console.error(`[admin-db] Supabase DB Error (${dbRes.status}):`, errText);
-            return new Response(JSON.stringify({ error: 'Database operation failed', details: errText }), { status: dbRes.status, headers: corsHeaders });
+            
+            let parsedErr = {};
+            try {
+                parsedErr = JSON.parse(errText);
+            } catch(e) {
+                parsedErr = { raw: errText };
+            }
+            
+            return new Response(JSON.stringify({ 
+                error: 'Database operation failed', 
+                status: dbRes.status,
+                code: parsedErr.code || 'UNKNOWN',
+                message: parsedErr.message || errText,
+                details: parsedErr.details || null,
+                hint: parsedErr.hint || null,
+                full_response: parsedErr
+            }), { status: dbRes.status, headers: corsHeaders });
         }
 
         const responseText = await dbRes.text();
