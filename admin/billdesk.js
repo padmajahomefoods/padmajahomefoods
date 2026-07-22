@@ -458,3 +458,157 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 });
+
+// ============================================
+// MANUAL ORDER SAVING LOGIC
+// ============================================
+
+function openManualOrderModal() {
+    if (billItems.length === 0) {
+        alert("Please add products to the bill first.");
+        return;
+    }
+    const customerName = document.getElementById('customerName').value.trim();
+    if (!customerName) {
+        alert("Please enter Customer Name.");
+        return;
+    }
+    
+    // Set default date to now if empty
+    const dateInput = document.getElementById('moDate');
+    if (!dateInput.value) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        dateInput.value = now.toISOString().slice(0, 16);
+    }
+
+    document.getElementById('manualOrderModal').style.display = 'flex';
+}
+
+function closeManualOrderModal() {
+    document.getElementById('manualOrderModal').style.display = 'none';
+}
+
+async function saveManualOrder() {
+    const btn = document.getElementById('moSaveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+    try {
+        const customerName = document.getElementById('customerName').value.trim();
+        const mobile = document.getElementById('customerMobile').value.trim();
+        const city = document.getElementById('customerCity').value.trim();
+        const address = document.getElementById('customerAddress').value.trim();
+        
+        const source = document.getElementById('moSource').value;
+        const method = document.getElementById('moPaymentMethod').value;
+        const status = document.getElementById('moPaymentStatus').value;
+        const orderStatus = document.getElementById('moOrderStatus').value;
+        let orderDate = document.getElementById('moDate').value;
+        const notes = document.getElementById('moNotes').value.trim();
+
+        if (!orderDate) orderDate = new Date().toISOString();
+        else orderDate = new Date(orderDate).toISOString();
+
+        // Calculate totals
+        let subtotal = 0;
+        let totalWeight = 0;
+        
+        const itemsPayload = [];
+        billItems.forEach(item => {
+            const rowTotal = item.quantity * item.price;
+            subtotal += rowTotal;
+            totalWeight += parseWeight(item.weight) * item.quantity;
+            
+            itemsPayload.push({
+                product_id: item.id,
+                product_name: item.name,
+                weight: item.weight,
+                price: item.price,
+                quantity: item.quantity,
+                total: rowTotal
+            });
+        });
+
+        const deliveryCharge = parseFloat(document.getElementById('deliveryCharge').value) || 0;
+        const grandTotal = subtotal + deliveryCharge;
+
+        // Generate Order ID based on standard timestamp logic to match website orders perfectly
+        const orderNumber = 'PHF' + Date.now();
+
+        const addressObj = {
+            full_name: customerName,
+            phone: mobile,
+            address_line1: address,
+            city: city,
+            pincode: '',
+            state: 'Andhra Pradesh'
+        };
+
+        const orderPayload = {
+            order_number: orderNumber,
+            user_id: null,
+            total_amount: grandTotal,
+            delivery_address: addressObj,
+            status: orderStatus,
+            razorpay_order_id: null,
+            payment_id: null,
+            whatsapp_number: mobile, 
+            is_test_order: false,
+            order_source: source,
+            payment_method: method,
+            payment_status: status.toLowerCase(),
+            accounting_notes: notes,
+            created_at: orderDate
+        };
+
+        // Pseudo-atomic logic: Insert Order, if success insert Items, if items fail rollback Order
+        const orderRes = await fetchAdminData(CONFIG.TABLES.ORDERS, 'insert', { payload: orderPayload });
+        if (orderRes && orderRes.length > 0) {
+            const newOrderId = orderRes[0].id;
+            
+            // Assign order_id to items
+            itemsPayload.forEach(i => i.order_id = newOrderId);
+            
+            try {
+                await fetchAdminData(CONFIG.TABLES.ORDER_ITEMS, 'insert', { payload: itemsPayload });
+                
+                // Show success, close modal
+                closeManualOrderModal();
+                alert('Order saved successfully!');
+                
+                // Offer Print or Continue
+                if (confirm('Would you like to print this bill now?')) {
+                    printBill();
+                }
+                
+                // Clear all
+                document.getElementById('customerName').value = '';
+                document.getElementById('customerMobile').value = '';
+                document.getElementById('customerCity').value = '';
+                document.getElementById('customerAddress').value = '';
+                document.getElementById('moNotes').value = '';
+                billItems = [];
+                _userEditedDeliveryCharge = false;
+                document.getElementById('deliveryCharge').value = 0;
+                renderCart();
+                closeBill(); 
+                
+            } catch (err) {
+                // Rollback Order
+                console.error('Order items failed, rolling back order', err);
+                await fetchAdminData(CONFIG.TABLES.ORDERS, 'delete', { id: newOrderId });
+                throw new Error('Failed to save order items. Order creation rolled back.');
+            }
+        } else {
+            throw new Error('Failed to create order record.');
+        }
+        
+    } catch (error) {
+        console.error(error);
+        alert('Error saving manual order: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check"></i> Save Order';
+    }
+}

@@ -38,10 +38,24 @@
 
     <div>
 
-    <!-- Customer Name -->
-    <div class="customer-section">
-        <label for="customerName"><i class="fas fa-user"></i> Customer Name</label>
-        <input type="text" id="customerName" placeholder="Enter customer name..." autocomplete="off">
+    <!-- Customer Details -->
+    <div class="customer-section" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div>
+            <label for="customerName"><i class="fas fa-user"></i> Customer Name</label>
+            <input type="text" id="customerName" placeholder="Enter customer name..." autocomplete="off">
+        </div>
+        <div>
+            <label for="customerMobile"><i class="fas fa-phone"></i> Mobile Number</label>
+            <input type="text" id="customerMobile" placeholder="Optional" autocomplete="off">
+        </div>
+        <div>
+            <label for="customerCity"><i class="fas fa-city"></i> City</label>
+            <input type="text" id="customerCity" placeholder="Optional" autocomplete="off">
+        </div>
+        <div>
+            <label for="customerAddress"><i class="fas fa-map-marker-alt"></i> Address</label>
+            <input type="text" id="customerAddress" placeholder="Optional" autocomplete="off">
+        </div>
     </div>
 
     <!-- Delivery Charge -->
@@ -157,6 +171,9 @@
             </div>
 
             <div class="bill-actions">
+                <button class="save-order-btn" onclick="openManualOrderModal()" style="background: var(--whatsapp-green); color: white;">
+                    <i class="fas fa-check-circle"></i> Add to Orders
+                </button>
                 <button class="print-btn" onclick="printBill()">
                     <i class="fas fa-print"></i> Print
                 </button>
@@ -165,6 +182,70 @@
                 </button>
                 <button class="close-btn" onclick="closeBill()">
                     <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Order Confirmation Modal -->
+    <div id="manualOrderModal" class="admin-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
+        <div class="admin-modal-content" style="background: white; padding: 25px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+            <div class="admin-modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                <h3 style="margin: 0; color: var(--primary);"><i class="fas fa-save"></i> Save Manual Order</h3>
+                <button onclick="closeManualOrderModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;">&times;</button>
+            </div>
+            
+            <div class="admin-form-group" style="margin-bottom: 15px;">
+                <label>Order Source <span class="required">*</span></label>
+                <select id="moSource" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="offline">Offline</option>
+                </select>
+            </div>
+
+            <div class="admin-form-group" style="margin-bottom: 15px;">
+                <label>Payment Method <span class="required">*</span></label>
+                <select id="moPaymentMethod" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <option value="Cash">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+            </div>
+
+            <div class="admin-form-group" style="margin-bottom: 15px;">
+                <label>Payment Status <span class="required">*</span></label>
+                <select id="moPaymentStatus" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <option value="Paid">Paid</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Refunded">Refunded</option>
+                </select>
+            </div>
+
+            <div class="admin-form-group" style="margin-bottom: 15px;">
+                <label>Order Status <span class="required">*</span></label>
+                <select id="moOrderStatus" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <option value="delivered">Completed (Delivered)</option>
+                    <option value="preparing">Preparing</option>
+                    <option value="packed">Packed</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+
+            <div class="admin-form-group" style="margin-bottom: 15px;">
+                <label>Order Date <span class="required">*</span></label>
+                <input type="datetime-local" id="moDate" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+            </div>
+
+            <div class="admin-form-group" style="margin-bottom: 20px;">
+                <label>Accounting Notes (Optional)</label>
+                <textarea id="moNotes" placeholder="Any internal notes for accounting..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; resize: vertical; min-height: 80px;"></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="admin-btn-secondary" onclick="closeManualOrderModal()" style="padding: 10px 20px;">Cancel</button>
+                <button class="admin-btn-primary" onclick="saveManualOrder()" id="moSaveBtn" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-check"></i> Save Order
                 </button>
             </div>
         </div>
