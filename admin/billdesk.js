@@ -566,14 +566,29 @@ async function saveManualOrder() {
         
         // Pseudo-atomic logic: Insert Order, if success insert Items, if items fail rollback Order
         const orderRes = await fetchAdminData(CONFIG.TABLES.ORDERS, 'insert', { payload: orderPayload });
-        if (orderRes && orderRes.length > 0) {
-            const newOrderId = orderRes[0].id;
+        
+        if (orderRes.error) {
+            console.error("Orders Insert Backend Error:", orderRes.error);
+            let errorMsg = orderRes.error.message || orderRes.error;
+            try {
+                // Try parsing the stringified error JSON for a cleaner display
+                const parsed = JSON.parse(errorMsg);
+                errorMsg = JSON.stringify(parsed, null, 2);
+            } catch(e) {}
+            throw new Error(`Order Insert Failed:\n${errorMsg}`);
+        }
+
+        if (orderRes.data && orderRes.data.length > 0) {
+            const newOrderId = orderRes.data[0].id;
             
             // Assign order_id to items
             itemsPayload.forEach(i => i.order_id = newOrderId);
             
             try {
-                await fetchAdminData(CONFIG.TABLES.ORDER_ITEMS, 'insert', { payload: itemsPayload });
+                const itemsRes = await fetchAdminData(CONFIG.TABLES.ORDER_ITEMS, 'insert', { payload: itemsPayload });
+                if (itemsRes.error) {
+                    throw itemsRes.error;
+                }
                 
                 // Show success, close modal
                 closeManualOrderModal();
@@ -599,11 +614,16 @@ async function saveManualOrder() {
             } catch (err) {
                 // Rollback Order
                 console.error('Order items failed, rolling back order', err);
-                await fetchAdminData(CONFIG.TABLES.ORDERS, 'delete', { id: newOrderId });
-                throw new Error('Failed to save order items. Order creation rolled back.');
+                let errorMsg = err.message || err;
+                try {
+                    const parsed = JSON.parse(errorMsg);
+                    errorMsg = JSON.stringify(parsed, null, 2);
+                } catch(e) {}
+                await fetchAdminData(CONFIG.TABLES.ORDERS, 'delete', { match: { id: newOrderId } });
+                throw new Error(`Failed to save order items. Order rolled back.\nDetails: ${errorMsg}`);
             }
         } else {
-            throw new Error('Failed to create order record.');
+            throw new Error('Failed to create order record. No data returned.');
         }
         
     } catch (error) {
