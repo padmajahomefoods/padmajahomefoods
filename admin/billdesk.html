@@ -232,6 +232,28 @@
             </div>
 
             <div class="admin-form-group" style="margin-bottom: 15px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; cursor: pointer; color: #DC2626; background: #FEF2F2; padding: 10px; border-radius: 6px; border: 1px dashed #FCA5A5;">
+                    <input type="checkbox" id="moRecoveredPayment" onchange="toggleRecoveryFields()">
+                    Recovered Online Payment (Razorpay)
+                </label>
+            </div>
+            
+            <div id="recoveryFields" style="display: none; background: #F8FAFC; padding: 15px; border-radius: 6px; border: 1px solid #E2E8F0; margin-bottom: 15px;">
+                <div class="admin-form-group" style="margin-bottom: 10px;">
+                    <label>Razorpay Payment ID <span class="required">*</span></label>
+                    <input type="text" id="moRazorpayPaymentId" placeholder="pay_XXXXXXXXXXXXXX" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+                <div class="admin-form-group" style="margin-bottom: 10px;">
+                    <label>Razorpay Order ID <span class="text-gray" style="color: #64748b; font-size: 0.8rem; font-weight: normal;">(Optional)</span></label>
+                    <input type="text" id="moRazorpayOrderId" placeholder="order_XXXXXXXXXXXXXX" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+                <div class="admin-form-group">
+                    <label>Recovery Notes <span class="text-gray" style="color: #64748b; font-size: 0.8rem; font-weight: normal;">(Optional)</span></label>
+                    <input type="text" id="moRecoveryNotes" placeholder="Reason for recovery..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+            </div>
+
+            <div class="admin-form-group" style="margin-bottom: 15px;">
                 <label>Payment Method <span class="required">*</span></label>
                 <select id="moPaymentMethod" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
                     <option value="Cash">Cash</option>

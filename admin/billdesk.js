@@ -834,12 +834,64 @@ function closeManualOrderModal() {
     document.getElementById('manualOrderModal').style.display = 'none';
 }
 
-async function saveManualOrder() {
-    const btn = document.getElementById('moSaveBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+// ============================================
+// MANUAL ORDER RECOVERY TOGGLE
+// ============================================
+window.toggleRecoveryFields = function() {
+    const isRecovered = document.getElementById('moRecoveredPayment').checked;
+    const recoveryFields = document.getElementById('recoveryFields');
+    const sourceSelect = document.getElementById('moSource');
+    const methodSelect = document.getElementById('moPaymentMethod');
+    const statusSelect = document.getElementById('moPaymentStatus');
+    
+    if (isRecovered) {
+        recoveryFields.style.display = 'block';
+        
+        // Add Razorpay option if not exists
+        if (!Array.from(methodSelect.options).some(opt => opt.value === 'Razorpay')) {
+            const rzpOpt = new Option('Razorpay', 'Razorpay');
+            methodSelect.add(rzpOpt);
+        }
+        
+        sourceSelect.value = 'website';
+        methodSelect.value = 'Razorpay';
+        statusSelect.value = 'Paid';
+        
+        sourceSelect.disabled = true;
+        methodSelect.disabled = true;
+        statusSelect.disabled = true;
+    } else {
+        recoveryFields.style.display = 'none';
+        
+        sourceSelect.disabled = false;
+        methodSelect.disabled = false;
+        statusSelect.disabled = false;
+        
+        // Reset to defaults
+        sourceSelect.value = 'manual';
+        methodSelect.value = 'Cash';
+        statusSelect.value = 'Paid';
+        
+        // Remove Razorpay option
+        for (let i = 0; i < methodSelect.options.length; i++) {
+            if (methodSelect.options[i].value === 'Razorpay') {
+                methodSelect.remove(i);
+                break;
+            }
+        }
+        
+        document.getElementById('moRazorpayPaymentId').value = '';
+        document.getElementById('moRazorpayOrderId').value = '';
+        document.getElementById('moRecoveryNotes').value = '';
+    }
+};
 
+async function saveManualOrder() {
     try {
+        const btn = document.getElementById('moSaveBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        
         const customerName = document.getElementById('customerName').value.trim();
         const mobile = document.getElementById('customerMobile').value.trim();
         const emailField = document.getElementById('customerEmail');
@@ -847,9 +899,21 @@ async function saveManualOrder() {
         const city = document.getElementById('customerCity').value.trim();
         const address = document.getElementById('customerAddress').value.trim();
         
-        const source = document.getElementById('moSource').value;
-        const method = document.getElementById('moPaymentMethod').value;
-        const status = document.getElementById('moPaymentStatus').value;
+        const isRecovered = document.getElementById('moRecoveredPayment') ? document.getElementById('moRecoveredPayment').checked : false;
+        let source = document.getElementById('moSource').value;
+        let method = document.getElementById('moPaymentMethod').value;
+        let status = document.getElementById('moPaymentStatus').value;
+        
+        if (isRecovered) {
+            source = 'website';
+            method = 'Razorpay';
+            status = 'Paid';
+        }
+        
+        const rzpPaymentId = document.getElementById('moRazorpayPaymentId') ? document.getElementById('moRazorpayPaymentId').value.trim() : '';
+        const rzpOrderId = document.getElementById('moRazorpayOrderId') ? document.getElementById('moRazorpayOrderId').value.trim() : '';
+        const recNotes = document.getElementById('moRecoveryNotes') ? document.getElementById('moRecoveryNotes').value.trim() : '';
+
         const orderStatus = document.getElementById('moOrderStatus').value;
         let orderDate = document.getElementById('moDate').value;
         const notes = document.getElementById('moNotes').value.trim();
@@ -894,11 +958,39 @@ async function saveManualOrder() {
             full_address: `${address ? address + ', ' : ''}${city ? city + ', ' : ''}Andhra Pradesh`
         };
 
-        const generatedNotes = `${customerName || 'Guest Customer'} | ${email || ''} | ${mobile} | Payment: ${method} - ${status}`;
+        let generatedNotes = `${customerName || 'Guest Customer'} | ${email || ''} | ${mobile} | Payment: ${method} - ${status}`;
+        
+        if (isRecovered && recNotes) {
+            generatedNotes += ` | Recovery Notes: ${recNotes}`;
+        }
 
         const linkType = document.getElementById('moCustomerLinkType') ? document.getElementById('moCustomerLinkType').value : 'guest';
         const linkedUserId = document.getElementById('moLinkedUserId') ? document.getElementById('moLinkedUserId').value : '';
         const linkedCustomerType = document.getElementById('moLinkedCustomerType') ? document.getElementById('moLinkedCustomerType').value : 'guest';
+
+        if (isRecovered && !rzpPaymentId) {
+            showToast('Please enter the Razorpay Payment ID for recovery.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Save Order';
+            return;
+        }
+
+        // Duplicate Check for Recovery
+        if (isRecovered && rzpPaymentId) {
+            try {
+                const { data: existRzp } = await fetchAdminData(CONFIG.TABLES.ORDERS, 'select', {
+                    match: { payment_id: rzpPaymentId }
+                });
+                if (existRzp && existRzp.length > 0) {
+                    showToast('An order already exists for this Razorpay Payment ID.', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check"></i> Save Order';
+                    return;
+                }
+            } catch(e) {
+                console.error("Duplicate payment_id check failed", e);
+            }
+        }
 
         // 0. Duplicate Protection
         try {
@@ -937,8 +1029,8 @@ async function saveManualOrder() {
             total_amount: grandTotal,
             delivery_address: addressObj,
             status: orderStatus,
-            razorpay_order_id: null,
-            payment_id: null,
+            razorpay_order_id: (isRecovered && rzpOrderId) ? rzpOrderId : null,
+            payment_id: (isRecovered && rzpPaymentId) ? rzpPaymentId : null,
             is_test_order: false,
             order_source: source,
             accounting_notes: notes,
