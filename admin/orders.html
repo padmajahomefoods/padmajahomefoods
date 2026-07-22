@@ -456,8 +456,12 @@ async function loadOrders() {
             { order: { column: 'created_at', ascending: false } }
         );
 
-        console.log("loadOrders() - Received orders:", orders, "Error:", ordersErr);
-        if (ordersErr) throw ordersErr;
+        if (ordersErr) {
+            console.error("loadOrders() - Received orders error:", ordersErr);
+            throw ordersErr;
+        } else {
+            console.log("loadOrders() - Received orders successfully. Count:", orders ? orders.length : 0);
+        }
         
         // Fetch order_items separately
         const orderIds = (orders || []).map(o => o.id);
@@ -471,9 +475,13 @@ async function loadOrders() {
                 { inFilter: { column: 'order_id', values: orderIds } }
             );
             
-            console.log("loadOrders() - Received order items:", items, "Error:", itemsErr);
-            if (!itemsErr && items) {
-                orderItems = items;
+            if (itemsErr) {
+                console.error("loadOrders() - Received order items error:", itemsErr);
+            } else {
+                console.log("loadOrders() - Received order items successfully. Count:", items ? items.length : 0);
+                if (items) {
+                    orderItems = items;
+                }
             }
         }
         
