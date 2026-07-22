@@ -164,15 +164,16 @@ async function searchCustomers() {
             data.slice(0, 10).forEach(c => {
                 const name = c.full_name || 'No Name';
                 const phone = c.phone || 'No Phone';
-                const email = c.email ? ` | ${c.email}` : '';
+                const emailStr = c.email || '';
+                const emailDisplay = c.email ? ` | ${c.email}` : '';
                 
                 // Do not display "No Name" if it doesn't match the query directly, though our filter already enforces strict matching.
                 html += `
                     <div style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 0.9rem;" 
-                         onclick="selectCustomer('${c.id}', '${name.replace(/'/g, "\\'")}', '${phone.replace(/'/g, "\\'")}')"
+                         onclick="selectCustomer('${c.id}', '${name.replace(/'/g, "\\'")}', '${phone.replace(/'/g, "\\'")}', '${emailStr.replace(/'/g, "\\'")}')"
                          onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='transparent'">
                         <strong><i class="fas fa-user"></i> ${_escapeHtml(name)}</strong><br>
-                        <span style="color: #666;"><i class="fas fa-phone"></i> ${_escapeHtml(phone)}${_escapeHtml(email)}</span>
+                        <span style="color: #666;"><i class="fas fa-phone"></i> ${_escapeHtml(phone)}${_escapeHtml(emailDisplay)}</span>
                     </div>
                 `;
             });
@@ -185,16 +186,67 @@ async function searchCustomers() {
     }, 300);
 }
 
-window.selectCustomer = function selectCustomer(id, name, phone) {
+window.selectCustomer = async function selectCustomer(id, name, phone, email) {
     document.getElementById('moLinkedUserId').value = id;
     document.getElementById('moLinkedCustomerType').value = 'registered';
     document.getElementById('moCustomerSearch').value = `${name} (${phone})`;
-    document.getElementById('moCustomerResults').style.display = 'none';
     
-    document.getElementById('customerName').value = name;
-    if (phone && phone !== 'No Phone') {
-        document.getElementById('customerMobile').value = phone;
-        document.getElementById('customerAutoDetectStatus').style.display = 'none'; // Clear auto-detect if manually selected
+    // Auto-fill Name, Phone, and Email
+    const nameField = document.getElementById('customerName');
+    const phoneField = document.getElementById('customerMobile');
+    const emailField = document.getElementById('customerEmail');
+    
+    if (nameField) nameField.value = name || '';
+    if (phoneField) phoneField.value = phone || '';
+    if (emailField && email) emailField.value = email;
+    
+    document.getElementById('moCustomerSearchBox').style.display = 'none';
+    
+    const addrHint = document.getElementById('moAddressHint');
+    if (addrHint) {
+        addrHint.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching address...';
+        addrHint.style.color = '#666';
+        addrHint.style.display = 'block';
+    }
+    
+    try {
+        const { data, error } = await fetchAdminData(CONFIG.TABLES.ADDRESSES, 'select', {
+            match: { user_id: id }
+        });
+        
+        let targetAddress = null;
+        if (!error && data && data.length > 0) {
+            targetAddress = data.find(a => a.is_default) || data[0];
+        }
+        
+        const addrInput = document.getElementById('customerAddress');
+        const cityInput = document.getElementById('customerCity');
+        
+        if (targetAddress) {
+            if (addrInput) {
+                addrInput.value = targetAddress.address_line1 || '';
+                if (targetAddress.address_line2) addrInput.value += ', ' + targetAddress.address_line2;
+            }
+            if (cityInput) cityInput.value = targetAddress.city || '';
+            
+            if (addrHint) {
+                addrHint.innerHTML = '<i class="fas fa-check-circle"></i> Default address loaded';
+                addrHint.style.color = 'var(--whatsapp-green, #1DA851)';
+            }
+        } else {
+            if (addrInput) addrInput.value = '';
+            if (cityInput) cityInput.value = '';
+            if (addrHint) {
+                addrHint.innerHTML = '<i class="fas fa-exclamation-circle"></i> No saved address';
+                addrHint.style.color = '#999';
+            }
+        }
+    } catch (err) {
+        console.error("Failed to fetch address", err);
+        if (addrHint) {
+            addrHint.innerHTML = 'Failed to load address.';
+            addrHint.style.color = 'var(--spice-red, #E34A4A)';
+        }
     }
 }
 
@@ -706,6 +758,8 @@ async function saveManualOrder() {
     try {
         const customerName = document.getElementById('customerName').value.trim();
         const mobile = document.getElementById('customerMobile').value.trim();
+        const emailField = document.getElementById('customerEmail');
+        const email = emailField ? emailField.value.trim() : '';
         const city = document.getElementById('customerCity').value.trim();
         const address = document.getElementById('customerAddress').value.trim();
         
@@ -748,13 +802,15 @@ async function saveManualOrder() {
         const addressObj = {
             full_name: customerName,
             phone: mobile,
+            email: email,
             address_line1: address,
             city: city,
             pincode: '',
-            state: 'Andhra Pradesh'
+            state: 'Andhra Pradesh',
+            full_address: `${address ? address + ', ' : ''}${city ? city + ', ' : ''}Andhra Pradesh`
         };
 
-        const generatedNotes = `${customerName || 'Guest Customer'} | | ${mobile} | Payment: ${method} - ${status}`;
+        const generatedNotes = `${customerName || 'Guest Customer'} | ${email || ''} | ${mobile} | Payment: ${method} - ${status}`;
 
         const linkType = document.getElementById('moCustomerLinkType') ? document.getElementById('moCustomerLinkType').value : 'guest';
         const linkedUserId = document.getElementById('moLinkedUserId') ? document.getElementById('moLinkedUserId').value : '';
