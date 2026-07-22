@@ -592,11 +592,10 @@ async function saveManualOrder() {
                 
                 // Show success, close modal
                 closeManualOrderModal();
-                alert('Order saved successfully!');
+                alert('Manual Order Saved Successfully.');
                 
-                // Offer Print or Continue
-                if (confirm('Would you like to print this bill now?')) {
-                    printBill();
+                if (typeof loadOrders === 'function') {
+                    loadOrders();
                 }
                 
                 // Clear all
