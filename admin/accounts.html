@@ -383,54 +383,215 @@
                                 <option value="UPI">UPI</option>
                                 <option value="Bank Transfer">Bank Transfer</option>
                                 <option value="Credit Card">Credit Card</option>
+<button class="admin-tab" onclick="switchTab('calendar')"><i class="fas fa-calendar-alt"></i> Calendar</button>
+        <button class="admin-tab" onclick="switchTab('month')"><i class="fas fa-table"></i> Month Report</button>
+        <button class="admin-tab" onclick="switchTab('year')"><i class="fas fa-chart-line"></i> Year Report</button>
+        <button class="admin-tab" onclick="switchTab('customers')"><i class="fas fa-users"></i> Customers</button>
+        <button class="admin-tab" onclick="switchTab('expenses')"><i class="fas fa-receipt"></i> Expenses</button>
+    </div>
+
+    <div id="printArea">
+        <div class="print-header">
+            <img src="../logo.png" alt="Logo">
+            <h2 id="printTitle">Business Accounting Report</h2>
+            <p id="reportDateRange">Date Range: This Month</p>
+            <p style="font-size: 0.8rem;">Generated: <span id="reportGenDate"></span></p>
+        </div>
+
+        <!-- TAB: OVERVIEW -->
+        <div id="tab-overview" class="tab-content active">
+            <div class="overview-grid">
+                <div class="card"><h4>Gross Revenue</h4><div class="val" id="cardRevenue">₹0</div><div class="trend" id="trendRevenue">-</div></div>
+                <div class="card"><h4>Orders</h4><div class="val" id="cardOrders">0</div><div class="trend" id="trendOrders">-</div></div>
+                <div class="card"><h4>Gross Profit</h4><div class="val" id="cardGross">₹0</div><div class="trend" id="trendGross">-</div></div>
+                <div class="card"><h4>Total Expenses</h4><div class="val" id="cardExpenses" style="color: #EF4444;">₹0</div><div class="trend" id="trendExpenses">-</div></div>
+                <div class="card profit-card">
+                    <h4>Net Profit</h4>
+                    <div class="val" id="cardNet">₹0</div>
+                    <div class="trend" id="trendNet">-</div>
+                </div>
+                
+                <div class="card"><h4>Avg Order Value</h4><div class="val" id="cardAov">₹0</div></div>
+                <div class="card"><h4>Products Sold</h4><div class="val" id="cardUnits">0</div></div>
+                <div class="card"><h4>Pending Payments</h4><div class="val" id="cardPendingPayments">₹0</div></div>
+                <div class="card"><h4>Free Shipping Given</h4><div class="val" id="cardFreeShip">0 Orders</div></div>
+                <div class="card"><h4>Free Ship Expense</h4><div class="val" id="cardFreeShipExp" style="color: #EF4444;">₹0</div></div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-container"><h3>Revenue & Profit Trend</h3><canvas id="mainChart"></canvas></div>
+                <div class="chart-container"><h3>Expense Breakdown</h3><canvas id="expensePieChart"></canvas></div>
+            </div>
+            
+            <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="chart-container"><h3>Orders Volume Trend</h3><canvas id="ordersChart"></canvas></div>
+                <div class="chart-container"><h3>Category Performance</h3><canvas id="categoryChart"></canvas></div>
+            </div>
+
+            <div class="tables-grid">
+                <div class="table-card">
+                    <h3>Top Selling Products</h3>
+                    <table class="analytics-table" id="topProductsTable">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Units Sold</th>
+                                <th>Revenue</th>
+                                <th>Unique Customers</th>
+                                <th>Last Sold</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: CALENDAR -->
+        <div id="tab-calendar" class="tab-content">
+            <div class="calendar-section">
+                <div class="calendar-header">
+                    <h3 style="margin: 0;">Interactive Accounting Calendar (<span id="calMonthDisplay">Month</span>)</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-action" onclick="changeCalendarMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                        <button class="btn-action" onclick="changeCalendarMonth(1)"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div class="calendar-grid">
+                    <div class="cal-day-header">Sun</div><div class="cal-day-header">Mon</div><div class="cal-day-header">Tue</div>
+                    <div class="cal-day-header">Wed</div><div class="cal-day-header">Thu</div><div class="cal-day-header">Fri</div><div class="cal-day-header">Sat</div>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
+        </div>
+
+        <!-- TAB: MONTH REPORT -->
+        <div id="tab-month" class="tab-content">
+            <div class="table-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                    <h3 style="margin: 0; border: none; padding: 0;">Ledger Report (Spreadsheet)</h3>
+                    <span style="font-size: 0.85rem; color: var(--text-gray);">Export to Excel for full accounting view.</span>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="analytics-table" id="monthReportTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Payment</th>
+                                <th>Status</th>
+                                <th style="text-align:right;">Prod. Value</th>
+                                <th style="text-align:right;">Ship Charged</th>
+                                <th style="text-align:right; color:#E53E3E;">Raw Material Cost</th>
+                                <th style="text-align:right; color:#E53E3E;">Courier Cost</th>
+                                <th style="text-align:right; color:#E53E3E;">Gateway</th>
+                                <th style="text-align:right; font-weight:700;">Total Paid</th>
+                                <th style="text-align:right; color:#10B981;">Gross Profit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthReportBody"></tbody>
+                        <tfoot id="monthReportFoot" style="font-weight: 700; background: #fafafa;"></tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: YEAR REPORT -->
+        <div id="tab-year" class="tab-content">
+            <div class="table-card">
+                <h3>Year-to-Date Summary</h3>
+                <table class="analytics-table" id="yearReportTable">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Orders</th>
+                            <th>Gross Revenue</th>
+                            <th>Shipping Charged</th>
+                            <th style="color:#E53E3E;">Total Expenses (Raw Material Cost+Courier+Gateway+Manual)</th>
+                            <th style="color:#10B981;">Net Profit</th>
+                        </tr>
+                    </thead>
+                    <tbody id="yearReportBody"></tbody>
+                    <tfoot id="yearReportFoot" style="font-weight: 700; background: #fafafa;"></tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB: CUSTOMERS -->
+        <div id="tab-customers" class="tab-content">
+            <div class="table-card">
+                <h3>Customer Analytics</h3>
+                <table class="analytics-table" id="customerTable">
+                    <thead>
+                        <tr>
+                            <th>Customer Name</th>
+                            <th>Phone / Email</th>
+                            <th>Orders</th>
+                            <th>Lifetime Spend</th>
+                            <th>Avg Order Value</th>
+                            <th>First Order</th>
+                            <th>Last Order</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customerBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB: EXPENSES -->
+        <div id="tab-expenses" class="tab-content">
+            <div class="expenses-layout">
+                <div class="expenses-form-col">
+                    <h3 id="expenseFormTitle" style="margin-top:0;">Record Expense</h3>
+                    <form id="expenseForm" onsubmit="handleAddExpense(event)">
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="expDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="expCategory" required>
+                                <option value="Electricity">Electricity</option>
+                                <option value="Internet / Broadband">Internet / Broadband</option>
+                                <option value="Domain & Hosting">Domain & Hosting</option>
+                                <option value="Gas">Gas</option>
+                                <option value="Packaging Material">Packaging Material</option>
+                                <option value="Sticker Paper">Sticker Paper</option>
+                                <option value="Printer & Ink">Printer & Ink</option>
+                                <option value="Equipment">Equipment</option>
+                                <option value="Maintenance">Maintenance</option>
+                                <option value="Marketing & Advertising">Marketing & Advertising</option>
+                                <option value="Software & Subscriptions">Software & Subscriptions</option>
+                                <option value="Office Supplies">Office Supplies</option>
+                                <option value="Miscellaneous">Miscellaneous</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Amount (₹)</label>
+                            <input type="number" id="expAmount" step="0.01" required min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Payment Method</label>
+                            <select id="expPaymentMethod">
+                                <option value="Cash">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="Credit Card">Credit Card</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label>Notes</label>
                             <input type="text" id="expNotes" placeholder="Optional details">
                         </div>
-                          <div class="form-group">
-                              <label>Invoice (Optional)</label>
-                              <div id="invoiceUploadArea" style="border: 2px dashed #cbd5e1; padding: 20px; text-align: center; border-radius: 8px; cursor: pointer; position: relative;">
-                                  <i class="fas fa-cloud-upload-alt" style="font-size: 24px; color: #94a3b8; margin-bottom: 8px;"></i>
-                                  <p style="margin: 0; font-size: 0.9rem; color: #64748b;">Drag & drop invoice here or click to browse</p>
-                                  <input type="file" id="expInvoice" accept=".jpg,.jpeg,.png,.webp,.pdf" style="opacity: 0; position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer;" onchange="handleInvoiceSelect(event)">
-                              </div>
-                              
-                              <div id="existingInvoiceDisplay" style="display: none; margin-top: 10px; background: #f8fafc; padding: 10px; border-radius: 6px;">
-                                  <div style="display: flex; justify-content: space-between; align-items: center;">
-                                      <div style="display: flex; align-items: center; gap: 10px;">
-                                          <i id="existingInvoiceIcon" class="fas fa-file-pdf" style="font-size: 20px; color: #ef4444;"></i>
-                                          <div>
-                                              <div id="existingInvoiceName" style="font-size: 0.9rem; font-weight: 500; color: #334155; word-break: break-all;"></div>
-                                              <div id="existingInvoiceSize" style="font-size: 0.8rem; color: #64748b;"></div>
-                                          </div>
-                                      </div>
-                                      <div style="display: flex; gap: 5px;">
-                                          <button type="button" id="btnViewExisting" class="btn-action" style="padding: 4px 8px; font-size: 0.8rem; background: #eff6ff; color: #3b82f6; border-radius: 4px; border: 1px solid #bfdbfe; cursor: pointer;" title="View"><i class="fas fa-eye"></i></button>
-                                          <button type="button" id="btnDownloadExisting" class="btn-action" style="padding: 4px 8px; font-size: 0.8rem; background: #f0fdf4; color: #22c55e; border-radius: 4px; border: 1px solid #bbf7d0; cursor: pointer;" title="Download"><i class="fas fa-download"></i></button>
-                                      </div>
-                                  </div>
-                                  <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: flex-end;">
-                                      <button type="button" onclick="replaceExistingInvoice()" class="btn-action" style="padding: 4px 8px; font-size: 0.8rem; background: #fff; color: #3b82f6; border: 1px solid #bfdbfe;">Replace</button>
-                                      <button type="button" onclick="removeExistingInvoice()" class="btn-action" style="padding: 4px 8px; font-size: 0.8rem; background: #fef2f2; color: #ef4444; border: 1px solid #fecaca;">Delete</button>
-                                  </div>
-                              </div>
-                              <div id="invoicePreview" style="display: none; margin-top: 10px; background: #f8fafc; padding: 10px; border-radius: 6px; align-items: center; justify-content: space-between;">
-                                  <div style="display: flex; align-items: center; gap: 10px;">
-                                      <i id="invoiceIcon" class="fas fa-file-pdf" style="font-size: 20px; color: #ef4444;"></i>
-                                      <div>
-                                          <div id="invoiceName" style="font-size: 0.9rem; font-weight: 500; color: #334155; word-break: break-all;"></div>
-                                          <div id="invoiceSize" style="font-size: 0.8rem; color: #64748b;"></div>
-                                      </div>
-                                  </div>
-                                  <button type="button" onclick="clearInvoice()" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 5px;"><i class="fas fa-times"></i></button>
-                              </div>
-                          </div>
-                          <div style="display:flex; gap:10px;">
-                              <button type="submit" class="btn-action btn-primary-action" id="btnSaveExpense" style="flex: 1; justify-content: center;">Save Expense</button>
-                              <button type="button" class="btn-action" id="btnCancelEdit" style="display:none; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;" onclick="cancelEditExpense()">Cancel</button>
-                          </div>
+                        <div class="form-group">
+                            <label>Invoice Link (Optional)</label>
+                            <input type="url" id="expInvoiceLink" placeholder="Paste Google Drive share link..." class="form-control" style="width: 100%; box-sizing: border-box;">
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button type="submit" class="btn-action btn-primary-action" id="btnSaveExpense" style="flex: 1; justify-content: center;">Save Expense</button>
+                            <button type="button" class="btn-action" id="btnCancelEdit" style="display:none; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;" onclick="cancelEditExpense()">Cancel</button>
+                        </div>
                     </form>
                 </div>
 
@@ -512,6 +673,7 @@ let filteredData = {
 let charts = { main: null, pie: null, orders: null, category: null };
 let calCurrentDate = new Date();
 let currentTab = 'overview';
+let editExpenseId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('reportGenDate').textContent = new Date().toLocaleString();
@@ -1191,18 +1353,16 @@ function renderExpensesList() {
             <td>${e.notes || '-'}</td>
             <td>${e.payment_method || '-'}</td>
             <td style="text-align:right; font-weight:600; color:var(--danger);">₹${Number(e.amount).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-        
-              <td style="text-align:center;">
-                  ${e.invoice_file_id ? `
-                      <button onclick="secureFetchInvoice('${e.invoice_file_id}', 'view')" class="btn-action" style="padding: 4px 8px; font-size: 0.8rem; background: #eff6ff; color: #3b82f6; border-radius: 4px; border: 1px solid #bfdbfe; cursor: pointer;" title="View Invoice"><i class="fas fa-eye"></i> View</button>
-                      <button onclick="secureFetchInvoice('${e.invoice_file_id}', 'download')" class="btn-action" style="padding: 4px 8px; font-size: 0.8rem; background: #f0fdf4; color: #22c55e; border-radius: 4px; border: 1px solid #bbf7d0; cursor: pointer;" title="Download Invoice"><i class="fas fa-download"></i></button>
-                  ` : '-'}
-              </td>
-              <td style="text-align:center;">
-                  <button onclick="openEditExpense('${e.id}')" style="background:none;border:none;color:#3b82f6;cursor:pointer;margin-right:8px;" title="Edit Expense"><i class="fas fa-edit"></i></button>
-                  <button onclick="deleteExpense('${e.id}', '${e.invoice_file_id || ''}')" style="background:none;border:none;color:#ef4444;cursor:pointer;" title="Delete Expense"><i class="fas fa-trash"></i></button>
-              </td>
-          </tr>`;
+            <td style="text-align:center;">
+                ${e.invoice_link ? `
+                    <a href="${e.invoice_link}" target="_blank" class="btn-action" style="padding: 4px 8px; font-size: 0.8rem; background: #eff6ff; color: #3b82f6; border-radius: 4px; border: 1px solid #bfdbfe; cursor: pointer; text-decoration: none; display: inline-block;" title="Open Invoice"><i class="fas fa-external-link-alt"></i> Open</a>
+                ` : '-'}
+            </td>
+            <td style="text-align:center;">
+                <button onclick="openEditExpense('${e.id}')" style="background:none;border:none;color:#3b82f6;cursor:pointer;margin-right:8px;" title="Edit Expense"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteExpense('${e.id}')" style="background:none;border:none;color:#ef4444;cursor:pointer;" title="Delete Expense"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
     });
 }
 
@@ -1213,101 +1373,56 @@ async function handleAddExpense(e) {
     const amt = document.getElementById('expAmount').value;
     const notes = document.getElementById('expNotes').value;
     const method = document.getElementById('expPaymentMethod').value;
+    const invoiceLink = document.getElementById('expInvoiceLink').value.trim();
+    
+    if (invoiceLink) {
+        if (!invoiceLink.startsWith('http://') && !invoiceLink.startsWith('https://')) {
+            alert("Invoice Link must be a valid URL starting with http:// or https://");
+            return;
+        }
+    }
     
     const btn = e.target.querySelector('button');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
     btn.disabled = true;
 
     try {
-                  let invoiceData = null;
-          if (typeof selectedInvoiceFile !== 'undefined' && selectedInvoiceFile) {
-              const formData = new FormData();
-              formData.append('file', selectedInvoiceFile);
-              
-              const client = await DB._getAdapter()._getClient();
-              const { data: session } = await client.auth.getSession();
-              
-              const upRes = await fetch('/api/gdrive', {
-                  method: 'POST',
-                  headers: { 
-                      'Authorization': `Bearer ${session.session.access_token}`,
-                      'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
-                  },
-                  body: formData
-              });
-              if (!upRes.ok) {
-                  const errTxt = await upRes.text();
-                  throw new Error('Invoice upload failed: ' + errTxt);
-              }
-              invoiceData = await upRes.json();
-          }
+        const payload = { expense_date: date, category: cat, amount: amt, notes: notes, payment_method: method };
+        if (invoiceLink) {
+            payload.invoice_link = invoiceLink;
+        } else {
+            payload.invoice_link = null;
+        }
 
-          const payload = { expense_date: date, category: cat, amount: amt, notes: notes, payment_method: method };
-          if (invoiceData && invoiceData.success) {
-              payload.invoice_file_id = invoiceData.fileId;
-              payload.invoice_name = invoiceData.name;
-              payload.invoice_type = invoiceData.type;
-              payload.invoice_size = invoiceData.size;
-          }
-
-          let opAction = editExpenseId ? 'update' : 'insert';
-          let opOptions = editExpenseId ? { match: { id: editExpenseId }, payload } : { payload };
-          
-          if (editExpenseId && invoiceToDelete && !invoiceData) {
-              // User clicked remove existing invoice, but didn't upload a new one
-              payload.invoice_file_id = null;
-              payload.invoice_name = null;
-              payload.invoice_type = null;
-              payload.invoice_size = null;
-          }
-          
-          const { data, error } = await fetchAdminData('expenses', opAction, opOptions);
-          
-          if (error) {
-              if (invoiceData && invoiceData.success && invoiceData.fileId) {
-                  // Cleanup orphaned file securely
-                  await fetch(`/api/gdrive?fileId=${invoiceData.fileId}`, {
-                      method: 'DELETE',
-                      headers: { 
-                          'Authorization': `Bearer ${session.session.access_token}`,
-                          'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
-                      }
-                  }).catch(console.error);
-              }
-              throw error;
-          }
-          
-          if (editExpenseId && invoiceToDelete) {
-              // Safely remove old invoice since update succeeded
-              await fetch(`/api/gdrive?fileId=${invoiceToDelete}`, {
-                  method: 'DELETE',
-                  headers: { 
-                      'Authorization': `Bearer ${session.session.access_token}`,
-                      'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
-                  }
-              }).catch(console.error);
-          }
-          
-          if (editExpenseId) {
-              // Update in local state
-              const updatedRow = (data && data.length > 0) ? data[0] : payload;
-              const idx = rawExpenses.findIndex(ex => String(ex.id) === String(editExpenseId));
-              if (idx !== -1) rawExpenses[idx] = { ...rawExpenses[idx], ...updatedRow };
-              if (typeof showToast === 'function') {
-                  showToast("Expense updated successfully.");
-              } else {
-                  alert("Expense updated successfully.");
-              }
-              cancelEditExpense();
-          } else {
-              rawExpenses.unshift(data && data.length > 0 ? data[0] : payload);
-              e.target.reset();
-              if (typeof clearInvoice === 'function') clearInvoice();
-          }
-          handleFilterChange();
+        let opAction = editExpenseId ? 'update' : 'insert';
+        let opOptions = editExpenseId ? { match: { id: editExpenseId }, payload } : { payload };
+        
+        const { data, error } = await fetchAdminData('expenses', opAction, opOptions);
+        
+        if (error) {
+            throw error;
+        }
+        
+        if (editExpenseId) {
+            // Update in local state
+            const updatedRow = (data && data.length > 0) ? data[0] : payload;
+            const idx = rawExpenses.findIndex(ex => String(ex.id) === String(editExpenseId));
+            if (idx !== -1) rawExpenses[idx] = { ...rawExpenses[idx], ...updatedRow };
+            if (typeof showToast === 'function') {
+                showToast("Expense updated successfully.");
+            } else {
+                alert("Expense updated successfully.");
+            }
+            cancelEditExpense();
+        } else {
+            rawExpenses.unshift(data && data.length > 0 ? data[0] : payload);
+            e.target.reset();
+        }
+        handleFilterChange();
         document.getElementById('expDate').valueAsDate = new Date();
     } catch(err) {
         console.error('Error saving expense:', err);
+        alert('Error saving expense: ' + err.message);
     } finally {
         btn.innerHTML = 'Save Expense';
         btn.disabled = false;
@@ -1546,13 +1661,13 @@ function exportExcel() {
     XLSX.utils.book_append_sheet(wb, wsOrders, "Orders");
     
     // Sheet 3: Business Expenses
-    const expData = [["Date", "Category", "Description", "Amount", "Notes"]];
+    const expData = [["Date", "Category", "Description", "Amount", "Notes", "Invoice"]];
     filteredData.expenses.forEach(e => {
-        expData.push([new Date(e.expense_date).toLocaleDateString('en-IN'), e.category, e.notes || '', `₹${Number(e.amount).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, e.notes || '']);
+        expData.push([new Date(e.expense_date).toLocaleDateString('en-IN'), e.category, e.notes || '', `₹${Number(e.amount).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, e.notes || '', e.invoice_link || '']);
     });
     const wsExp = XLSX.utils.aoa_to_sheet(expData);
     wsExp['!views'] = [{state: 'frozen', ySplit: 1}];
-    wsExp['!cols'] = [{wch: 15}, {wch: 20}, {wch: 30}, {wch: 15}, {wch: 30}];
+    wsExp['!cols'] = [{wch: 15}, {wch: 20}, {wch: 30}, {wch: 15}, {wch: 30}, {wch: 50}];
     XLSX.utils.book_append_sheet(wb, wsExp, "Business Expenses");
     
     // Sheet 4: Customers
@@ -1661,6 +1776,21 @@ function exportPDF() {
     if(Object.keys(expMap).length === 0) html += `<tr><td colspan="2">No manual expenses.</td></tr>`;
     html += `</tbody></table>`;
     
+    // Expense Details
+    html += `<div class="pdf-h2">Expense Details</div><table class="pdf-table">
+        <thead><tr><th>Date</th><th>Category</th><th>Notes</th><th class="right">Amount</th><th>Invoice Link</th></tr></thead><tbody>`;
+    filteredData.expenses.forEach(e => {
+        html += `<tr>
+            <td>${new Date(e.expense_date).toLocaleDateString('en-IN')}</td>
+            <td>${e.category}</td>
+            <td>${e.notes || ''}</td>
+            <td class="right">₹${Number(e.amount).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td style="word-break: break-all;">${e.invoice_link ? `<a href="${e.invoice_link}" target="_blank">${e.invoice_link}</a>` : '-'}</td>
+        </tr>`;
+    });
+    if(filteredData.expenses.length === 0) html += `<tr><td colspan="5">No manual expenses.</td></tr>`;
+    html += `</tbody></table>`;
+    
     // Top Selling Products
     html += `<div class="pdf-h2">Top Selling Products</div><table class="pdf-table">
         <thead><tr><th>Product Name</th><th class="right">Quantity Sold</th><th class="right">Revenue</th></tr></thead><tbody>`;
@@ -1707,170 +1837,23 @@ function exportPDF() {
     });
 }
 
-let selectedInvoiceFile = null;
-let editExpenseId = null;
-let existingInvoiceId = null;
-let invoiceToDelete = null;
-
-function handleInvoiceSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-        showToast('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.', 'error');
-        return;
-    }
-    selectedInvoiceFile = file;
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if (uploadArea) uploadArea.style.display = 'none';
-    
-    const preview = document.getElementById('invoicePreview');
-    const nameEl = document.getElementById('invoiceName');
-    const sizeEl = document.getElementById('invoiceSize');
-    const iconEl = document.getElementById('invoiceIcon');
-    if (nameEl) nameEl.textContent = file.name;
-    if (sizeEl) sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-    if (iconEl) {
-        if (file.type === 'application/pdf') {
-            iconEl.className = 'fas fa-file-pdf';
-            iconEl.style.color = '#ef4444';
-        } else {
-            iconEl.className = 'fas fa-file-image';
-            iconEl.style.color = '#3b82f6';
-        }
-    }
-    if (preview) preview.style.display = 'flex';
-}
-
-function clearInvoice() {
-    selectedInvoiceFile = null;
-    const invInput = document.getElementById('expInvoice');
-    if (invInput) invInput.value = '';
-    const prev = document.getElementById('invoicePreview');
-    if (prev) prev.style.display = 'none';
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if (uploadArea) uploadArea.style.display = 'block';
-}
-
-async function secureFetchInvoice(fileId, action) {
-    try {
-        const client = await DB._getAdapter()._getClient();
-        const { data: session } = await client.auth.getSession();
-        
-        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
-            headers: { 
-                'Authorization': `Bearer ${session.session.access_token}`,
-                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
-            }
-        });
-        
-        if (!res.ok) {
-            const errTxt = await res.text();
-            showToast('Failed to retrieve invoice: ' + errTxt, 'error');
-            return;
-        }
-        
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        
-        if (action === 'view') {
-            window.open(url, '_blank');
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-        } else {
-            const a = document.createElement('a');
-            a.href = url;
-            const disp = res.headers.get('Content-Disposition');
-            let filename = 'invoice';
-            if (disp && disp.includes('filename="')) {
-                filename = disp.split('filename="')[1].split('"')[0];
-            }
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-    } catch(err) {
-        showToast('Error: ' + err.message, 'error');
-    }
-}
-
-async function deleteExpense(id, fileId) {
-    if (!confirm('Are you sure you want to delete this expense?')) return;
-    try {
-        const client = await DB._getAdapter()._getClient();
-        const { data: session } = await client.auth.getSession();
-        
-        const { error } = await fetchAdminData('expenses', 'delete', { match: { id } });
-        if (error) throw error;
-        
-        if (fileId && fileId !== 'undefined' && fileId !== 'null') {
-            await fetch(`/api/gdrive?fileId=${fileId}`, {
-                method: 'DELETE',
-                headers: { 
-                    'Authorization': `Bearer ${session.session.access_token}`,
-                    'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
-                }
-            }).catch(console.error);
-        }
-        
-        rawExpenses = rawExpenses.filter(e => String(e.id) !== String(id));
-        handleFilterChange();
-        if (typeof showToast === 'function') showToast('Expense deleted successfully', 'success');
-        else alert('Expense deleted successfully');
-    } catch(err) {
-        if (typeof showToast === 'function') showToast('Error deleting expense: ' + err.message, 'error');
-        else alert('Error deleting expense: ' + err.message);
-    }
-}
-
 function openEditExpense(id) {
     const expense = rawExpenses.find(e => String(e.id) === String(id));
     if (!expense) return;
     
     editExpenseId = expense.id;
-    existingInvoiceId = expense.invoice_file_id || null;
-    invoiceToDelete = null;
     
     document.getElementById('expenseFormTitle').textContent = 'Edit Expense';
     document.getElementById('btnSaveExpense').textContent = 'Update Expense';
     document.getElementById('btnCancelEdit').style.display = 'block';
-    
-    if (expense.expense_date) {
-        document.getElementById('expDate').value = expense.expense_date.split('T')[0];
-    }
+
+    document.getElementById('expDate').value = expense.expense_date.split('T')[0];
     document.getElementById('expCategory').value = expense.category;
     document.getElementById('expAmount').value = expense.amount;
-    document.getElementById('expPaymentMethod').value = expense.payment_method || '';
     document.getElementById('expNotes').value = expense.notes || '';
+    document.getElementById('expPaymentMethod').value = expense.payment_method || 'UPI';
     
-    clearInvoice();
-    
-    if (existingInvoiceId) {
-        document.getElementById('invoiceUploadArea').style.display = 'none';
-        document.getElementById('existingInvoiceDisplay').style.display = 'block';
-        
-        document.getElementById('existingInvoiceName').textContent = expense.invoice_name || 'Invoice';
-        if (expense.invoice_size) {
-            document.getElementById('existingInvoiceSize').textContent = (expense.invoice_size / 1024 / 1024).toFixed(2) + ' MB';
-        } else {
-            document.getElementById('existingInvoiceSize').textContent = '';
-        }
-        
-        const iconEl = document.getElementById('existingInvoiceIcon');
-        if (expense.invoice_type === 'application/pdf') {
-            iconEl.className = 'fas fa-file-pdf';
-            iconEl.style.color = '#ef4444';
-        } else {
-            iconEl.className = 'fas fa-file-image';
-            iconEl.style.color = '#3b82f6';
-        }
-        
-        document.getElementById('btnViewExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'view');
-        document.getElementById('btnDownloadExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'download');
-    } else {
-        document.getElementById('existingInvoiceDisplay').style.display = 'none';
-        document.getElementById('invoiceUploadArea').style.display = 'block';
-    }
+    document.getElementById('expInvoiceLink').value = expense.invoice_link || '';
     
     const formCol = document.querySelector('.expenses-form-col');
     if (formCol) formCol.scrollIntoView({ behavior: 'smooth' });
