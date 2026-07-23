@@ -21,73 +21,8 @@ export async function onRequestOptions(context) {
     return new Response(null, { headers: getCorsHeaders(context.request) });
 }
 
-// JWT Utilities
-function base64url(source) {
-    let encoded = btoa(source);
-    encoded = encoded.replace(/=+$/, '');
-    encoded = encoded.replace(/\+/g, '-');
-    encoded = encoded.replace(/\//g, '_');
-    return encoded;
-}
-
-async function importPrivateKey(pem) {
-    const pemHeader = "-----BEGIN PRIVATE KEY-----";
-    const pemFooter = "-----END PRIVATE KEY-----";
-    const formattedPem = (pem || '').replace(/\\n/g, '\n');
-    
-    if (!formattedPem.includes(pemHeader) || !formattedPem.includes(pemFooter)) {
-        throw new Error("Invalid private key format: Missing BEGIN/END PRIVATE KEY header/footer");
-    }
-
-    const pemContents = formattedPem.substring(
-        formattedPem.indexOf(pemHeader) + pemHeader.length,
-        formattedPem.indexOf(pemFooter)
-    ).replace(/\s/g, '');
-    
-    const binaryDerString = atob(pemContents);
-    const binaryDer = new ArrayBuffer(binaryDerString.length);
-    const bufView = new Uint8Array(binaryDer);
-    for (let i = 0; i < binaryDerString.length; i++) {
-        bufView[i] = binaryDerString.charCodeAt(i);
-    }
-
-    return await crypto.subtle.importKey(
-        "pkcs8",
-        binaryDer,
-        { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-        true,
-        ["sign"]
-    );
-}
-
-async function createJwt(clientEmail, privateKeyPem) {
-    const header = { alg: "RS256", typ: "JWT" };
-    const now = Math.floor(Date.now() / 1000);
-    const claim = {
-        iss: clientEmail,
-        scope: "https://www.googleapis.com/auth/drive",
-        aud: "https://oauth2.googleapis.com/token",
-        exp: now + 3600,
-        iat: now
-    };
-
-    const encodedHeader = base64url(JSON.stringify(header));
-    const encodedClaim = base64url(JSON.stringify(claim));
-    const token = `${encodedHeader}.${encodedClaim}`;
-
-    const privateKey = await importPrivateKey(privateKeyPem);
-    const signatureBuffer = await crypto.subtle.sign(
-        "RSASSA-PKCS1-v1_5",
-        privateKey,
-        new TextEncoder().encode(token)
-    );
-
-    const signature = base64url(String.fromCharCode(...new Uint8Array(signatureBuffer)));
-    return `${token}.${signature}`;
-}
-
 async function getAccessToken(env) {
-    const reqVars = ['GDRIVE_CLIENT_EMAIL', 'GDRIVE_PRIVATE_KEY', 'GDRIVE_PROJECT_ID', 'GDRIVE_PRIVATE_KEY_ID', 'GDRIVE_FOLDER_ID'];
+    const reqVars = ['GDRIVE_CLIENT_ID', 'GDRIVE_CLIENT_SECRET', 'GDRIVE_REFRESH_TOKEN', 'GDRIVE_FOLDER_ID'];
     let missing = [];
     let statusText = [];
     
@@ -105,14 +40,19 @@ async function getAccessToken(env) {
         throw new Error(errorMsg);
     }
     
-    const clientEmail = env.GDRIVE_CLIENT_EMAIL;
-    const privateKey = env.GDRIVE_PRIVATE_KEY;
+    const clientId = env.GDRIVE_CLIENT_ID;
+    const clientSecret = env.GDRIVE_CLIENT_SECRET;
+    const refreshToken = env.GDRIVE_REFRESH_TOKEN;
 
-    const jwt = await createJwt(clientEmail, privateKey);
     const req = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
+        body: new URLSearchParams({
+            client_id: clientId,
+            client_secret: clientSecret,
+            refresh_token: refreshToken,
+            grant_type: 'refresh_token'
+        }).toString()
     });
     
     if (!req.ok) {
