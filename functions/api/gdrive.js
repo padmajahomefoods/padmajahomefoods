@@ -87,7 +87,7 @@ async function createJwt(clientEmail, privateKeyPem) {
 }
 
 async function getAccessToken(env) {
-    const reqVars = ['GDRIVE_CLIENT_EMAIL', 'GDRIVE_PRIVATE_KEY', 'GDRIVE_PROJECT_ID', 'GDRIVE_PRIVATE_KEY_ID'];
+    const reqVars = ['GDRIVE_CLIENT_EMAIL', 'GDRIVE_PRIVATE_KEY', 'GDRIVE_PROJECT_ID', 'GDRIVE_PRIVATE_KEY_ID', 'GDRIVE_FOLDER_ID'];
     let missing = [];
     let statusText = [];
     
@@ -124,7 +124,7 @@ async function getAccessToken(env) {
 
 async function getOrCreateFolder(token, name, parentId = 'root') {
     const q = `name='${name}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`, {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true`, {
         headers: { Authorization: `Bearer ${token}` }
     });
     if (!res.ok) {
@@ -133,7 +133,7 @@ async function getOrCreateFolder(token, name, parentId = 'root') {
     const data = await res.json();
     if (data.files && data.files.length > 0) return data.files[0].id;
     
-    const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+    const createRes = await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] })
@@ -211,7 +211,8 @@ export async function onRequestPost(context) {
             return new Response(JSON.stringify({ error: 'Invalid filename.' }), { status: 400, headers: corsHeaders });
         }
 
-        const f1 = await getOrCreateFolder(token, 'Padmaja Home Foods');
+        const rootFolderId = context.env.GDRIVE_FOLDER_ID;
+        const f1 = await getOrCreateFolder(token, 'Padmaja Home Foods', rootFolderId);
         const f2 = await getOrCreateFolder(token, 'Expenses', f1);
         const now = new Date();
         const year = now.getFullYear().toString();
@@ -235,7 +236,7 @@ export async function onRequestPost(context) {
             `\r\n--${boundary}--\r\n`
         ]);
         
-        const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size', {
+        const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size&supportsAllDrives=true', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
             body: blob
@@ -282,14 +283,14 @@ export async function onRequestGet(context) {
         let token;
         try { token = await getAccessToken(context.env); } catch(e) { return new Response(JSON.stringify({ error: 'Internal server error', details: e.message || String(e), stack: e.stack }), { status: 500, headers: corsHeaders }); }
 
-        const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType`, {
+        const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType&supportsAllDrives=true`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
         if (!metaRes.ok) return new Response(JSON.stringify({ error: 'File not found' }), { status: 404, headers: corsHeaders });
         const meta = await metaRes.json();
 
-        const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -324,7 +325,7 @@ export async function onRequestDelete(context) {
         let token;
         try { token = await getAccessToken(context.env); } catch(e) { return new Response(JSON.stringify({ error: 'Internal server error', details: e.message || String(e), stack: e.stack }), { status: 500, headers: corsHeaders }); }
 
-        const delRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+        const delRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
