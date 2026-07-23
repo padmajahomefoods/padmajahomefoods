@@ -40,23 +40,33 @@ async function getAccessToken(env) {
         throw new Error(errorMsg);
     }
     
-    const clientId = env.GDRIVE_CLIENT_ID;
-    const clientSecret = env.GDRIVE_CLIENT_SECRET;
-    const refreshToken = env.GDRIVE_REFRESH_TOKEN;
+    const clientId = (env.GDRIVE_CLIENT_ID || '').trim().replace(/^"|"$/g, '');
+    const clientSecret = (env.GDRIVE_CLIENT_SECRET || '').trim().replace(/^"|"$/g, '');
+    const refreshToken = (env.GDRIVE_REFRESH_TOKEN || '').trim().replace(/^"|"$/g, '');
+
+    const reqBody = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token'
+    }).toString();
 
     const req = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            client_id: clientId,
-            client_secret: clientSecret,
-            refresh_token: refreshToken,
-            grant_type: 'refresh_token'
-        }).toString()
+        body: reqBody
     });
     
     if (!req.ok) {
-        throw new Error(`Internal auth error [${req.status}]: ` + await req.text());
+        const errText = await req.text();
+        console.error("--- DEBUG OAUTH FAILURE ---");
+        console.error("Status:", req.status);
+        console.error("Response:", errText);
+        console.error("Client ID (first 10 chars):", clientId.substring(0, 10) + '...');
+        console.error("Client Secret (first 3 chars):", clientSecret.substring(0, 3) + '...');
+        console.error("Refresh Token (prefix):", refreshToken.substring(0, 15) + '...');
+        console.error("Raw Request Body (redacted):", reqBody.replace(clientSecret, 'REDACTED_SECRET').replace(refreshToken, 'REDACTED_TOKEN'));
+        throw new Error(`Google OAuth error [${req.status}]: ` + errText);
     }
     const res = await req.json();
     return res.access_token;
