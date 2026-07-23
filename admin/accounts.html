@@ -771,31 +771,32 @@ function updateOverviewCards() {
     setCard('Expenses', cur.totalExp, prv.totalExp, '₹', true);
     setCard('Net', cur.net, prv.net, '₹');
 
-    // Custom Styling for Net Profit
+    // Custom Styling for Net P&L
     const netCard = document.querySelector('.profit-card');
     const netVal = document.getElementById('cardNet');
     const netTitle = netCard.querySelector('h4');
+    const netTrend = document.getElementById('trendNet');
     
+    // Setup transition and force background property to be empty so backgroundColor can apply smoothly
+    netCard.style.transition = 'background-color 0.3s ease';
+    netCard.style.background = 'none';
+    netCard.style.border = 'none';
+    netTitle.textContent = 'Net P&L';
+    
+    // Force white text universally
+    netCard.style.color = '#ffffff';
+    netTitle.style.color = '#ffffff';
+    netVal.style.color = '#ffffff';
+    if(netTrend) netTrend.style.color = '#ffffff';
+
     if (cur.net > 0) {
-        netCard.style.backgroundColor = '#ecfdf5';
-        netCard.style.borderColor = '#a7f3d0';
-        netVal.style.color = '#10b981';
-        netTitle.textContent = 'Net Profit';
-        netTitle.style.color = '#065f46';
+        netCard.style.backgroundColor = '#10B981';
         netVal.innerHTML = `₹${cur.net.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})} <i class="fas fa-arrow-up" style="font-size: 0.8em; margin-left: 4px;"></i>`;
     } else if (cur.net < 0) {
-        netCard.style.backgroundColor = '#fef2f2';
-        netCard.style.borderColor = '#fecaca';
-        netVal.style.color = '#ef4444';
-        netTitle.textContent = 'Net Loss';
-        netTitle.style.color = '#991b1b';
+        netCard.style.backgroundColor = '#EF4444';
         netVal.innerHTML = `₹${Math.abs(cur.net).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})} <i class="fas fa-arrow-down" style="font-size: 0.8em; margin-left: 4px;"></i>`;
     } else {
-        netCard.style.backgroundColor = '#f8fafc';
-        netCard.style.borderColor = '#e2e8f0';
-        netVal.style.color = '#64748b';
-        netTitle.textContent = 'Break Even';
-        netTitle.style.color = '#475569';
+        netCard.style.backgroundColor = '#64748B';
         netVal.innerHTML = `₹0.00`;
     }
 
