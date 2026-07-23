@@ -904,12 +904,13 @@ function renderCharts() {
 }
 
 // --- TABLES ---
-function renderTopProducts() {
+function getSortedTopProducts(limit = null) {
     const pMap = {};
     filteredData.items.forEach(i => {
-        if(!pMap[i.product_name]) pMap[i.product_name] = { q:0, r:0, lastSold: null, custs: new Set() };
+        if(!pMap[i.product_name]) pMap[i.product_name] = { q:0, r:0, lastSold: null, custs: new Set(), ords: new Set() };
         pMap[i.product_name].q += (i.quantity||1);
         pMap[i.product_name].r += Number(i.total);
+        pMap[i.product_name].ords.add(i.order_id);
         
         const order = filteredData.orders.find(o => o.id === i.order_id);
         if (order) {
@@ -919,7 +920,21 @@ function renderTopProducts() {
         }
     });
     
-    const pList = Object.keys(pMap).map(k => ({ name: k, ...pMap[k] })).sort((a,b) => b.r - a.r).slice(0,15);
+    let pList = Object.keys(pMap).map(k => ({ n: k, name: k, ...pMap[k] }))
+        .sort((a, b) => {
+            if (b.q !== a.q) return b.q - a.q;
+            if (b.r !== a.r) return b.r - a.r;
+            const dA = a.lastSold ? new Date(a.lastSold).getTime() : 0;
+            const dB = b.lastSold ? new Date(b.lastSold).getTime() : 0;
+            return dB - dA;
+        });
+        
+    if (limit) pList = pList.slice(0, limit);
+    return pList;
+}
+
+function renderTopProducts() {
+    const pList = getSortedTopProducts(15);
     const tbody = document.querySelector('#topProductsTable tbody');
     tbody.innerHTML = '';
     pList.forEach(p => {
@@ -1507,15 +1522,9 @@ function exportExcel() {
     XLSX.utils.book_append_sheet(wb, wsCust, "Customers");
     
     // Sheet 5: Top Products
-    const pMap = {};
-    filteredData.items.forEach(i => {
-        if(!pMap[i.product_name]) pMap[i.product_name] = { q:0, r:0, ords: new Set() };
-        pMap[i.product_name].q += (i.quantity||1); pMap[i.product_name].r += Number(i.total);
-        pMap[i.product_name].ords.add(i.order_id);
-    });
     const prodData = [["Product Name", "Units Sold", "Revenue", "Orders Count"]];
-    Object.keys(pMap).map(k => ({n:k, q:pMap[k].q, r:pMap[k].r, c:pMap[k].ords.size})).sort((a,b)=>b.q-a.q).forEach(p => {
-        prodData.push([p.n, p.q, `₹${p.r.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, p.c]);
+    getSortedTopProducts().forEach(p => {
+        prodData.push([p.n, p.q, `₹${p.r.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, p.ords.size]);
     });
     const wsProd = XLSX.utils.aoa_to_sheet(prodData);
     wsProd['!views'] = [{state: 'frozen', ySplit: 1}];
@@ -1602,15 +1611,11 @@ function exportPDF() {
     // Top Selling Products
     html += `<div class="pdf-h2">Top Selling Products</div><table class="pdf-table">
         <thead><tr><th>Product Name</th><th class="right">Quantity Sold</th><th class="right">Revenue</th></tr></thead><tbody>`;
-    const pMap = {};
-    filteredData.items.forEach(i => {
-        if(!pMap[i.product_name]) pMap[i.product_name] = { q:0, r:0 };
-        pMap[i.product_name].q += (i.quantity||1); pMap[i.product_name].r += Number(i.total);
-    });
-    Object.keys(pMap).map(k => ({n:k, q:pMap[k].q, r:pMap[k].r})).sort((a,b)=>b.q-a.q).slice(0,10).forEach(p => {
+    const topProds = getSortedTopProducts(10);
+    topProds.forEach(p => {
         html += `<tr><td>${p.n}</td><td class="right">${p.q}</td><td class="right">₹${p.r.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`;
     });
-    if(Object.keys(pMap).length === 0) html += `<tr><td colspan="3">No products sold.</td></tr>`;
+    if(topProds.length === 0) html += `<tr><td colspan="3">No products sold.</td></tr>`;
     html += `</tbody></table>`;
     
     // Recent Orders (Latest 10)
