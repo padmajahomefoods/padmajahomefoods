@@ -224,7 +224,9 @@ export async function onRequestPost(context) {
         const folderId = await getOrCreateFolder(token, folderName, f3);
 
         const metadata = { name: file.name, parents: [folderId] };
-        const boundary = '-------314159265358979323846';
+        const boundary = 'foo_bar_baz_upload_boundary';
+        
+        const fileBytes = await file.arrayBuffer();
         
         const blob = new Blob([
             `--${boundary}\r\n`,
@@ -232,7 +234,7 @@ export async function onRequestPost(context) {
             JSON.stringify(metadata),
             `\r\n--${boundary}\r\n`,
             `Content-Type: ${file.type}\r\n\r\n`,
-            file,
+            fileBytes,
             `\r\n--${boundary}--\r\n`
         ]);
         
