@@ -9,612 +9,9 @@
     <link rel="stylesheet" href="admin.css">
     
     <!-- Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js">
-let selectedInvoiceFile = null;
-
-function handleInvoiceSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
-        return;
-    }
-    
-    selectedInvoiceFile = file;
-    document.getElementById('invoiceUploadArea').style.display = 'none';
-    
-    const preview = document.getElementById('invoicePreview');
-    const nameEl = document.getElementById('invoiceName');
-    const sizeEl = document.getElementById('invoiceSize');
-    const iconEl = document.getElementById('invoiceIcon');
-    
-    nameEl.textContent = file.name;
-    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-    
-    if (file.type === 'application/pdf') {
-        iconEl.className = 'fas fa-file-pdf';
-        iconEl.style.color = '#ef4444';
-    } else {
-        iconEl.className = 'fas fa-file-image';
-        iconEl.style.color = '#3b82f6';
-    }
-    
-    preview.style.display = 'flex';
-}
-
-function clearInvoice() {
-    selectedInvoiceFile = null;
-    const invInput = document.getElementById('expInvoice');
-    if (invInput) invInput.value = '';
-    const prev = document.getElementById('invoicePreview');
-    if (prev) prev.style.display = 'none';
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if (uploadArea) uploadArea.style.display = 'block';
-}
-
-// Ensure drag events are bound after DOM is ready or in global scope
-window.addEventListener('DOMContentLoaded', () => {
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if(uploadArea) {
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#3b82f6';
-            uploadArea.style.backgroundColor = '#eff6ff';
-        });
-        uploadArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                document.getElementById('expInvoice').files = e.dataTransfer.files;
-                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
-            }
-        });
-    }
-});
-
-
-async function secureFetchInvoice(fileId, action) {
-    try {
-        const client = await DB._getAdapter()._getClient();
-        const { data: session } = await client.auth.getSession();
-        
-        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
-            headers: { 
-                'Authorization': `Bearer ${session.session.access_token}`,
-                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
-            }
-        });
-        
-        if (!res.ok) {
-            const errTxt = await res.text();
-            alert('Failed to retrieve invoice: ' + errTxt);
-            return;
-        }
-        
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        
-        if (action === 'view') {
-            window.open(url, '_blank');
-            // optionally revoke url after some time
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-        } else {
-            const a = document.createElement('a');
-            a.href = url;
-            // Extract filename from disposition if available
-            const disp = res.headers.get('Content-Disposition');
-            let filename = 'invoice';
-            if (disp && disp.includes('filename="')) {
-                filename = disp.split('filename="')[1].split('"')[0];
-            }
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-    } catch(err) {
-        alert('Error: ' + err.message);
-    }
-}
-
-
-let editExpenseId = null;
-let existingInvoiceId = null;
-let invoiceToDelete = null;
-
-function openEditExpense(id) {
-    const expense = rawExpenses.find(e => e.id === id);
-    if (!expense) return;
-    
-    editExpenseId = expense.id;
-    existingInvoiceId = expense.invoice_file_id || null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Edit Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Update Expense';
-    document.getElementById('btnCancelEdit').style.display = 'block';
-    
-    document.getElementById('expDate').value = expense.expense_date.split('T')[0];
-    document.getElementById('expCategory').value = expense.category;
-    document.getElementById('expAmount').value = expense.amount;
-    document.getElementById('expPaymentMethod').value = expense.payment_method;
-    document.getElementById('expNotes').value = expense.notes || '';
-    
-    clearInvoice(); // Clear any staged new upload
-    
-    if (existingInvoiceId) {
-        document.getElementById('invoiceUploadArea').style.display = 'none';
-        document.getElementById('existingInvoiceDisplay').style.display = 'block';
-        
-        document.getElementById('existingInvoiceName').textContent = expense.invoice_name || 'Invoice';
-        if (expense.invoice_size) {
-            document.getElementById('existingInvoiceSize').textContent = (expense.invoice_size / 1024 / 1024).toFixed(2) + ' MB';
-        } else {
-            document.getElementById('existingInvoiceSize').textContent = '';
-        }
-        
-        const iconEl = document.getElementById('existingInvoiceIcon');
-        if (expense.invoice_type === 'application/pdf') {
-            iconEl.className = 'fas fa-file-pdf';
-            iconEl.style.color = '#ef4444';
-        } else {
-            iconEl.className = 'fas fa-file-image';
-            iconEl.style.color = '#3b82f6';
-        }
-        
-        document.getElementById('btnViewExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'view');
-        document.getElementById('btnDownloadExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'download');
-        
-    } else {
-        document.getElementById('existingInvoiceDisplay').style.display = 'none';
-        document.getElementById('invoiceUploadArea').style.display = 'block';
-    }
-    
-    // Scroll to form smoothly
-    document.querySelector('.expenses-form-col').scrollIntoView({ behavior: 'smooth' });
-}
-
-function cancelEditExpense() {
-    editExpenseId = null;
-    existingInvoiceId = null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Record Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Save Expense';
-    document.getElementById('btnCancelEdit').style.display = 'none';
-    
-    document.getElementById('expenseForm').reset();
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    clearInvoice();
-    
-    document.getElementById('expDate').valueAsDate = new Date();
-}
-
-function replaceExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-function removeExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-</script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js">
-let selectedInvoiceFile = null;
-
-function handleInvoiceSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
-        return;
-    }
-    
-    selectedInvoiceFile = file;
-    document.getElementById('invoiceUploadArea').style.display = 'none';
-    
-    const preview = document.getElementById('invoicePreview');
-    const nameEl = document.getElementById('invoiceName');
-    const sizeEl = document.getElementById('invoiceSize');
-    const iconEl = document.getElementById('invoiceIcon');
-    
-    nameEl.textContent = file.name;
-    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-    
-    if (file.type === 'application/pdf') {
-        iconEl.className = 'fas fa-file-pdf';
-        iconEl.style.color = '#ef4444';
-    } else {
-        iconEl.className = 'fas fa-file-image';
-        iconEl.style.color = '#3b82f6';
-    }
-    
-    preview.style.display = 'flex';
-}
-
-function clearInvoice() {
-    selectedInvoiceFile = null;
-    const invInput = document.getElementById('expInvoice');
-    if (invInput) invInput.value = '';
-    const prev = document.getElementById('invoicePreview');
-    if (prev) prev.style.display = 'none';
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if (uploadArea) uploadArea.style.display = 'block';
-}
-
-// Ensure drag events are bound after DOM is ready or in global scope
-window.addEventListener('DOMContentLoaded', () => {
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if(uploadArea) {
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#3b82f6';
-            uploadArea.style.backgroundColor = '#eff6ff';
-        });
-        uploadArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                document.getElementById('expInvoice').files = e.dataTransfer.files;
-                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
-            }
-        });
-    }
-});
-
-
-async function secureFetchInvoice(fileId, action) {
-    try {
-        const client = await DB._getAdapter()._getClient();
-        const { data: session } = await client.auth.getSession();
-        
-        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
-            headers: { 
-                'Authorization': `Bearer ${session.session.access_token}`,
-                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
-            }
-        });
-        
-        if (!res.ok) {
-            const errTxt = await res.text();
-            alert('Failed to retrieve invoice: ' + errTxt);
-            return;
-        }
-        
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        
-        if (action === 'view') {
-            window.open(url, '_blank');
-            // optionally revoke url after some time
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-        } else {
-            const a = document.createElement('a');
-            a.href = url;
-            // Extract filename from disposition if available
-            const disp = res.headers.get('Content-Disposition');
-            let filename = 'invoice';
-            if (disp && disp.includes('filename="')) {
-                filename = disp.split('filename="')[1].split('"')[0];
-            }
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-    } catch(err) {
-        alert('Error: ' + err.message);
-    }
-}
-
-
-let editExpenseId = null;
-let existingInvoiceId = null;
-let invoiceToDelete = null;
-
-function openEditExpense(id) {
-    const expense = rawExpenses.find(e => e.id === id);
-    if (!expense) return;
-    
-    editExpenseId = expense.id;
-    existingInvoiceId = expense.invoice_file_id || null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Edit Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Update Expense';
-    document.getElementById('btnCancelEdit').style.display = 'block';
-    
-    document.getElementById('expDate').value = expense.expense_date.split('T')[0];
-    document.getElementById('expCategory').value = expense.category;
-    document.getElementById('expAmount').value = expense.amount;
-    document.getElementById('expPaymentMethod').value = expense.payment_method;
-    document.getElementById('expNotes').value = expense.notes || '';
-    
-    clearInvoice(); // Clear any staged new upload
-    
-    if (existingInvoiceId) {
-        document.getElementById('invoiceUploadArea').style.display = 'none';
-        document.getElementById('existingInvoiceDisplay').style.display = 'block';
-        
-        document.getElementById('existingInvoiceName').textContent = expense.invoice_name || 'Invoice';
-        if (expense.invoice_size) {
-            document.getElementById('existingInvoiceSize').textContent = (expense.invoice_size / 1024 / 1024).toFixed(2) + ' MB';
-        } else {
-            document.getElementById('existingInvoiceSize').textContent = '';
-        }
-        
-        const iconEl = document.getElementById('existingInvoiceIcon');
-        if (expense.invoice_type === 'application/pdf') {
-            iconEl.className = 'fas fa-file-pdf';
-            iconEl.style.color = '#ef4444';
-        } else {
-            iconEl.className = 'fas fa-file-image';
-            iconEl.style.color = '#3b82f6';
-        }
-        
-        document.getElementById('btnViewExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'view');
-        document.getElementById('btnDownloadExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'download');
-        
-    } else {
-        document.getElementById('existingInvoiceDisplay').style.display = 'none';
-        document.getElementById('invoiceUploadArea').style.display = 'block';
-    }
-    
-    // Scroll to form smoothly
-    document.querySelector('.expenses-form-col').scrollIntoView({ behavior: 'smooth' });
-}
-
-function cancelEditExpense() {
-    editExpenseId = null;
-    existingInvoiceId = null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Record Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Save Expense';
-    document.getElementById('btnCancelEdit').style.display = 'none';
-    
-    document.getElementById('expenseForm').reset();
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    clearInvoice();
-    
-    document.getElementById('expDate').valueAsDate = new Date();
-}
-
-function replaceExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-function removeExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-</script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js">
-let selectedInvoiceFile = null;
-
-function handleInvoiceSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
-        return;
-    }
-    
-    selectedInvoiceFile = file;
-    document.getElementById('invoiceUploadArea').style.display = 'none';
-    
-    const preview = document.getElementById('invoicePreview');
-    const nameEl = document.getElementById('invoiceName');
-    const sizeEl = document.getElementById('invoiceSize');
-    const iconEl = document.getElementById('invoiceIcon');
-    
-    nameEl.textContent = file.name;
-    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-    
-    if (file.type === 'application/pdf') {
-        iconEl.className = 'fas fa-file-pdf';
-        iconEl.style.color = '#ef4444';
-    } else {
-        iconEl.className = 'fas fa-file-image';
-        iconEl.style.color = '#3b82f6';
-    }
-    
-    preview.style.display = 'flex';
-}
-
-function clearInvoice() {
-    selectedInvoiceFile = null;
-    const invInput = document.getElementById('expInvoice');
-    if (invInput) invInput.value = '';
-    const prev = document.getElementById('invoicePreview');
-    if (prev) prev.style.display = 'none';
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if (uploadArea) uploadArea.style.display = 'block';
-}
-
-// Ensure drag events are bound after DOM is ready or in global scope
-window.addEventListener('DOMContentLoaded', () => {
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if(uploadArea) {
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#3b82f6';
-            uploadArea.style.backgroundColor = '#eff6ff';
-        });
-        uploadArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                document.getElementById('expInvoice').files = e.dataTransfer.files;
-                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
-            }
-        });
-    }
-});
-
-
-async function secureFetchInvoice(fileId, action) {
-    try {
-        const client = await DB._getAdapter()._getClient();
-        const { data: session } = await client.auth.getSession();
-        
-        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
-            headers: { 
-                'Authorization': `Bearer ${session.session.access_token}`,
-                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
-            }
-        });
-        
-        if (!res.ok) {
-            const errTxt = await res.text();
-            alert('Failed to retrieve invoice: ' + errTxt);
-            return;
-        }
-        
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        
-        if (action === 'view') {
-            window.open(url, '_blank');
-            // optionally revoke url after some time
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-        } else {
-            const a = document.createElement('a');
-            a.href = url;
-            // Extract filename from disposition if available
-            const disp = res.headers.get('Content-Disposition');
-            let filename = 'invoice';
-            if (disp && disp.includes('filename="')) {
-                filename = disp.split('filename="')[1].split('"')[0];
-            }
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-    } catch(err) {
-        alert('Error: ' + err.message);
-    }
-}
-
-
-let editExpenseId = null;
-let existingInvoiceId = null;
-let invoiceToDelete = null;
-
-function openEditExpense(id) {
-    const expense = rawExpenses.find(e => e.id === id);
-    if (!expense) return;
-    
-    editExpenseId = expense.id;
-    existingInvoiceId = expense.invoice_file_id || null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Edit Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Update Expense';
-    document.getElementById('btnCancelEdit').style.display = 'block';
-    
-    document.getElementById('expDate').value = expense.expense_date.split('T')[0];
-    document.getElementById('expCategory').value = expense.category;
-    document.getElementById('expAmount').value = expense.amount;
-    document.getElementById('expPaymentMethod').value = expense.payment_method;
-    document.getElementById('expNotes').value = expense.notes || '';
-    
-    clearInvoice(); // Clear any staged new upload
-    
-    if (existingInvoiceId) {
-        document.getElementById('invoiceUploadArea').style.display = 'none';
-        document.getElementById('existingInvoiceDisplay').style.display = 'block';
-        
-        document.getElementById('existingInvoiceName').textContent = expense.invoice_name || 'Invoice';
-        if (expense.invoice_size) {
-            document.getElementById('existingInvoiceSize').textContent = (expense.invoice_size / 1024 / 1024).toFixed(2) + ' MB';
-        } else {
-            document.getElementById('existingInvoiceSize').textContent = '';
-        }
-        
-        const iconEl = document.getElementById('existingInvoiceIcon');
-        if (expense.invoice_type === 'application/pdf') {
-            iconEl.className = 'fas fa-file-pdf';
-            iconEl.style.color = '#ef4444';
-        } else {
-            iconEl.className = 'fas fa-file-image';
-            iconEl.style.color = '#3b82f6';
-        }
-        
-        document.getElementById('btnViewExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'view');
-        document.getElementById('btnDownloadExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'download');
-        
-    } else {
-        document.getElementById('existingInvoiceDisplay').style.display = 'none';
-        document.getElementById('invoiceUploadArea').style.display = 'block';
-    }
-    
-    // Scroll to form smoothly
-    document.querySelector('.expenses-form-col').scrollIntoView({ behavior: 'smooth' });
-}
-
-function cancelEditExpense() {
-    editExpenseId = null;
-    existingInvoiceId = null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Record Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Save Expense';
-    document.getElementById('btnCancelEdit').style.display = 'none';
-    
-    document.getElementById('expenseForm').reset();
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    clearInvoice();
-    
-    document.getElementById('expDate').valueAsDate = new Date();
-}
-
-function replaceExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-function removeExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         /* Base Styles */
@@ -1083,1016 +480,11 @@ function removeExistingInvoice() {
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-let selectedInvoiceFile = null;
-
-function handleInvoiceSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
-        return;
-    }
-    
-    selectedInvoiceFile = file;
-    document.getElementById('invoiceUploadArea').style.display = 'none';
-    
-    const preview = document.getElementById('invoicePreview');
-    const nameEl = document.getElementById('invoiceName');
-    const sizeEl = document.getElementById('invoiceSize');
-    const iconEl = document.getElementById('invoiceIcon');
-    
-    nameEl.textContent = file.name;
-    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-    
-    if (file.type === 'application/pdf') {
-        iconEl.className = 'fas fa-file-pdf';
-        iconEl.style.color = '#ef4444';
-    } else {
-        iconEl.className = 'fas fa-file-image';
-        iconEl.style.color = '#3b82f6';
-    }
-    
-    preview.style.display = 'flex';
-}
-
-function clearInvoice() {
-    selectedInvoiceFile = null;
-    const invInput = document.getElementById('expInvoice');
-    if (invInput) invInput.value = '';
-    const prev = document.getElementById('invoicePreview');
-    if (prev) prev.style.display = 'none';
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if (uploadArea) uploadArea.style.display = 'block';
-}
-
-// Ensure drag events are bound after DOM is ready or in global scope
-window.addEventListener('DOMContentLoaded', () => {
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if(uploadArea) {
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#3b82f6';
-            uploadArea.style.backgroundColor = '#eff6ff';
-        });
-        uploadArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                document.getElementById('expInvoice').files = e.dataTransfer.files;
-                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
-            }
-        });
-    }
-});
-
-
-async function secureFetchInvoice(fileId, action) {
-    try {
-        const client = await DB._getAdapter()._getClient();
-        const { data: session } = await client.auth.getSession();
-        
-        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
-            headers: { 
-                'Authorization': `Bearer ${session.session.access_token}`,
-                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
-            }
-        });
-        
-        if (!res.ok) {
-            const errTxt = await res.text();
-            alert('Failed to retrieve invoice: ' + errTxt);
-            return;
-        }
-        
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        
-        if (action === 'view') {
-            window.open(url, '_blank');
-            // optionally revoke url after some time
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-        } else {
-            const a = document.createElement('a');
-            a.href = url;
-            // Extract filename from disposition if available
-            const disp = res.headers.get('Content-Disposition');
-            let filename = 'invoice';
-            if (disp && disp.includes('filename="')) {
-                filename = disp.split('filename="')[1].split('"')[0];
-            }
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-    } catch(err) {
-        alert('Error: ' + err.message);
-    }
-}
-
-
-let editExpenseId = null;
-let existingInvoiceId = null;
-let invoiceToDelete = null;
-
-function openEditExpense(id) {
-    const expense = rawExpenses.find(e => e.id === id);
-    if (!expense) return;
-    
-    editExpenseId = expense.id;
-    existingInvoiceId = expense.invoice_file_id || null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Edit Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Update Expense';
-    document.getElementById('btnCancelEdit').style.display = 'block';
-    
-    document.getElementById('expDate').value = expense.expense_date.split('T')[0];
-    document.getElementById('expCategory').value = expense.category;
-    document.getElementById('expAmount').value = expense.amount;
-    document.getElementById('expPaymentMethod').value = expense.payment_method;
-    document.getElementById('expNotes').value = expense.notes || '';
-    
-    clearInvoice(); // Clear any staged new upload
-    
-    if (existingInvoiceId) {
-        document.getElementById('invoiceUploadArea').style.display = 'none';
-        document.getElementById('existingInvoiceDisplay').style.display = 'block';
-        
-        document.getElementById('existingInvoiceName').textContent = expense.invoice_name || 'Invoice';
-        if (expense.invoice_size) {
-            document.getElementById('existingInvoiceSize').textContent = (expense.invoice_size / 1024 / 1024).toFixed(2) + ' MB';
-        } else {
-            document.getElementById('existingInvoiceSize').textContent = '';
-        }
-        
-        const iconEl = document.getElementById('existingInvoiceIcon');
-        if (expense.invoice_type === 'application/pdf') {
-            iconEl.className = 'fas fa-file-pdf';
-            iconEl.style.color = '#ef4444';
-        } else {
-            iconEl.className = 'fas fa-file-image';
-            iconEl.style.color = '#3b82f6';
-        }
-        
-        document.getElementById('btnViewExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'view');
-        document.getElementById('btnDownloadExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'download');
-        
-    } else {
-        document.getElementById('existingInvoiceDisplay').style.display = 'none';
-        document.getElementById('invoiceUploadArea').style.display = 'block';
-    }
-    
-    // Scroll to form smoothly
-    document.querySelector('.expenses-form-col').scrollIntoView({ behavior: 'smooth' });
-}
-
-function cancelEditExpense() {
-    editExpenseId = null;
-    existingInvoiceId = null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Record Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Save Expense';
-    document.getElementById('btnCancelEdit').style.display = 'none';
-    
-    document.getElementById('expenseForm').reset();
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    clearInvoice();
-    
-    document.getElementById('expDate').valueAsDate = new Date();
-}
-
-function replaceExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-function removeExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-</script>
-<script src="../config.js">
-let selectedInvoiceFile = null;
-
-function handleInvoiceSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
-        return;
-    }
-    
-    selectedInvoiceFile = file;
-    document.getElementById('invoiceUploadArea').style.display = 'none';
-    
-    const preview = document.getElementById('invoicePreview');
-    const nameEl = document.getElementById('invoiceName');
-    const sizeEl = document.getElementById('invoiceSize');
-    const iconEl = document.getElementById('invoiceIcon');
-    
-    nameEl.textContent = file.name;
-    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-    
-    if (file.type === 'application/pdf') {
-        iconEl.className = 'fas fa-file-pdf';
-        iconEl.style.color = '#ef4444';
-    } else {
-        iconEl.className = 'fas fa-file-image';
-        iconEl.style.color = '#3b82f6';
-    }
-    
-    preview.style.display = 'flex';
-}
-
-function clearInvoice() {
-    selectedInvoiceFile = null;
-    const invInput = document.getElementById('expInvoice');
-    if (invInput) invInput.value = '';
-    const prev = document.getElementById('invoicePreview');
-    if (prev) prev.style.display = 'none';
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if (uploadArea) uploadArea.style.display = 'block';
-}
-
-// Ensure drag events are bound after DOM is ready or in global scope
-window.addEventListener('DOMContentLoaded', () => {
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if(uploadArea) {
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#3b82f6';
-            uploadArea.style.backgroundColor = '#eff6ff';
-        });
-        uploadArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                document.getElementById('expInvoice').files = e.dataTransfer.files;
-                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
-            }
-        });
-    }
-});
-
-
-async function secureFetchInvoice(fileId, action) {
-    try {
-        const client = await DB._getAdapter()._getClient();
-        const { data: session } = await client.auth.getSession();
-        
-        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
-            headers: { 
-                'Authorization': `Bearer ${session.session.access_token}`,
-                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
-            }
-        });
-        
-        if (!res.ok) {
-            const errTxt = await res.text();
-            alert('Failed to retrieve invoice: ' + errTxt);
-            return;
-        }
-        
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        
-        if (action === 'view') {
-            window.open(url, '_blank');
-            // optionally revoke url after some time
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-        } else {
-            const a = document.createElement('a');
-            a.href = url;
-            // Extract filename from disposition if available
-            const disp = res.headers.get('Content-Disposition');
-            let filename = 'invoice';
-            if (disp && disp.includes('filename="')) {
-                filename = disp.split('filename="')[1].split('"')[0];
-            }
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-    } catch(err) {
-        alert('Error: ' + err.message);
-    }
-}
-
-
-let editExpenseId = null;
-let existingInvoiceId = null;
-let invoiceToDelete = null;
-
-function openEditExpense(id) {
-    const expense = rawExpenses.find(e => e.id === id);
-    if (!expense) return;
-    
-    editExpenseId = expense.id;
-    existingInvoiceId = expense.invoice_file_id || null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Edit Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Update Expense';
-    document.getElementById('btnCancelEdit').style.display = 'block';
-    
-    document.getElementById('expDate').value = expense.expense_date.split('T')[0];
-    document.getElementById('expCategory').value = expense.category;
-    document.getElementById('expAmount').value = expense.amount;
-    document.getElementById('expPaymentMethod').value = expense.payment_method;
-    document.getElementById('expNotes').value = expense.notes || '';
-    
-    clearInvoice(); // Clear any staged new upload
-    
-    if (existingInvoiceId) {
-        document.getElementById('invoiceUploadArea').style.display = 'none';
-        document.getElementById('existingInvoiceDisplay').style.display = 'block';
-        
-        document.getElementById('existingInvoiceName').textContent = expense.invoice_name || 'Invoice';
-        if (expense.invoice_size) {
-            document.getElementById('existingInvoiceSize').textContent = (expense.invoice_size / 1024 / 1024).toFixed(2) + ' MB';
-        } else {
-            document.getElementById('existingInvoiceSize').textContent = '';
-        }
-        
-        const iconEl = document.getElementById('existingInvoiceIcon');
-        if (expense.invoice_type === 'application/pdf') {
-            iconEl.className = 'fas fa-file-pdf';
-            iconEl.style.color = '#ef4444';
-        } else {
-            iconEl.className = 'fas fa-file-image';
-            iconEl.style.color = '#3b82f6';
-        }
-        
-        document.getElementById('btnViewExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'view');
-        document.getElementById('btnDownloadExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'download');
-        
-    } else {
-        document.getElementById('existingInvoiceDisplay').style.display = 'none';
-        document.getElementById('invoiceUploadArea').style.display = 'block';
-    }
-    
-    // Scroll to form smoothly
-    document.querySelector('.expenses-form-col').scrollIntoView({ behavior: 'smooth' });
-}
-
-function cancelEditExpense() {
-    editExpenseId = null;
-    existingInvoiceId = null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Record Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Save Expense';
-    document.getElementById('btnCancelEdit').style.display = 'none';
-    
-    document.getElementById('expenseForm').reset();
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    clearInvoice();
-    
-    document.getElementById('expDate').valueAsDate = new Date();
-}
-
-function replaceExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-function removeExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-</script>
-<script src="../db.js">
-let selectedInvoiceFile = null;
-
-function handleInvoiceSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
-        return;
-    }
-    
-    selectedInvoiceFile = file;
-    document.getElementById('invoiceUploadArea').style.display = 'none';
-    
-    const preview = document.getElementById('invoicePreview');
-    const nameEl = document.getElementById('invoiceName');
-    const sizeEl = document.getElementById('invoiceSize');
-    const iconEl = document.getElementById('invoiceIcon');
-    
-    nameEl.textContent = file.name;
-    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-    
-    if (file.type === 'application/pdf') {
-        iconEl.className = 'fas fa-file-pdf';
-        iconEl.style.color = '#ef4444';
-    } else {
-        iconEl.className = 'fas fa-file-image';
-        iconEl.style.color = '#3b82f6';
-    }
-    
-    preview.style.display = 'flex';
-}
-
-function clearInvoice() {
-    selectedInvoiceFile = null;
-    const invInput = document.getElementById('expInvoice');
-    if (invInput) invInput.value = '';
-    const prev = document.getElementById('invoicePreview');
-    if (prev) prev.style.display = 'none';
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if (uploadArea) uploadArea.style.display = 'block';
-}
-
-// Ensure drag events are bound after DOM is ready or in global scope
-window.addEventListener('DOMContentLoaded', () => {
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if(uploadArea) {
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#3b82f6';
-            uploadArea.style.backgroundColor = '#eff6ff';
-        });
-        uploadArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                document.getElementById('expInvoice').files = e.dataTransfer.files;
-                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
-            }
-        });
-    }
-});
-
-
-async function secureFetchInvoice(fileId, action) {
-    try {
-        const client = await DB._getAdapter()._getClient();
-        const { data: session } = await client.auth.getSession();
-        
-        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
-            headers: { 
-                'Authorization': `Bearer ${session.session.access_token}`,
-                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
-            }
-        });
-        
-        if (!res.ok) {
-            const errTxt = await res.text();
-            alert('Failed to retrieve invoice: ' + errTxt);
-            return;
-        }
-        
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        
-        if (action === 'view') {
-            window.open(url, '_blank');
-            // optionally revoke url after some time
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-        } else {
-            const a = document.createElement('a');
-            a.href = url;
-            // Extract filename from disposition if available
-            const disp = res.headers.get('Content-Disposition');
-            let filename = 'invoice';
-            if (disp && disp.includes('filename="')) {
-                filename = disp.split('filename="')[1].split('"')[0];
-            }
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-    } catch(err) {
-        alert('Error: ' + err.message);
-    }
-}
-
-
-let editExpenseId = null;
-let existingInvoiceId = null;
-let invoiceToDelete = null;
-
-function openEditExpense(id) {
-    const expense = rawExpenses.find(e => e.id === id);
-    if (!expense) return;
-    
-    editExpenseId = expense.id;
-    existingInvoiceId = expense.invoice_file_id || null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Edit Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Update Expense';
-    document.getElementById('btnCancelEdit').style.display = 'block';
-    
-    document.getElementById('expDate').value = expense.expense_date.split('T')[0];
-    document.getElementById('expCategory').value = expense.category;
-    document.getElementById('expAmount').value = expense.amount;
-    document.getElementById('expPaymentMethod').value = expense.payment_method;
-    document.getElementById('expNotes').value = expense.notes || '';
-    
-    clearInvoice(); // Clear any staged new upload
-    
-    if (existingInvoiceId) {
-        document.getElementById('invoiceUploadArea').style.display = 'none';
-        document.getElementById('existingInvoiceDisplay').style.display = 'block';
-        
-        document.getElementById('existingInvoiceName').textContent = expense.invoice_name || 'Invoice';
-        if (expense.invoice_size) {
-            document.getElementById('existingInvoiceSize').textContent = (expense.invoice_size / 1024 / 1024).toFixed(2) + ' MB';
-        } else {
-            document.getElementById('existingInvoiceSize').textContent = '';
-        }
-        
-        const iconEl = document.getElementById('existingInvoiceIcon');
-        if (expense.invoice_type === 'application/pdf') {
-            iconEl.className = 'fas fa-file-pdf';
-            iconEl.style.color = '#ef4444';
-        } else {
-            iconEl.className = 'fas fa-file-image';
-            iconEl.style.color = '#3b82f6';
-        }
-        
-        document.getElementById('btnViewExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'view');
-        document.getElementById('btnDownloadExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'download');
-        
-    } else {
-        document.getElementById('existingInvoiceDisplay').style.display = 'none';
-        document.getElementById('invoiceUploadArea').style.display = 'block';
-    }
-    
-    // Scroll to form smoothly
-    document.querySelector('.expenses-form-col').scrollIntoView({ behavior: 'smooth' });
-}
-
-function cancelEditExpense() {
-    editExpenseId = null;
-    existingInvoiceId = null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Record Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Save Expense';
-    document.getElementById('btnCancelEdit').style.display = 'none';
-    
-    document.getElementById('expenseForm').reset();
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    clearInvoice();
-    
-    document.getElementById('expDate').valueAsDate = new Date();
-}
-
-function replaceExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-function removeExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-</script>
-<script src="../auth.js">
-let selectedInvoiceFile = null;
-
-function handleInvoiceSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
-        return;
-    }
-    
-    selectedInvoiceFile = file;
-    document.getElementById('invoiceUploadArea').style.display = 'none';
-    
-    const preview = document.getElementById('invoicePreview');
-    const nameEl = document.getElementById('invoiceName');
-    const sizeEl = document.getElementById('invoiceSize');
-    const iconEl = document.getElementById('invoiceIcon');
-    
-    nameEl.textContent = file.name;
-    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-    
-    if (file.type === 'application/pdf') {
-        iconEl.className = 'fas fa-file-pdf';
-        iconEl.style.color = '#ef4444';
-    } else {
-        iconEl.className = 'fas fa-file-image';
-        iconEl.style.color = '#3b82f6';
-    }
-    
-    preview.style.display = 'flex';
-}
-
-function clearInvoice() {
-    selectedInvoiceFile = null;
-    const invInput = document.getElementById('expInvoice');
-    if (invInput) invInput.value = '';
-    const prev = document.getElementById('invoicePreview');
-    if (prev) prev.style.display = 'none';
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if (uploadArea) uploadArea.style.display = 'block';
-}
-
-// Ensure drag events are bound after DOM is ready or in global scope
-window.addEventListener('DOMContentLoaded', () => {
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if(uploadArea) {
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#3b82f6';
-            uploadArea.style.backgroundColor = '#eff6ff';
-        });
-        uploadArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                document.getElementById('expInvoice').files = e.dataTransfer.files;
-                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
-            }
-        });
-    }
-});
-
-
-async function secureFetchInvoice(fileId, action) {
-    try {
-        const client = await DB._getAdapter()._getClient();
-        const { data: session } = await client.auth.getSession();
-        
-        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
-            headers: { 
-                'Authorization': `Bearer ${session.session.access_token}`,
-                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
-            }
-        });
-        
-        if (!res.ok) {
-            const errTxt = await res.text();
-            alert('Failed to retrieve invoice: ' + errTxt);
-            return;
-        }
-        
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        
-        if (action === 'view') {
-            window.open(url, '_blank');
-            // optionally revoke url after some time
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-        } else {
-            const a = document.createElement('a');
-            a.href = url;
-            // Extract filename from disposition if available
-            const disp = res.headers.get('Content-Disposition');
-            let filename = 'invoice';
-            if (disp && disp.includes('filename="')) {
-                filename = disp.split('filename="')[1].split('"')[0];
-            }
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-    } catch(err) {
-        alert('Error: ' + err.message);
-    }
-}
-
-
-let editExpenseId = null;
-let existingInvoiceId = null;
-let invoiceToDelete = null;
-
-function openEditExpense(id) {
-    const expense = rawExpenses.find(e => e.id === id);
-    if (!expense) return;
-    
-    editExpenseId = expense.id;
-    existingInvoiceId = expense.invoice_file_id || null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Edit Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Update Expense';
-    document.getElementById('btnCancelEdit').style.display = 'block';
-    
-    document.getElementById('expDate').value = expense.expense_date.split('T')[0];
-    document.getElementById('expCategory').value = expense.category;
-    document.getElementById('expAmount').value = expense.amount;
-    document.getElementById('expPaymentMethod').value = expense.payment_method;
-    document.getElementById('expNotes').value = expense.notes || '';
-    
-    clearInvoice(); // Clear any staged new upload
-    
-    if (existingInvoiceId) {
-        document.getElementById('invoiceUploadArea').style.display = 'none';
-        document.getElementById('existingInvoiceDisplay').style.display = 'block';
-        
-        document.getElementById('existingInvoiceName').textContent = expense.invoice_name || 'Invoice';
-        if (expense.invoice_size) {
-            document.getElementById('existingInvoiceSize').textContent = (expense.invoice_size / 1024 / 1024).toFixed(2) + ' MB';
-        } else {
-            document.getElementById('existingInvoiceSize').textContent = '';
-        }
-        
-        const iconEl = document.getElementById('existingInvoiceIcon');
-        if (expense.invoice_type === 'application/pdf') {
-            iconEl.className = 'fas fa-file-pdf';
-            iconEl.style.color = '#ef4444';
-        } else {
-            iconEl.className = 'fas fa-file-image';
-            iconEl.style.color = '#3b82f6';
-        }
-        
-        document.getElementById('btnViewExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'view');
-        document.getElementById('btnDownloadExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'download');
-        
-    } else {
-        document.getElementById('existingInvoiceDisplay').style.display = 'none';
-        document.getElementById('invoiceUploadArea').style.display = 'block';
-    }
-    
-    // Scroll to form smoothly
-    document.querySelector('.expenses-form-col').scrollIntoView({ behavior: 'smooth' });
-}
-
-function cancelEditExpense() {
-    editExpenseId = null;
-    existingInvoiceId = null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Record Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Save Expense';
-    document.getElementById('btnCancelEdit').style.display = 'none';
-    
-    document.getElementById('expenseForm').reset();
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    clearInvoice();
-    
-    document.getElementById('expDate').valueAsDate = new Date();
-}
-
-function replaceExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-function removeExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-</script>
-<script src="admin.js">
-let selectedInvoiceFile = null;
-
-function handleInvoiceSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
-        return;
-    }
-    
-    selectedInvoiceFile = file;
-    document.getElementById('invoiceUploadArea').style.display = 'none';
-    
-    const preview = document.getElementById('invoicePreview');
-    const nameEl = document.getElementById('invoiceName');
-    const sizeEl = document.getElementById('invoiceSize');
-    const iconEl = document.getElementById('invoiceIcon');
-    
-    nameEl.textContent = file.name;
-    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-    
-    if (file.type === 'application/pdf') {
-        iconEl.className = 'fas fa-file-pdf';
-        iconEl.style.color = '#ef4444';
-    } else {
-        iconEl.className = 'fas fa-file-image';
-        iconEl.style.color = '#3b82f6';
-    }
-    
-    preview.style.display = 'flex';
-}
-
-function clearInvoice() {
-    selectedInvoiceFile = null;
-    const invInput = document.getElementById('expInvoice');
-    if (invInput) invInput.value = '';
-    const prev = document.getElementById('invoicePreview');
-    if (prev) prev.style.display = 'none';
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if (uploadArea) uploadArea.style.display = 'block';
-}
-
-// Ensure drag events are bound after DOM is ready or in global scope
-window.addEventListener('DOMContentLoaded', () => {
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if(uploadArea) {
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#3b82f6';
-            uploadArea.style.backgroundColor = '#eff6ff';
-        });
-        uploadArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                document.getElementById('expInvoice').files = e.dataTransfer.files;
-                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
-            }
-        });
-    }
-});
-
-
-async function secureFetchInvoice(fileId, action) {
-    try {
-        const client = await DB._getAdapter()._getClient();
-        const { data: session } = await client.auth.getSession();
-        
-        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
-            headers: { 
-                'Authorization': `Bearer ${session.session.access_token}`,
-                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
-            }
-        });
-        
-        if (!res.ok) {
-            const errTxt = await res.text();
-            alert('Failed to retrieve invoice: ' + errTxt);
-            return;
-        }
-        
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        
-        if (action === 'view') {
-            window.open(url, '_blank');
-            // optionally revoke url after some time
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-        } else {
-            const a = document.createElement('a');
-            a.href = url;
-            // Extract filename from disposition if available
-            const disp = res.headers.get('Content-Disposition');
-            let filename = 'invoice';
-            if (disp && disp.includes('filename="')) {
-                filename = disp.split('filename="')[1].split('"')[0];
-            }
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-    } catch(err) {
-        alert('Error: ' + err.message);
-    }
-}
-
-
-let editExpenseId = null;
-let existingInvoiceId = null;
-let invoiceToDelete = null;
-
-function openEditExpense(id) {
-    const expense = rawExpenses.find(e => e.id === id);
-    if (!expense) return;
-    
-    editExpenseId = expense.id;
-    existingInvoiceId = expense.invoice_file_id || null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Edit Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Update Expense';
-    document.getElementById('btnCancelEdit').style.display = 'block';
-    
-    document.getElementById('expDate').value = expense.expense_date.split('T')[0];
-    document.getElementById('expCategory').value = expense.category;
-    document.getElementById('expAmount').value = expense.amount;
-    document.getElementById('expPaymentMethod').value = expense.payment_method;
-    document.getElementById('expNotes').value = expense.notes || '';
-    
-    clearInvoice(); // Clear any staged new upload
-    
-    if (existingInvoiceId) {
-        document.getElementById('invoiceUploadArea').style.display = 'none';
-        document.getElementById('existingInvoiceDisplay').style.display = 'block';
-        
-        document.getElementById('existingInvoiceName').textContent = expense.invoice_name || 'Invoice';
-        if (expense.invoice_size) {
-            document.getElementById('existingInvoiceSize').textContent = (expense.invoice_size / 1024 / 1024).toFixed(2) + ' MB';
-        } else {
-            document.getElementById('existingInvoiceSize').textContent = '';
-        }
-        
-        const iconEl = document.getElementById('existingInvoiceIcon');
-        if (expense.invoice_type === 'application/pdf') {
-            iconEl.className = 'fas fa-file-pdf';
-            iconEl.style.color = '#ef4444';
-        } else {
-            iconEl.className = 'fas fa-file-image';
-            iconEl.style.color = '#3b82f6';
-        }
-        
-        document.getElementById('btnViewExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'view');
-        document.getElementById('btnDownloadExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'download');
-        
-    } else {
-        document.getElementById('existingInvoiceDisplay').style.display = 'none';
-        document.getElementById('invoiceUploadArea').style.display = 'block';
-    }
-    
-    // Scroll to form smoothly
-    document.querySelector('.expenses-form-col').scrollIntoView({ behavior: 'smooth' });
-}
-
-function cancelEditExpense() {
-    editExpenseId = null;
-    existingInvoiceId = null;
-    invoiceToDelete = null;
-    
-    document.getElementById('expenseFormTitle').textContent = 'Record Expense';
-    document.getElementById('btnSaveExpense').textContent = 'Save Expense';
-    document.getElementById('btnCancelEdit').style.display = 'none';
-    
-    document.getElementById('expenseForm').reset();
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    clearInvoice();
-    
-    document.getElementById('expDate').valueAsDate = new Date();
-}
-
-function replaceExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-function removeExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config.js"></script>
+<script src="../db.js"></script>
+<script src="../auth.js"></script>
+<script src="admin.js"></script>
 
 <script>
 // --- ACCOUNTING SETTINGS & ASSUMPTIONS ---
@@ -2896,7 +1288,11 @@ async function handleAddExpense(e) {
               const updatedRow = (data && data.length > 0) ? data[0] : payload;
               const idx = rawExpenses.findIndex(ex => ex.id === editExpenseId);
               if (idx !== -1) rawExpenses[idx] = { ...rawExpenses[idx], ...updatedRow };
-              alert("Expense updated successfully.");
+              if (typeof showToast === 'function') {
+                  showToast("Expense updated successfully.");
+              } else {
+                  alert("Expense updated successfully.");
+              }
               cancelEditExpense();
           } else {
               rawExpenses.unshift(data && data.length > 0 ? data[0] : payload);
@@ -3301,43 +1697,43 @@ function exportPDF() {
         html2canvas:  { scale: 2, useCORS: true },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
-    
     html2pdf().set(opt).from(div).save().then(() => {
         document.body.removeChild(div);
     });
 }
 
 let selectedInvoiceFile = null;
+let editExpenseId = null;
+let existingInvoiceId = null;
+let invoiceToDelete = null;
 
 function handleInvoiceSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
-    
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
+        showToast('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.', 'error');
         return;
     }
-    
     selectedInvoiceFile = file;
-    document.getElementById('invoiceUploadArea').style.display = 'none';
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if (uploadArea) uploadArea.style.display = 'none';
     
     const preview = document.getElementById('invoicePreview');
     const nameEl = document.getElementById('invoiceName');
     const sizeEl = document.getElementById('invoiceSize');
     const iconEl = document.getElementById('invoiceIcon');
-    
-    nameEl.textContent = file.name;
-    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-    
-    if (file.type === 'application/pdf') {
-        iconEl.className = 'fas fa-file-pdf';
-        iconEl.style.color = '#ef4444';
-    } else {
-        iconEl.className = 'fas fa-file-image';
-        iconEl.style.color = '#3b82f6';
+    if (nameEl) nameEl.textContent = file.name;
+    if (sizeEl) sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+    if (iconEl) {
+        if (file.type === 'application/pdf') {
+            iconEl.className = 'fas fa-file-pdf';
+            iconEl.style.color = '#ef4444';
+        } else {
+            iconEl.className = 'fas fa-file-image';
+            iconEl.style.color = '#3b82f6';
+        }
     }
-    
-    preview.style.display = 'flex';
+    if (preview) preview.style.display = 'flex';
 }
 
 function clearInvoice() {
@@ -3349,33 +1745,6 @@ function clearInvoice() {
     const uploadArea = document.getElementById('invoiceUploadArea');
     if (uploadArea) uploadArea.style.display = 'block';
 }
-
-// Ensure drag events are bound after DOM is ready or in global scope
-window.addEventListener('DOMContentLoaded', () => {
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if(uploadArea) {
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#3b82f6';
-            uploadArea.style.backgroundColor = '#eff6ff';
-        });
-        uploadArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                document.getElementById('expInvoice').files = e.dataTransfer.files;
-                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
-            }
-        });
-    }
-});
-
 
 async function secureFetchInvoice(fileId, action) {
     try {
@@ -3391,7 +1760,7 @@ async function secureFetchInvoice(fileId, action) {
         
         if (!res.ok) {
             const errTxt = await res.text();
-            alert('Failed to retrieve invoice: ' + errTxt);
+            showToast('Failed to retrieve invoice: ' + errTxt, 'error');
             return;
         }
         
@@ -3400,12 +1769,10 @@ async function secureFetchInvoice(fileId, action) {
         
         if (action === 'view') {
             window.open(url, '_blank');
-            // optionally revoke url after some time
             setTimeout(() => URL.revokeObjectURL(url), 60000);
         } else {
             const a = document.createElement('a');
             a.href = url;
-            // Extract filename from disposition if available
             const disp = res.headers.get('Content-Disposition');
             let filename = 'invoice';
             if (disp && disp.includes('filename="')) {
@@ -3418,14 +1785,36 @@ async function secureFetchInvoice(fileId, action) {
             URL.revokeObjectURL(url);
         }
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 }
 
-
-let editExpenseId = null;
-let existingInvoiceId = null;
-let invoiceToDelete = null;
+async function deleteExpense(id, fileId) {
+    if (!confirm('Are you sure you want to delete this expense?')) return;
+    try {
+        const client = await DB._getAdapter()._getClient();
+        const { data: session } = await client.auth.getSession();
+        
+        const { error } = await fetchAdminData('expenses', 'delete', { match: { id } });
+        if (error) throw error;
+        
+        if (fileId && fileId !== 'undefined' && fileId !== 'null') {
+            await fetch(`/api/gdrive?fileId=${fileId}`, {
+                method: 'DELETE',
+                headers: { 
+                    'Authorization': `Bearer ${session.session.access_token}`,
+                    'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
+                }
+            }).catch(console.error);
+        }
+        
+        rawExpenses = rawExpenses.filter(e => e.id !== id);
+        handleFilterChange();
+        showToast('Expense deleted successfully', 'success');
+    } catch(err) {
+        showToast('Error deleting expense: ' + err.message, 'error');
+    }
+}
 
 function openEditExpense(id) {
     const expense = rawExpenses.find(e => e.id === id);
@@ -3442,10 +1831,10 @@ function openEditExpense(id) {
     document.getElementById('expDate').value = expense.expense_date.split('T')[0];
     document.getElementById('expCategory').value = expense.category;
     document.getElementById('expAmount').value = expense.amount;
-    document.getElementById('expPaymentMethod').value = expense.payment_method;
+    document.getElementById('expPaymentMethod').value = expense.payment_method || '';
     document.getElementById('expNotes').value = expense.notes || '';
     
-    clearInvoice(); // Clear any staged new upload
+    clearInvoice();
     
     if (existingInvoiceId) {
         document.getElementById('invoiceUploadArea').style.display = 'none';
@@ -3469,14 +1858,13 @@ function openEditExpense(id) {
         
         document.getElementById('btnViewExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'view');
         document.getElementById('btnDownloadExisting').onclick = () => secureFetchInvoice(existingInvoiceId, 'download');
-        
     } else {
         document.getElementById('existingInvoiceDisplay').style.display = 'none';
         document.getElementById('invoiceUploadArea').style.display = 'block';
     }
     
-    // Scroll to form smoothly
-    document.querySelector('.expenses-form-col').scrollIntoView({ behavior: 'smooth' });
+    const formCol = document.querySelector('.expenses-form-col');
+    if (formCol) formCol.scrollIntoView({ behavior: 'smooth' });
 }
 
 function cancelEditExpense() {
@@ -3506,6 +1894,34 @@ function removeExistingInvoice() {
     document.getElementById('existingInvoiceDisplay').style.display = 'none';
     document.getElementById('invoiceUploadArea').style.display = 'block';
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if(uploadArea) {
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#3b82f6';
+            uploadArea.style.backgroundColor = '#eff6ff';
+        });
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                const invInput = document.getElementById('expInvoice');
+                if (invInput) {
+                    invInput.files = e.dataTransfer.files;
+                    handleInvoiceSelect({target: {files: e.dataTransfer.files}});
+                }
+            }
+        });
+    }
+});
 
 </script>
 
