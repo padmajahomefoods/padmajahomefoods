@@ -232,6 +232,11 @@ export async function onRequestPost(context) {
 
         // Step 1: Initiate Resumable Upload
         const initUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true';
+        const initBody = JSON.stringify(metadata);
+        console.log("--- DEBUG INIT REQUEST ---");
+        console.log("Init URL:", initUrl);
+        console.log("Init Body:", initBody);
+
         const initRes = await fetch(initUrl, {
             method: 'POST',
             headers: { 
@@ -240,8 +245,13 @@ export async function onRequestPost(context) {
                 'X-Upload-Content-Type': file.type,
                 'X-Upload-Content-Length': String(file.size)
             },
-            body: JSON.stringify(metadata)
+            body: initBody
         });
+        
+        const initHeaders = {};
+        for (let [key, val] of initRes.headers) { initHeaders[key] = val; }
+        console.log("Init Status:", initRes.status);
+        console.log("Init Headers:", JSON.stringify(initHeaders));
 
         if (!initRes.ok) {
             const errTxt = await initRes.text();
@@ -250,8 +260,8 @@ export async function onRequestPost(context) {
             return new Response(JSON.stringify({ 
                 error: 'Google Drive API Init Error', 
                 folderId: folderId,
-                metadataSent: metadata,
-                uploadUrl: initUrl,
+                initRequestBody: JSON.parse(initBody),
+                initResponseHeaders: initHeaders,
                 status: initRes.status,
                 rawResponse: rawJson
             }, null, 2), { status: 500, headers: corsHeaders });
@@ -259,7 +269,10 @@ export async function onRequestPost(context) {
 
         const locationUrl = initRes.headers.get('Location');
         if (!locationUrl) {
-            return new Response(JSON.stringify({ error: 'Failed to retrieve resumable upload URL' }), { status: 500, headers: corsHeaders });
+            return new Response(JSON.stringify({ 
+                error: 'Failed to retrieve resumable upload URL',
+                initResponseHeaders: initHeaders
+            }, null, 2), { status: 500, headers: corsHeaders });
         }
 
         // Step 2: Upload File Bytes
@@ -286,7 +299,9 @@ export async function onRequestPost(context) {
             
             return new Response(JSON.stringify({ 
                 error: 'Google Drive API Upload Error', 
-                folderId: folderId,
+                resolvedParentFolderId: folderId,
+                initRequestBody: JSON.parse(initBody),
+                initResponseHeaders: initHeaders,
                 uploadUrl: locationUrl,
                 status: uploadRes.status,
                 rawResponse: rawJson
