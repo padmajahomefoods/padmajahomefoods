@@ -246,31 +246,35 @@ export async function onRequestPost(context) {
             `\r\n--${boundary}--\r\n`
         ]);
         
-        const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size&supportsAllDrives=true', {
+        const uploadUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size&supportsAllDrives=true';
+        const uploadRes = await fetch(uploadUrl, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
             body: blob
         });
 
-        const uploadResClone = uploadRes.clone();
-        const uploadResText = await uploadResClone.text();
+        const uploadResText = await uploadRes.text();
+        
         console.log("--- DEBUG UPLOAD RESPONSE ---");
         console.log("uploadRes status:", uploadRes.status);
         console.log("uploadRes body:", uploadResText);
         console.log("-----------------------------");
         
         if (!uploadRes.ok) {
-            const errTxt = await uploadRes.text();
-            console.error(errTxt);
+            let rawJson = uploadResText;
+            try { rawJson = JSON.parse(uploadResText); } catch(e) {}
+            
             return new Response(JSON.stringify({ 
-                error: 'Internal upload error', 
-                details: errTxt,
+                error: 'Google Drive API Error', 
+                folderId: folderId,
+                metadataSent: metadata,
+                uploadUrl: uploadUrl,
                 status: uploadRes.status,
-                url: uploadRes.url
-            }), { status: 500, headers: corsHeaders });
+                rawResponse: rawJson
+            }, null, 2), { status: 500, headers: corsHeaders });
         }
         
-        const uploadData = await uploadRes.json();
+        const uploadData = JSON.parse(uploadResText);
         return new Response(JSON.stringify({ 
             success: true, 
             fileId: uploadData.id,
@@ -281,7 +285,11 @@ export async function onRequestPost(context) {
 
     } catch (e) {
         console.error(e);
-        return new Response(JSON.stringify({ error: 'Internal server error', details: e.message || String(e) }), { status: 500, headers: corsHeaders });
+        return new Response(JSON.stringify({ 
+            error: 'Internal server exception', 
+            details: e.message || String(e), 
+            stack: e.stack 
+        }, null, 2), { status: 500, headers: corsHeaders });
     }
 }
 
