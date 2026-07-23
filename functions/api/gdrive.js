@@ -291,10 +291,10 @@ export async function onRequestPost(context) {
 
         const uploadResText = await uploadRes.text();
         
-        console.log("--- DEBUG UPLOAD RESPONSE ---");
-        console.log("uploadRes status:", uploadRes.status);
-        console.log("uploadRes body:", uploadResText);
-        console.log("-----------------------------");
+        console.log("UPLOAD STATUS", uploadRes.status);
+        console.log("UPLOAD STATUS TEXT", uploadRes.statusText);
+        console.log("UPLOAD HEADERS", [...uploadRes.headers.entries()]);
+        console.log("UPLOAD BODY", uploadResText);
         
         if (!uploadRes.ok) {
             let rawJson = uploadResText;
