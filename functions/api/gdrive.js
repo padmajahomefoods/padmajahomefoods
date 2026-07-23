@@ -224,33 +224,53 @@ export async function onRequestPost(context) {
         const folderId = await getOrCreateFolder(token, folderName, f3);
 
         const metadata = { name: file.name, parents: [folderId] };
-        const boundary = 'foo_bar_baz_upload_boundary';
         
         console.log("--- DEBUG UPLOAD METADATA ---");
         console.log("folderId:", folderId);
         console.log("metadata object:", JSON.stringify(metadata, null, 2));
-        console.log("metadata.parents:", metadata.parents);
-        console.log("final multipart request body (metadata section only):");
-        console.log(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\n`);
         console.log("-----------------------------");
 
-        const fileBytes = await file.arrayBuffer();
-        
-        const blob = new Blob([
-            `--${boundary}\r\n`,
-            'Content-Type: application/json; charset=UTF-8\r\n\r\n',
-            JSON.stringify(metadata),
-            `\r\n--${boundary}\r\n`,
-            `Content-Type: ${file.type}\r\n\r\n`,
-            fileBytes,
-            `\r\n--${boundary}--\r\n`
-        ]);
-        
-        const uploadUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size&supportsAllDrives=true';
-        const uploadRes = await fetch(uploadUrl, {
+        // Step 1: Initiate Resumable Upload
+        const initUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true';
+        const initRes = await fetch(initUrl, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
-            body: blob
+            headers: { 
+                'Authorization': `Bearer ${token}`, 
+                'Content-Type': 'application/json; charset=UTF-8',
+                'X-Upload-Content-Type': file.type,
+                'X-Upload-Content-Length': String(file.size)
+            },
+            body: JSON.stringify(metadata)
+        });
+
+        if (!initRes.ok) {
+            const errTxt = await initRes.text();
+            let rawJson = errTxt;
+            try { rawJson = JSON.parse(errTxt); } catch(e) {}
+            return new Response(JSON.stringify({ 
+                error: 'Google Drive API Init Error', 
+                folderId: folderId,
+                metadataSent: metadata,
+                uploadUrl: initUrl,
+                status: initRes.status,
+                rawResponse: rawJson
+            }, null, 2), { status: 500, headers: corsHeaders });
+        }
+
+        const locationUrl = initRes.headers.get('Location');
+        if (!locationUrl) {
+            return new Response(JSON.stringify({ error: 'Failed to retrieve resumable upload URL' }), { status: 500, headers: corsHeaders });
+        }
+
+        // Step 2: Upload File Bytes
+        const fileBytes = await file.arrayBuffer();
+        const uploadRes = await fetch(locationUrl, {
+            method: 'PUT',
+            headers: { 
+                'Content-Length': String(file.size),
+                'Content-Type': file.type 
+            },
+            body: fileBytes
         });
 
         const uploadResText = await uploadRes.text();
@@ -265,10 +285,9 @@ export async function onRequestPost(context) {
             try { rawJson = JSON.parse(uploadResText); } catch(e) {}
             
             return new Response(JSON.stringify({ 
-                error: 'Google Drive API Error', 
+                error: 'Google Drive API Upload Error', 
                 folderId: folderId,
-                metadataSent: metadata,
-                uploadUrl: uploadUrl,
+                uploadUrl: locationUrl,
                 status: uploadRes.status,
                 rawResponse: rawJson
             }, null, 2), { status: 500, headers: corsHeaders });
