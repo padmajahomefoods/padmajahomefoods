@@ -1307,7 +1307,7 @@ async function handleAddExpense(e) {
           handleFilterChange();
         document.getElementById('expDate').valueAsDate = new Date();
     } catch(err) {
-        alert('Error saving expense: ' + err.message);
+        console.error('Error saving expense:', err);
     } finally {
         btn.innerHTML = 'Save Expense';
         btn.disabled = false;
