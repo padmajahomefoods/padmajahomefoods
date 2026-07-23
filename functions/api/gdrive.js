@@ -277,12 +277,15 @@ export async function onRequestPost(context) {
 
         // Step 2: Upload File Bytes
         const fileBytes = await file.arrayBuffer();
+        
+        const putHeaders = { 
+            'Content-Length': String(file.size),
+            'Content-Type': file.type 
+        };
+        
         const uploadRes = await fetch(locationUrl, {
             method: 'PUT',
-            headers: { 
-                'Content-Length': String(file.size),
-                'Content-Type': file.type 
-            },
+            headers: putHeaders,
             body: fileBytes
         });
 
@@ -297,6 +300,9 @@ export async function onRequestPost(context) {
             let rawJson = uploadResText;
             try { rawJson = JSON.parse(uploadResText); } catch(e) {}
             
+            const resHeaders = {};
+            for (let [key, val] of uploadRes.headers) { resHeaders[key] = val; }
+            
             return new Response(JSON.stringify({ 
                 error: 'Google Drive API Upload Error', 
                 resolvedParentFolderId: folderId,
@@ -304,6 +310,14 @@ export async function onRequestPost(context) {
                 initResponseHeaders: initHeaders,
                 uploadUrl: locationUrl,
                 status: uploadRes.status,
+                statusText: uploadRes.statusText,
+                uploadResponseHeaders: resHeaders,
+                contentLengthSent: String(file.size),
+                contentTypeSent: file.type,
+                putRequestHeaders: putHeaders,
+                contentLengthMatchesFileSize: (String(file.size) === String(fileBytes.byteLength)),
+                isExactLocationUrl: (locationUrl === initRes.headers.get('Location')),
+                rawResponseText: uploadResText,
                 rawResponse: rawJson
             }, null, 2), { status: 500, headers: corsHeaders });
         }
