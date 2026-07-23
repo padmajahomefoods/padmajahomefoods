@@ -108,6 +108,9 @@ async function getOrCreateFolder(token, name, parentId = 'root') {
     const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`, {
         headers: { Authorization: `Bearer ${token}` }
     });
+    if (!res.ok) {
+        throw new Error(`Failed to query folder '${name}': ` + await res.text());
+    }
     const data = await res.json();
     if (data.files && data.files.length > 0) return data.files[0].id;
     
@@ -116,6 +119,9 @@ async function getOrCreateFolder(token, name, parentId = 'root') {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] })
     });
+    if (!createRes.ok) {
+        throw new Error(`Failed to create folder '${name}': ` + await createRes.text());
+    }
     const createData = await createRes.json();
     return createData.id;
 }
@@ -199,17 +205,15 @@ export async function onRequestPost(context) {
 
         const metadata = { name: file.name, parents: [folderId] };
         const boundary = '-------314159265358979323846';
-        const delimiter = `\r\n--${boundary}\r\n`;
-        const closeDelimiter = `\r\n--${boundary}--`;
         
         const blob = new Blob([
-            delimiter,
+            `--${boundary}\r\n`,
             'Content-Type: application/json; charset=UTF-8\r\n\r\n',
             JSON.stringify(metadata),
-            delimiter,
+            `\r\n--${boundary}\r\n`,
             `Content-Type: ${file.type}\r\n\r\n`,
             file,
-            closeDelimiter
+            `\r\n--${boundary}--\r\n`
         ]);
         
         const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size', {
@@ -219,8 +223,9 @@ export async function onRequestPost(context) {
         });
         
         if (!uploadRes.ok) {
-            console.error(await uploadRes.text());
-            return new Response(JSON.stringify({ error: 'Internal upload error' }), { status: 500, headers: corsHeaders });
+            const errTxt = await uploadRes.text();
+            console.error(errTxt);
+            return new Response(JSON.stringify({ error: 'Internal upload error', details: errTxt }), { status: 500, headers: corsHeaders });
         }
         
         const uploadData = await uploadRes.json();
@@ -234,7 +239,7 @@ export async function onRequestPost(context) {
 
     } catch (e) {
         console.error(e);
-        return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: 'Internal server error', details: e.message || String(e) }), { status: 500, headers: corsHeaders });
     }
 }
 
@@ -277,7 +282,7 @@ export async function onRequestGet(context) {
         return new Response(fileRes.body, { status: 200, headers });
     } catch (e) {
         console.error(e);
-        return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: 'Internal server error', details: e.message || String(e) }), { status: 500, headers: corsHeaders });
     }
 }
 
@@ -308,6 +313,6 @@ export async function onRequestDelete(context) {
         return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
     } catch (e) {
         console.error(e);
-        return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: 'Internal server error', details: e.message || String(e) }), { status: 500, headers: corsHeaders });
     }
 }
