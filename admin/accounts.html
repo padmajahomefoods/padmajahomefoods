@@ -9,9 +9,12 @@
     <link rel="stylesheet" href="admin.css">
     
     <!-- Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js">
+</script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js">
+</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js">
+</script>
 
     <style>
         /* Base Styles */
@@ -189,201 +192,6 @@
     <div class="admin-tabs">
         <button class="admin-tab active" onclick="switchTab('overview')"><i class="fas fa-chart-pie"></i> Overview</button>
         <button class="admin-tab" onclick="switchTab('calendar')"><i class="fas fa-calendar-alt"></i> Calendar</button>
-        <button class="admin-tab" onclick="switchTab('month')"><i class="fas fa-table"></i> Month Report</button>
-        <button class="admin-tab" onclick="switchTab('year')"><i class="fas fa-chart-line"></i> Year Report</button>
-        <button class="admin-tab" onclick="switchTab('customers')"><i class="fas fa-users"></i> Customers</button>
-        <button class="admin-tab" onclick="switchTab('expenses')"><i class="fas fa-receipt"></i> Expenses</button>
-    </div>
-
-    <div id="printArea">
-        <div class="print-header">
-            <img src="../logo.png" alt="Logo">
-            <h2 id="printTitle">Business Accounting Report</h2>
-            <p id="reportDateRange">Date Range: This Month</p>
-            <p style="font-size: 0.8rem;">Generated: <span id="reportGenDate"></span></p>
-        </div>
-
-        <!-- TAB: OVERVIEW -->
-        <div id="tab-overview" class="tab-content active">
-            <div class="overview-grid">
-                <div class="card"><h4>Gross Revenue</h4><div class="val" id="cardRevenue">₹0</div><div class="trend" id="trendRevenue">-</div></div>
-                <div class="card"><h4>Orders</h4><div class="val" id="cardOrders">0</div><div class="trend" id="trendOrders">-</div></div>
-                <div class="card"><h4>Gross Profit</h4><div class="val" id="cardGross">₹0</div><div class="trend" id="trendGross">-</div></div>
-                <div class="card"><h4>Total Expenses</h4><div class="val" id="cardExpenses" style="color: #EF4444;">₹0</div><div class="trend" id="trendExpenses">-</div></div>
-                <div class="card profit-card">
-                    <h4>Net Profit</h4>
-                    <div class="val" id="cardNet">₹0</div>
-                    <div class="trend" id="trendNet">-</div>
-                </div>
-                
-                <div class="card"><h4>Avg Order Value</h4><div class="val" id="cardAov">₹0</div></div>
-                <div class="card"><h4>Products Sold</h4><div class="val" id="cardUnits">0</div></div>
-                <div class="card"><h4>Pending Payments</h4><div class="val" id="cardPendingPayments">₹0</div></div>
-                <div class="card"><h4>Free Shipping Given</h4><div class="val" id="cardFreeShip">0 Orders</div></div>
-                <div class="card"><h4>Free Ship Expense</h4><div class="val" id="cardFreeShipExp" style="color: #EF4444;">₹0</div></div>
-            </div>
-
-            <div class="charts-grid">
-                <div class="chart-container"><h3>Revenue & Profit Trend</h3><canvas id="mainChart"></canvas></div>
-                <div class="chart-container"><h3>Expense Breakdown</h3><canvas id="expensePieChart"></canvas></div>
-            </div>
-            
-            <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
-                <div class="chart-container"><h3>Orders Volume Trend</h3><canvas id="ordersChart"></canvas></div>
-                <div class="chart-container"><h3>Category Performance</h3><canvas id="categoryChart"></canvas></div>
-            </div>
-
-            <div class="tables-grid">
-                <div class="table-card">
-                    <h3>Top Selling Products</h3>
-                    <table class="analytics-table" id="topProductsTable">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Units Sold</th>
-                                <th>Revenue</th>
-                                <th>Unique Customers</th>
-                                <th>Last Sold</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB: CALENDAR -->
-        <div id="tab-calendar" class="tab-content">
-            <div class="calendar-section">
-                <div class="calendar-header">
-                    <h3 style="margin: 0;">Interactive Accounting Calendar (<span id="calMonthDisplay">Month</span>)</h3>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn-action" onclick="changeCalendarMonth(-1)"><i class="fas fa-chevron-left"></i></button>
-                        <button class="btn-action" onclick="changeCalendarMonth(1)"><i class="fas fa-chevron-right"></i></button>
-                    </div>
-                </div>
-                <div class="calendar-grid">
-                    <div class="cal-day-header">Sun</div><div class="cal-day-header">Mon</div><div class="cal-day-header">Tue</div>
-                    <div class="cal-day-header">Wed</div><div class="cal-day-header">Thu</div><div class="cal-day-header">Fri</div><div class="cal-day-header">Sat</div>
-                </div>
-                <div class="calendar-grid" id="calendarGrid"></div>
-            </div>
-        </div>
-
-        <!-- TAB: MONTH REPORT -->
-        <div id="tab-month" class="tab-content">
-            <div class="table-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-                    <h3 style="margin: 0; border: none; padding: 0;">Ledger Report (Spreadsheet)</h3>
-                    <span style="font-size: 0.85rem; color: var(--text-gray);">Export to Excel for full accounting view.</span>
-                </div>
-                <div style="overflow-x: auto;">
-                    <table class="analytics-table" id="monthReportTable">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Order ID</th>
-                                <th>Customer</th>
-                                <th>Payment</th>
-                                <th>Status</th>
-                                <th style="text-align:right;">Prod. Value</th>
-                                <th style="text-align:right;">Ship Charged</th>
-                                <th style="text-align:right; color:#E53E3E;">Raw Material Cost</th>
-                                <th style="text-align:right; color:#E53E3E;">Courier Cost</th>
-                                <th style="text-align:right; color:#E53E3E;">Gateway</th>
-                                <th style="text-align:right; font-weight:700;">Total Paid</th>
-                                <th style="text-align:right; color:#10B981;">Gross Profit</th>
-                            </tr>
-                        </thead>
-                        <tbody id="monthReportBody"></tbody>
-                        <tfoot id="monthReportFoot" style="font-weight: 700; background: #fafafa;"></tfoot>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB: YEAR REPORT -->
-        <div id="tab-year" class="tab-content">
-            <div class="table-card">
-                <h3>Year-to-Date Summary</h3>
-                <table class="analytics-table" id="yearReportTable">
-                    <thead>
-                        <tr>
-                            <th>Month</th>
-                            <th>Orders</th>
-                            <th>Gross Revenue</th>
-                            <th>Shipping Charged</th>
-                            <th style="color:#E53E3E;">Total Expenses (Raw Material Cost+Courier+Gateway+Manual)</th>
-                            <th style="color:#10B981;">Net Profit</th>
-                        </tr>
-                    </thead>
-                    <tbody id="yearReportBody"></tbody>
-                    <tfoot id="yearReportFoot" style="font-weight: 700; background: #fafafa;"></tfoot>
-                </table>
-            </div>
-        </div>
-
-        <!-- TAB: CUSTOMERS -->
-        <div id="tab-customers" class="tab-content">
-            <div class="table-card">
-                <h3>Customer Analytics</h3>
-                <table class="analytics-table" id="customerTable">
-                    <thead>
-                        <tr>
-                            <th>Customer Name</th>
-                            <th>Phone / Email</th>
-                            <th>Orders</th>
-                            <th>Lifetime Spend</th>
-                            <th>Avg Order Value</th>
-                            <th>First Order</th>
-                            <th>Last Order</th>
-                        </tr>
-                    </thead>
-                    <tbody id="customerBody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- TAB: EXPENSES -->
-        <div id="tab-expenses" class="tab-content">
-            <div class="expenses-layout">
-                <div class="expenses-form-col">
-                    <h3 id="expenseFormTitle" style="margin-top:0;">Record Expense</h3>
-                    <form id="expenseForm" onsubmit="handleAddExpense(event)">
-                        <div class="form-group">
-                            <label>Date</label>
-                            <input type="date" id="expDate" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Category</label>
-                            <select id="expCategory" required>
-                                <option value="Electricity">Electricity</option>
-                                <option value="Internet / Broadband">Internet / Broadband</option>
-                                <option value="Domain & Hosting">Domain & Hosting</option>
-                                <option value="Gas">Gas</option>
-                                <option value="Packaging Material">Packaging Material</option>
-                                <option value="Sticker Paper">Sticker Paper</option>
-                                <option value="Printer & Ink">Printer & Ink</option>
-                                <option value="Equipment">Equipment</option>
-                                <option value="Maintenance">Maintenance</option>
-                                <option value="Marketing & Advertising">Marketing & Advertising</option>
-                                <option value="Software & Subscriptions">Software & Subscriptions</option>
-                                <option value="Office Supplies">Office Supplies</option>
-                                <option value="Miscellaneous">Miscellaneous</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Amount (₹)</label>
-                            <input type="number" id="expAmount" step="0.01" required min="0">
-                        </div>
-                        <div class="form-group">
-                            <label>Payment Method</label>
-                            <select id="expPaymentMethod">
-                                <option value="Cash">Cash</option>
-                                <option value="UPI">UPI</option>
-                                <option value="Bank Transfer">Bank Transfer</option>
-                                <option value="Credit Card">Credit Card</option>
-<button class="admin-tab" onclick="switchTab('calendar')"><i class="fas fa-calendar-alt"></i> Calendar</button>
         <button class="admin-tab" onclick="switchTab('month')"><i class="fas fa-table"></i> Month Report</button>
         <button class="admin-tab" onclick="switchTab('year')"><i class="fas fa-chart-line"></i> Year Report</button>
         <button class="admin-tab" onclick="switchTab('customers')"><i class="fas fa-users"></i> Customers</button>
