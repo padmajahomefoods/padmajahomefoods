@@ -98,7 +98,9 @@ async function getAccessToken(env) {
         body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
     });
     
-    if (!req.ok) throw new Error("Internal auth error");
+    if (!req.ok) {
+        throw new Error(`Internal auth error [${req.status}]: ` + await req.text());
+    }
     const res = await req.json();
     return res.access_token;
 }
@@ -109,7 +111,7 @@ async function getOrCreateFolder(token, name, parentId = 'root') {
         headers: { Authorization: `Bearer ${token}` }
     });
     if (!res.ok) {
-        throw new Error(`Failed to query folder '${name}': ` + await res.text());
+        throw new Error(`Failed to query folder '${name}' [${res.status}]: ` + await res.text() + ` | URL: ${res.url}`);
     }
     const data = await res.json();
     if (data.files && data.files.length > 0) return data.files[0].id;
@@ -120,7 +122,7 @@ async function getOrCreateFolder(token, name, parentId = 'root') {
         body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] })
     });
     if (!createRes.ok) {
-        throw new Error(`Failed to create folder '${name}': ` + await createRes.text());
+        throw new Error(`Failed to create folder '${name}' [${createRes.status}]: ` + await createRes.text() + ` | URL: ${createRes.url}`);
     }
     const createData = await createRes.json();
     return createData.id;
@@ -172,7 +174,7 @@ export async function onRequestPost(context) {
             token = await getAccessToken(context.env);
         } catch(e) {
             console.error(e);
-            return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: corsHeaders });
+            return new Response(JSON.stringify({ error: 'Internal server error', details: e.message || String(e), stack: e.stack }), { status: 500, headers: corsHeaders });
         }
 
         const formData = await context.request.formData();
@@ -225,7 +227,12 @@ export async function onRequestPost(context) {
         if (!uploadRes.ok) {
             const errTxt = await uploadRes.text();
             console.error(errTxt);
-            return new Response(JSON.stringify({ error: 'Internal upload error', details: errTxt }), { status: 500, headers: corsHeaders });
+            return new Response(JSON.stringify({ 
+                error: 'Internal upload error', 
+                details: errTxt,
+                status: uploadRes.status,
+                url: uploadRes.url
+            }), { status: 500, headers: corsHeaders });
         }
         
         const uploadData = await uploadRes.json();
@@ -256,7 +263,7 @@ export async function onRequestGet(context) {
         if (!fileId || typeof fileId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return new Response(JSON.stringify({ error: 'Missing or invalid fileId format' }), { status: 400, headers: corsHeaders });
         
         let token;
-        try { token = await getAccessToken(context.env); } catch(e) { return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: corsHeaders }); }
+        try { token = await getAccessToken(context.env); } catch(e) { return new Response(JSON.stringify({ error: 'Internal server error', details: e.message || String(e), stack: e.stack }), { status: 500, headers: corsHeaders }); }
 
         const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -298,7 +305,7 @@ export async function onRequestDelete(context) {
         if (!fileId || typeof fileId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return new Response(JSON.stringify({ error: 'Missing or invalid fileId format' }), { status: 400, headers: corsHeaders });
         
         let token;
-        try { token = await getAccessToken(context.env); } catch(e) { return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: corsHeaders }); }
+        try { token = await getAccessToken(context.env); } catch(e) { return new Response(JSON.stringify({ error: 'Internal server error', details: e.message || String(e), stack: e.stack }), { status: 500, headers: corsHeaders }); }
 
         const delRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
             method: 'DELETE',
