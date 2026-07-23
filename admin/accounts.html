@@ -9,9 +9,357 @@
     <link rel="stylesheet" href="admin.css">
     
     <!-- Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js">
+let selectedInvoiceFile = null;
+
+function handleInvoiceSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
+        return;
+    }
+    
+    selectedInvoiceFile = file;
+    document.getElementById('invoiceUploadArea').style.display = 'none';
+    
+    const preview = document.getElementById('invoicePreview');
+    const nameEl = document.getElementById('invoiceName');
+    const sizeEl = document.getElementById('invoiceSize');
+    const iconEl = document.getElementById('invoiceIcon');
+    
+    nameEl.textContent = file.name;
+    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+    
+    if (file.type === 'application/pdf') {
+        iconEl.className = 'fas fa-file-pdf';
+        iconEl.style.color = '#ef4444';
+    } else {
+        iconEl.className = 'fas fa-file-image';
+        iconEl.style.color = '#3b82f6';
+    }
+    
+    preview.style.display = 'flex';
+}
+
+function clearInvoice() {
+    selectedInvoiceFile = null;
+    const invInput = document.getElementById('expInvoice');
+    if (invInput) invInput.value = '';
+    const prev = document.getElementById('invoicePreview');
+    if (prev) prev.style.display = 'none';
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if (uploadArea) uploadArea.style.display = 'block';
+}
+
+// Ensure drag events are bound after DOM is ready or in global scope
+window.addEventListener('DOMContentLoaded', () => {
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if(uploadArea) {
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#3b82f6';
+            uploadArea.style.backgroundColor = '#eff6ff';
+        });
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                document.getElementById('expInvoice').files = e.dataTransfer.files;
+                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
+            }
+        });
+    }
+});
+
+
+async function secureFetchInvoice(fileId, action) {
+    try {
+        const client = await DB._getAdapter()._getClient();
+        const { data: session } = await client.auth.getSession();
+        
+        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
+            headers: { 
+                'Authorization': `Bearer ${session.session.access_token}`,
+                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
+            }
+        });
+        
+        if (!res.ok) {
+            const errTxt = await res.text();
+            alert('Failed to retrieve invoice: ' + errTxt);
+            return;
+        }
+        
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        
+        if (action === 'view') {
+            window.open(url, '_blank');
+            // optionally revoke url after some time
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            // Extract filename from disposition if available
+            const disp = res.headers.get('Content-Disposition');
+            let filename = 'invoice';
+            if (disp && disp.includes('filename="')) {
+                filename = disp.split('filename="')[1].split('"')[0];
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    } catch(err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+</script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js">
+let selectedInvoiceFile = null;
+
+function handleInvoiceSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
+        return;
+    }
+    
+    selectedInvoiceFile = file;
+    document.getElementById('invoiceUploadArea').style.display = 'none';
+    
+    const preview = document.getElementById('invoicePreview');
+    const nameEl = document.getElementById('invoiceName');
+    const sizeEl = document.getElementById('invoiceSize');
+    const iconEl = document.getElementById('invoiceIcon');
+    
+    nameEl.textContent = file.name;
+    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+    
+    if (file.type === 'application/pdf') {
+        iconEl.className = 'fas fa-file-pdf';
+        iconEl.style.color = '#ef4444';
+    } else {
+        iconEl.className = 'fas fa-file-image';
+        iconEl.style.color = '#3b82f6';
+    }
+    
+    preview.style.display = 'flex';
+}
+
+function clearInvoice() {
+    selectedInvoiceFile = null;
+    const invInput = document.getElementById('expInvoice');
+    if (invInput) invInput.value = '';
+    const prev = document.getElementById('invoicePreview');
+    if (prev) prev.style.display = 'none';
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if (uploadArea) uploadArea.style.display = 'block';
+}
+
+// Ensure drag events are bound after DOM is ready or in global scope
+window.addEventListener('DOMContentLoaded', () => {
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if(uploadArea) {
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#3b82f6';
+            uploadArea.style.backgroundColor = '#eff6ff';
+        });
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                document.getElementById('expInvoice').files = e.dataTransfer.files;
+                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
+            }
+        });
+    }
+});
+
+
+async function secureFetchInvoice(fileId, action) {
+    try {
+        const client = await DB._getAdapter()._getClient();
+        const { data: session } = await client.auth.getSession();
+        
+        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
+            headers: { 
+                'Authorization': `Bearer ${session.session.access_token}`,
+                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
+            }
+        });
+        
+        if (!res.ok) {
+            const errTxt = await res.text();
+            alert('Failed to retrieve invoice: ' + errTxt);
+            return;
+        }
+        
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        
+        if (action === 'view') {
+            window.open(url, '_blank');
+            // optionally revoke url after some time
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            // Extract filename from disposition if available
+            const disp = res.headers.get('Content-Disposition');
+            let filename = 'invoice';
+            if (disp && disp.includes('filename="')) {
+                filename = disp.split('filename="')[1].split('"')[0];
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    } catch(err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js">
+let selectedInvoiceFile = null;
+
+function handleInvoiceSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
+        return;
+    }
+    
+    selectedInvoiceFile = file;
+    document.getElementById('invoiceUploadArea').style.display = 'none';
+    
+    const preview = document.getElementById('invoicePreview');
+    const nameEl = document.getElementById('invoiceName');
+    const sizeEl = document.getElementById('invoiceSize');
+    const iconEl = document.getElementById('invoiceIcon');
+    
+    nameEl.textContent = file.name;
+    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+    
+    if (file.type === 'application/pdf') {
+        iconEl.className = 'fas fa-file-pdf';
+        iconEl.style.color = '#ef4444';
+    } else {
+        iconEl.className = 'fas fa-file-image';
+        iconEl.style.color = '#3b82f6';
+    }
+    
+    preview.style.display = 'flex';
+}
+
+function clearInvoice() {
+    selectedInvoiceFile = null;
+    const invInput = document.getElementById('expInvoice');
+    if (invInput) invInput.value = '';
+    const prev = document.getElementById('invoicePreview');
+    if (prev) prev.style.display = 'none';
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if (uploadArea) uploadArea.style.display = 'block';
+}
+
+// Ensure drag events are bound after DOM is ready or in global scope
+window.addEventListener('DOMContentLoaded', () => {
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if(uploadArea) {
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#3b82f6';
+            uploadArea.style.backgroundColor = '#eff6ff';
+        });
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                document.getElementById('expInvoice').files = e.dataTransfer.files;
+                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
+            }
+        });
+    }
+});
+
+
+async function secureFetchInvoice(fileId, action) {
+    try {
+        const client = await DB._getAdapter()._getClient();
+        const { data: session } = await client.auth.getSession();
+        
+        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
+            headers: { 
+                'Authorization': `Bearer ${session.session.access_token}`,
+                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
+            }
+        });
+        
+        if (!res.ok) {
+            const errTxt = await res.text();
+            alert('Failed to retrieve invoice: ' + errTxt);
+            return;
+        }
+        
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        
+        if (action === 'view') {
+            window.open(url, '_blank');
+            // optionally revoke url after some time
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            // Extract filename from disposition if available
+            const disp = res.headers.get('Content-Disposition');
+            let filename = 'invoice';
+            if (disp && disp.includes('filename="')) {
+                filename = disp.split('filename="')[1].split('"')[0];
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    } catch(err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+</script>
 
     <style>
         /* Base Styles */
@@ -389,7 +737,25 @@
                             <label>Notes</label>
                             <input type="text" id="expNotes" placeholder="Optional details">
                         </div>
-                        <button type="submit" class="btn-action btn-primary-action" style="width: 100%; justify-content: center;">Save Expense</button>
+                          <div class="form-group">
+                              <label>Invoice (Optional)</label>
+                              <div id="invoiceUploadArea" style="border: 2px dashed #cbd5e1; padding: 20px; text-align: center; border-radius: 8px; cursor: pointer; position: relative;">
+                                  <i class="fas fa-cloud-upload-alt" style="font-size: 24px; color: #94a3b8; margin-bottom: 8px;"></i>
+                                  <p style="margin: 0; font-size: 0.9rem; color: #64748b;">Drag & drop invoice here or click to browse</p>
+                                  <input type="file" id="expInvoice" accept=".jpg,.jpeg,.png,.webp,.pdf" style="opacity: 0; position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer;" onchange="handleInvoiceSelect(event)">
+                              </div>
+                              <div id="invoicePreview" style="display: none; margin-top: 10px; background: #f8fafc; padding: 10px; border-radius: 6px; align-items: center; justify-content: space-between;">
+                                  <div style="display: flex; align-items: center; gap: 10px;">
+                                      <i id="invoiceIcon" class="fas fa-file-pdf" style="font-size: 20px; color: #ef4444;"></i>
+                                      <div>
+                                          <div id="invoiceName" style="font-size: 0.9rem; font-weight: 500; color: #334155; word-break: break-all;"></div>
+                                          <div id="invoiceSize" style="font-size: 0.8rem; color: #64748b;"></div>
+                                      </div>
+                                  </div>
+                                  <button type="button" onclick="clearInvoice()" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 5px;"><i class="fas fa-times"></i></button>
+                              </div>
+                          </div>
+                          <button type="submit" class="btn-action btn-primary-action" id="btnSaveExpense" style="width: 100%; justify-content: center;">Save Expense</button>
                     </form>
                 </div>
 
@@ -404,6 +770,7 @@
                                     <th>Notes</th>
                                     <th>Method</th>
                                     <th style="text-align:right;">Amount</th>
+                                    <th style="text-align:center;">Invoice</th>
                                 </tr>
                             </thead>
                             <tbody id="expensesTableBody"></tbody>
@@ -438,11 +805,591 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../config.js"></script>
-<script src="../db.js"></script>
-<script src="../auth.js"></script>
-<script src="admin.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+let selectedInvoiceFile = null;
+
+function handleInvoiceSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
+        return;
+    }
+    
+    selectedInvoiceFile = file;
+    document.getElementById('invoiceUploadArea').style.display = 'none';
+    
+    const preview = document.getElementById('invoicePreview');
+    const nameEl = document.getElementById('invoiceName');
+    const sizeEl = document.getElementById('invoiceSize');
+    const iconEl = document.getElementById('invoiceIcon');
+    
+    nameEl.textContent = file.name;
+    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+    
+    if (file.type === 'application/pdf') {
+        iconEl.className = 'fas fa-file-pdf';
+        iconEl.style.color = '#ef4444';
+    } else {
+        iconEl.className = 'fas fa-file-image';
+        iconEl.style.color = '#3b82f6';
+    }
+    
+    preview.style.display = 'flex';
+}
+
+function clearInvoice() {
+    selectedInvoiceFile = null;
+    const invInput = document.getElementById('expInvoice');
+    if (invInput) invInput.value = '';
+    const prev = document.getElementById('invoicePreview');
+    if (prev) prev.style.display = 'none';
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if (uploadArea) uploadArea.style.display = 'block';
+}
+
+// Ensure drag events are bound after DOM is ready or in global scope
+window.addEventListener('DOMContentLoaded', () => {
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if(uploadArea) {
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#3b82f6';
+            uploadArea.style.backgroundColor = '#eff6ff';
+        });
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                document.getElementById('expInvoice').files = e.dataTransfer.files;
+                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
+            }
+        });
+    }
+});
+
+
+async function secureFetchInvoice(fileId, action) {
+    try {
+        const client = await DB._getAdapter()._getClient();
+        const { data: session } = await client.auth.getSession();
+        
+        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
+            headers: { 
+                'Authorization': `Bearer ${session.session.access_token}`,
+                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
+            }
+        });
+        
+        if (!res.ok) {
+            const errTxt = await res.text();
+            alert('Failed to retrieve invoice: ' + errTxt);
+            return;
+        }
+        
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        
+        if (action === 'view') {
+            window.open(url, '_blank');
+            // optionally revoke url after some time
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            // Extract filename from disposition if available
+            const disp = res.headers.get('Content-Disposition');
+            let filename = 'invoice';
+            if (disp && disp.includes('filename="')) {
+                filename = disp.split('filename="')[1].split('"')[0];
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    } catch(err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+</script>
+<script src="../config.js">
+let selectedInvoiceFile = null;
+
+function handleInvoiceSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
+        return;
+    }
+    
+    selectedInvoiceFile = file;
+    document.getElementById('invoiceUploadArea').style.display = 'none';
+    
+    const preview = document.getElementById('invoicePreview');
+    const nameEl = document.getElementById('invoiceName');
+    const sizeEl = document.getElementById('invoiceSize');
+    const iconEl = document.getElementById('invoiceIcon');
+    
+    nameEl.textContent = file.name;
+    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+    
+    if (file.type === 'application/pdf') {
+        iconEl.className = 'fas fa-file-pdf';
+        iconEl.style.color = '#ef4444';
+    } else {
+        iconEl.className = 'fas fa-file-image';
+        iconEl.style.color = '#3b82f6';
+    }
+    
+    preview.style.display = 'flex';
+}
+
+function clearInvoice() {
+    selectedInvoiceFile = null;
+    const invInput = document.getElementById('expInvoice');
+    if (invInput) invInput.value = '';
+    const prev = document.getElementById('invoicePreview');
+    if (prev) prev.style.display = 'none';
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if (uploadArea) uploadArea.style.display = 'block';
+}
+
+// Ensure drag events are bound after DOM is ready or in global scope
+window.addEventListener('DOMContentLoaded', () => {
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if(uploadArea) {
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#3b82f6';
+            uploadArea.style.backgroundColor = '#eff6ff';
+        });
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                document.getElementById('expInvoice').files = e.dataTransfer.files;
+                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
+            }
+        });
+    }
+});
+
+
+async function secureFetchInvoice(fileId, action) {
+    try {
+        const client = await DB._getAdapter()._getClient();
+        const { data: session } = await client.auth.getSession();
+        
+        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
+            headers: { 
+                'Authorization': `Bearer ${session.session.access_token}`,
+                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
+            }
+        });
+        
+        if (!res.ok) {
+            const errTxt = await res.text();
+            alert('Failed to retrieve invoice: ' + errTxt);
+            return;
+        }
+        
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        
+        if (action === 'view') {
+            window.open(url, '_blank');
+            // optionally revoke url after some time
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            // Extract filename from disposition if available
+            const disp = res.headers.get('Content-Disposition');
+            let filename = 'invoice';
+            if (disp && disp.includes('filename="')) {
+                filename = disp.split('filename="')[1].split('"')[0];
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    } catch(err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+</script>
+<script src="../db.js">
+let selectedInvoiceFile = null;
+
+function handleInvoiceSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
+        return;
+    }
+    
+    selectedInvoiceFile = file;
+    document.getElementById('invoiceUploadArea').style.display = 'none';
+    
+    const preview = document.getElementById('invoicePreview');
+    const nameEl = document.getElementById('invoiceName');
+    const sizeEl = document.getElementById('invoiceSize');
+    const iconEl = document.getElementById('invoiceIcon');
+    
+    nameEl.textContent = file.name;
+    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+    
+    if (file.type === 'application/pdf') {
+        iconEl.className = 'fas fa-file-pdf';
+        iconEl.style.color = '#ef4444';
+    } else {
+        iconEl.className = 'fas fa-file-image';
+        iconEl.style.color = '#3b82f6';
+    }
+    
+    preview.style.display = 'flex';
+}
+
+function clearInvoice() {
+    selectedInvoiceFile = null;
+    const invInput = document.getElementById('expInvoice');
+    if (invInput) invInput.value = '';
+    const prev = document.getElementById('invoicePreview');
+    if (prev) prev.style.display = 'none';
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if (uploadArea) uploadArea.style.display = 'block';
+}
+
+// Ensure drag events are bound after DOM is ready or in global scope
+window.addEventListener('DOMContentLoaded', () => {
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if(uploadArea) {
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#3b82f6';
+            uploadArea.style.backgroundColor = '#eff6ff';
+        });
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                document.getElementById('expInvoice').files = e.dataTransfer.files;
+                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
+            }
+        });
+    }
+});
+
+
+async function secureFetchInvoice(fileId, action) {
+    try {
+        const client = await DB._getAdapter()._getClient();
+        const { data: session } = await client.auth.getSession();
+        
+        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
+            headers: { 
+                'Authorization': `Bearer ${session.session.access_token}`,
+                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
+            }
+        });
+        
+        if (!res.ok) {
+            const errTxt = await res.text();
+            alert('Failed to retrieve invoice: ' + errTxt);
+            return;
+        }
+        
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        
+        if (action === 'view') {
+            window.open(url, '_blank');
+            // optionally revoke url after some time
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            // Extract filename from disposition if available
+            const disp = res.headers.get('Content-Disposition');
+            let filename = 'invoice';
+            if (disp && disp.includes('filename="')) {
+                filename = disp.split('filename="')[1].split('"')[0];
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    } catch(err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+</script>
+<script src="../auth.js">
+let selectedInvoiceFile = null;
+
+function handleInvoiceSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
+        return;
+    }
+    
+    selectedInvoiceFile = file;
+    document.getElementById('invoiceUploadArea').style.display = 'none';
+    
+    const preview = document.getElementById('invoicePreview');
+    const nameEl = document.getElementById('invoiceName');
+    const sizeEl = document.getElementById('invoiceSize');
+    const iconEl = document.getElementById('invoiceIcon');
+    
+    nameEl.textContent = file.name;
+    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+    
+    if (file.type === 'application/pdf') {
+        iconEl.className = 'fas fa-file-pdf';
+        iconEl.style.color = '#ef4444';
+    } else {
+        iconEl.className = 'fas fa-file-image';
+        iconEl.style.color = '#3b82f6';
+    }
+    
+    preview.style.display = 'flex';
+}
+
+function clearInvoice() {
+    selectedInvoiceFile = null;
+    const invInput = document.getElementById('expInvoice');
+    if (invInput) invInput.value = '';
+    const prev = document.getElementById('invoicePreview');
+    if (prev) prev.style.display = 'none';
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if (uploadArea) uploadArea.style.display = 'block';
+}
+
+// Ensure drag events are bound after DOM is ready or in global scope
+window.addEventListener('DOMContentLoaded', () => {
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if(uploadArea) {
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#3b82f6';
+            uploadArea.style.backgroundColor = '#eff6ff';
+        });
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                document.getElementById('expInvoice').files = e.dataTransfer.files;
+                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
+            }
+        });
+    }
+});
+
+
+async function secureFetchInvoice(fileId, action) {
+    try {
+        const client = await DB._getAdapter()._getClient();
+        const { data: session } = await client.auth.getSession();
+        
+        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
+            headers: { 
+                'Authorization': `Bearer ${session.session.access_token}`,
+                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
+            }
+        });
+        
+        if (!res.ok) {
+            const errTxt = await res.text();
+            alert('Failed to retrieve invoice: ' + errTxt);
+            return;
+        }
+        
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        
+        if (action === 'view') {
+            window.open(url, '_blank');
+            // optionally revoke url after some time
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            // Extract filename from disposition if available
+            const disp = res.headers.get('Content-Disposition');
+            let filename = 'invoice';
+            if (disp && disp.includes('filename="')) {
+                filename = disp.split('filename="')[1].split('"')[0];
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    } catch(err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+</script>
+<script src="admin.js">
+let selectedInvoiceFile = null;
+
+function handleInvoiceSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
+        return;
+    }
+    
+    selectedInvoiceFile = file;
+    document.getElementById('invoiceUploadArea').style.display = 'none';
+    
+    const preview = document.getElementById('invoicePreview');
+    const nameEl = document.getElementById('invoiceName');
+    const sizeEl = document.getElementById('invoiceSize');
+    const iconEl = document.getElementById('invoiceIcon');
+    
+    nameEl.textContent = file.name;
+    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+    
+    if (file.type === 'application/pdf') {
+        iconEl.className = 'fas fa-file-pdf';
+        iconEl.style.color = '#ef4444';
+    } else {
+        iconEl.className = 'fas fa-file-image';
+        iconEl.style.color = '#3b82f6';
+    }
+    
+    preview.style.display = 'flex';
+}
+
+function clearInvoice() {
+    selectedInvoiceFile = null;
+    const invInput = document.getElementById('expInvoice');
+    if (invInput) invInput.value = '';
+    const prev = document.getElementById('invoicePreview');
+    if (prev) prev.style.display = 'none';
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if (uploadArea) uploadArea.style.display = 'block';
+}
+
+// Ensure drag events are bound after DOM is ready or in global scope
+window.addEventListener('DOMContentLoaded', () => {
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if(uploadArea) {
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#3b82f6';
+            uploadArea.style.backgroundColor = '#eff6ff';
+        });
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                document.getElementById('expInvoice').files = e.dataTransfer.files;
+                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
+            }
+        });
+    }
+});
+
+
+async function secureFetchInvoice(fileId, action) {
+    try {
+        const client = await DB._getAdapter()._getClient();
+        const { data: session } = await client.auth.getSession();
+        
+        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
+            headers: { 
+                'Authorization': `Bearer ${session.session.access_token}`,
+                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
+            }
+        });
+        
+        if (!res.ok) {
+            const errTxt = await res.text();
+            alert('Failed to retrieve invoice: ' + errTxt);
+            return;
+        }
+        
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        
+        if (action === 'view') {
+            window.open(url, '_blank');
+            // optionally revoke url after some time
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            // Extract filename from disposition if available
+            const disp = res.headers.get('Content-Disposition');
+            let filename = 'invoice';
+            if (disp && disp.includes('filename="')) {
+                filename = disp.split('filename="')[1].split('"')[0];
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    } catch(err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+</script>
 
 <script>
 // --- ACCOUNTING SETTINGS & ASSUMPTIONS ---
@@ -1148,7 +2095,14 @@ function renderExpensesList() {
             <td>${e.notes || '-'}</td>
             <td>${e.payment_method || '-'}</td>
             <td style="text-align:right; font-weight:600; color:var(--danger);">₹${Number(e.amount).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-        </tr>`;
+        
+              <td style="text-align:center;">
+                  ${e.invoice_file_id ? `
+                      <button onclick="secureFetchInvoice('${e.invoice_file_id}', 'view')" class="btn-action" style="padding: 4px 8px; font-size: 0.8rem; background: #eff6ff; color: #3b82f6; border-radius: 4px; border: 1px solid #bfdbfe; cursor: pointer;" title="View Invoice"><i class="fas fa-eye"></i> View</button>
+                      <button onclick="secureFetchInvoice('${e.invoice_file_id}', 'download')" class="btn-action" style="padding: 4px 8px; font-size: 0.8rem; background: #f0fdf4; color: #22c55e; border-radius: 4px; border: 1px solid #bbf7d0; cursor: pointer;" title="Download Invoice"><i class="fas fa-download"></i></button>
+                  ` : '-'}
+              </td>
+          </tr>`;
     });
 }
 
@@ -1165,14 +2119,56 @@ async function handleAddExpense(e) {
     btn.disabled = true;
 
     try {
-        const { data, error } = await fetchAdminData('expenses', 'insert', {
-            payload: { expense_date: date, category: cat, amount: amt, notes: notes, payment_method: method }
-        });
-        if (error) throw error;
-        
-        rawExpenses.unshift({ expense_date: date, category: cat, amount: amt, notes: notes, payment_method: method });
-        handleFilterChange();
-        e.target.reset();
+                  let invoiceData = null;
+          if (typeof selectedInvoiceFile !== 'undefined' && selectedInvoiceFile) {
+              const formData = new FormData();
+              formData.append('file', selectedInvoiceFile);
+              
+              const client = await DB._getAdapter()._getClient();
+              const { data: session } = await client.auth.getSession();
+              
+              const upRes = await fetch('/api/gdrive', {
+                  method: 'POST',
+                  headers: { 
+                      'Authorization': `Bearer ${session.session.access_token}`,
+                      'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
+                  },
+                  body: formData
+              });
+              if (!upRes.ok) {
+                  const errTxt = await upRes.text();
+                  throw new Error('Invoice upload failed: ' + errTxt);
+              }
+              invoiceData = await upRes.json();
+          }
+
+          const payload = { expense_date: date, category: cat, amount: amt, notes: notes, payment_method: method };
+          if (invoiceData && invoiceData.success) {
+              payload.invoice_file_id = invoiceData.fileId;
+              payload.invoice_name = invoiceData.name;
+              payload.invoice_type = invoiceData.type;
+              payload.invoice_size = invoiceData.size;
+          }
+
+          const { data, error } = await fetchAdminData('expenses', 'insert', { payload });
+          if (error) {
+              if (invoiceData && invoiceData.success && invoiceData.fileId) {
+                  // Cleanup orphaned file securely
+                  await fetch(`/api/gdrive?fileId=${invoiceData.fileId}`, {
+                      method: 'DELETE',
+                      headers: { 
+                          'Authorization': `Bearer ${session.session.access_token}`,
+                          'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
+                      }
+                  }).catch(console.error);
+              }
+              throw error;
+          }
+          
+          rawExpenses.unshift(data && data.length > 0 ? data[0] : payload);
+          handleFilterChange();
+          e.target.reset();
+          if (typeof clearInvoice === 'function') clearInvoice();
         document.getElementById('expDate').valueAsDate = new Date();
     } catch(err) {
         alert('Error saving expense: ' + err.message);
@@ -1575,6 +2571,122 @@ function exportPDF() {
         document.body.removeChild(div);
     });
 }
+
+let selectedInvoiceFile = null;
+
+function handleInvoiceSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+        alert('Invalid file type. Only JPG, PNG, WEBP and PDF are supported.');
+        return;
+    }
+    
+    selectedInvoiceFile = file;
+    document.getElementById('invoiceUploadArea').style.display = 'none';
+    
+    const preview = document.getElementById('invoicePreview');
+    const nameEl = document.getElementById('invoiceName');
+    const sizeEl = document.getElementById('invoiceSize');
+    const iconEl = document.getElementById('invoiceIcon');
+    
+    nameEl.textContent = file.name;
+    sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+    
+    if (file.type === 'application/pdf') {
+        iconEl.className = 'fas fa-file-pdf';
+        iconEl.style.color = '#ef4444';
+    } else {
+        iconEl.className = 'fas fa-file-image';
+        iconEl.style.color = '#3b82f6';
+    }
+    
+    preview.style.display = 'flex';
+}
+
+function clearInvoice() {
+    selectedInvoiceFile = null;
+    const invInput = document.getElementById('expInvoice');
+    if (invInput) invInput.value = '';
+    const prev = document.getElementById('invoicePreview');
+    if (prev) prev.style.display = 'none';
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if (uploadArea) uploadArea.style.display = 'block';
+}
+
+// Ensure drag events are bound after DOM is ready or in global scope
+window.addEventListener('DOMContentLoaded', () => {
+    const uploadArea = document.getElementById('invoiceUploadArea');
+    if(uploadArea) {
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#3b82f6';
+            uploadArea.style.backgroundColor = '#eff6ff';
+        });
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = 'transparent';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                document.getElementById('expInvoice').files = e.dataTransfer.files;
+                handleInvoiceSelect({target: {files: e.dataTransfer.files}});
+            }
+        });
+    }
+});
+
+
+async function secureFetchInvoice(fileId, action) {
+    try {
+        const client = await DB._getAdapter()._getClient();
+        const { data: session } = await client.auth.getSession();
+        
+        const res = await fetch(`/api/gdrive?action=${action}&fileId=${fileId}`, {
+            headers: { 
+                'Authorization': `Bearer ${session.session.access_token}`,
+                'x-anon-key': typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : ''
+            }
+        });
+        
+        if (!res.ok) {
+            const errTxt = await res.text();
+            alert('Failed to retrieve invoice: ' + errTxt);
+            return;
+        }
+        
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        
+        if (action === 'view') {
+            window.open(url, '_blank');
+            // optionally revoke url after some time
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            // Extract filename from disposition if available
+            const disp = res.headers.get('Content-Disposition');
+            let filename = 'invoice';
+            if (disp && disp.includes('filename="')) {
+                filename = disp.split('filename="')[1].split('"')[0];
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    } catch(err) {
+        alert('Error: ' + err.message);
+    }
+}
+
 </script>
 
 </body>
