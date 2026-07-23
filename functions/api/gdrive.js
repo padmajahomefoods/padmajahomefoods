@@ -226,6 +226,14 @@ export async function onRequestPost(context) {
         const metadata = { name: file.name, parents: [folderId] };
         const boundary = 'foo_bar_baz_upload_boundary';
         
+        console.log("--- DEBUG UPLOAD METADATA ---");
+        console.log("folderId:", folderId);
+        console.log("metadata object:", JSON.stringify(metadata, null, 2));
+        console.log("metadata.parents:", metadata.parents);
+        console.log("final multipart request body (metadata section only):");
+        console.log(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\n`);
+        console.log("-----------------------------");
+
         const fileBytes = await file.arrayBuffer();
         
         const blob = new Blob([
@@ -243,6 +251,13 @@ export async function onRequestPost(context) {
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
             body: blob
         });
+
+        const uploadResClone = uploadRes.clone();
+        const uploadResText = await uploadResClone.text();
+        console.log("--- DEBUG UPLOAD RESPONSE ---");
+        console.log("uploadRes status:", uploadRes.status);
+        console.log("uploadRes body:", uploadResText);
+        console.log("-----------------------------");
         
         if (!uploadRes.ok) {
             const errTxt = await uploadRes.text();
