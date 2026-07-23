@@ -1669,59 +1669,15 @@ function openEditExpense(id) {
 
 function cancelEditExpense() {
     editExpenseId = null;
-    existingInvoiceId = null;
-    invoiceToDelete = null;
     
     document.getElementById('expenseFormTitle').textContent = 'Record Expense';
     document.getElementById('btnSaveExpense').textContent = 'Save Expense';
     document.getElementById('btnCancelEdit').style.display = 'none';
     
     document.getElementById('expenseForm').reset();
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    clearInvoice();
     
     document.getElementById('expDate').valueAsDate = new Date();
 }
-
-function replaceExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-function removeExistingInvoice() {
-    if (existingInvoiceId) invoiceToDelete = existingInvoiceId;
-    document.getElementById('existingInvoiceDisplay').style.display = 'none';
-    document.getElementById('invoiceUploadArea').style.display = 'block';
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-    const uploadArea = document.getElementById('invoiceUploadArea');
-    if(uploadArea) {
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#3b82f6';
-            uploadArea.style.backgroundColor = '#eff6ff';
-        });
-        uploadArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#cbd5e1';
-            uploadArea.style.backgroundColor = 'transparent';
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                const invInput = document.getElementById('expInvoice');
-                if (invInput) {
-                    invInput.files = e.dataTransfer.files;
-                    handleInvoiceSelect({target: {files: e.dataTransfer.files}});
-                }
-            }
-        });
-    }
-});
 
 </script>
 
