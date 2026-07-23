@@ -33,10 +33,10 @@ function base64url(source) {
 async function importPrivateKey(pem) {
     const pemHeader = "-----BEGIN PRIVATE KEY-----";
     const pemFooter = "-----END PRIVATE KEY-----";
-    const formattedPem = pem.replace(/\\n/g, '\n');
+    const formattedPem = (pem || '').replace(/\\n/g, '\n');
     
-    if (!formattedPem.includes(pemHeader)) {
-        throw new Error("Internal config error");
+    if (!formattedPem.includes(pemHeader) || !formattedPem.includes(pemFooter)) {
+        throw new Error("Invalid private key format: Missing BEGIN/END PRIVATE KEY header/footer");
     }
 
     const pemContents = formattedPem.substring(
@@ -87,9 +87,26 @@ async function createJwt(clientEmail, privateKeyPem) {
 }
 
 async function getAccessToken(env) {
+    const reqVars = ['GDRIVE_CLIENT_EMAIL', 'GDRIVE_PRIVATE_KEY', 'GDRIVE_PROJECT_ID', 'GDRIVE_PRIVATE_KEY_ID'];
+    let missing = [];
+    let statusText = [];
+    
+    for (const v of reqVars) {
+        if (env[v]) {
+            statusText.push(`✓ ${v}`);
+        } else {
+            statusText.push(`✗ ${v} (missing)`);
+            missing.push(v);
+        }
+    }
+    
+    if (missing.length > 0) {
+        const errorMsg = `Configuration Error:\n${statusText.join('\n')}\nMissing variables: ${missing.join(', ')}`;
+        throw new Error(errorMsg);
+    }
+    
     const clientEmail = env.GDRIVE_CLIENT_EMAIL;
     const privateKey = env.GDRIVE_PRIVATE_KEY;
-    if (!clientEmail || !privateKey) throw new Error("Internal config error");
 
     const jwt = await createJwt(clientEmail, privateKey);
     const req = await fetch('https://oauth2.googleapis.com/token', {
