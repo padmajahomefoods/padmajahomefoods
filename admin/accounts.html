@@ -446,6 +446,7 @@
                                     <th>Method</th>
                                     <th style="text-align:right;">Amount</th>
                                     <th style="text-align:center;">Invoice</th>
+                                    <th style="text-align:center;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="expensesTableBody"></tbody>
@@ -480,11 +481,11 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../config.js"></script>
-<script src="../db.js"></script>
-<script src="../auth.js"></script>
-<script src="admin.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config.js"></script>
+<script src="../db.js"></script>
+<script src="../auth.js"></script>
+<script src="admin.js"></script>
 
 <script>
 // --- ACCOUNTING SETTINGS & ASSUMPTIONS ---
@@ -1180,7 +1181,7 @@ function renderExpensesList() {
     const tbody = document.getElementById('expensesTableBody');
     tbody.innerHTML = '';
     if(filteredData.expenses.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No expenses found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No expenses found.</td></tr>';
         return;
     }
     filteredData.expenses.forEach(e => {
@@ -1196,6 +1197,10 @@ function renderExpensesList() {
                       <button onclick="secureFetchInvoice('${e.invoice_file_id}', 'view')" class="btn-action" style="padding: 4px 8px; font-size: 0.8rem; background: #eff6ff; color: #3b82f6; border-radius: 4px; border: 1px solid #bfdbfe; cursor: pointer;" title="View Invoice"><i class="fas fa-eye"></i> View</button>
                       <button onclick="secureFetchInvoice('${e.invoice_file_id}', 'download')" class="btn-action" style="padding: 4px 8px; font-size: 0.8rem; background: #f0fdf4; color: #22c55e; border-radius: 4px; border: 1px solid #bbf7d0; cursor: pointer;" title="Download Invoice"><i class="fas fa-download"></i></button>
                   ` : '-'}
+              </td>
+              <td style="text-align:center;">
+                  <button onclick="openEditExpense('${e.id}')" style="background:none;border:none;color:#3b82f6;cursor:pointer;margin-right:8px;" title="Edit Expense"><i class="fas fa-edit"></i></button>
+                  <button onclick="deleteExpense('${e.id}', '${e.invoice_file_id || ''}')" style="background:none;border:none;color:#ef4444;cursor:pointer;" title="Delete Expense"><i class="fas fa-trash"></i></button>
               </td>
           </tr>`;
     });
