@@ -21,35 +21,75 @@ class DTDCTrackingProvider {
 
         if (!this.apiKey) {
             console.error('[DTDCTrackingProvider] DTDC_API_KEY environment variable is not configured.');
-            return { success: false, error_type: 'API_UNAVAILABLE' };
+            return { 
+                success: false, 
+                error_type: 'API_UNAVAILABLE',
+                debug_info: { error: 'DTDC_API_KEY environment variable missing on server.' }
+            };
         }
 
+        // Construct GET URL with reference_number parameter as documented
+        let targetUrl;
         try {
-            const response = await fetch(this.apiUrl, {
-                method: 'POST',
+            const urlObj = new URL(this.apiUrl);
+            urlObj.searchParams.set('reference_number', trackingNumber.trim());
+            targetUrl = urlObj.toString();
+        } catch (e) {
+            const sep = this.apiUrl.includes('?') ? '&' : '?';
+            targetUrl = `${this.apiUrl}${sep}reference_number=${encodeURIComponent(trackingNumber.trim())}`;
+        }
+
+        console.log('[DTDCTrackingProvider] --- OUTGOING DTDC API REQUEST ---');
+        console.log('[DTDCTrackingProvider] HTTP Method: GET');
+        console.log('[DTDCTrackingProvider] Request URL:', targetUrl);
+        console.log('[DTDCTrackingProvider] Query Parameters: reference_number=' + trackingNumber.trim());
+        console.log('[DTDCTrackingProvider] Headers: { "api-key": <REDACTED>, "Accept": "application/json" }');
+
+        try {
+            const response = await fetch(targetUrl, {
+                method: 'GET',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'api-key': this.apiKey,
-                    'X-Access-Token': this.apiKey,
-                    'Authorization': `Bearer ${this.apiKey}`
-                },
-                body: JSON.stringify({
-                    trackingNumber: trackingNumber.trim(),
-                    reference_number: trackingNumber.trim(),
-                    trkkngNo: trackingNumber.trim(),
-                    awbNo: [trackingNumber.trim()]
-                })
+                    'Accept': 'application/json',
+                    'api-key': this.apiKey
+                }
             });
 
+            const statusCode = response.status;
+            const responseText = await response.text();
+
+            console.log('[DTDCTrackingProvider] --- DTDC API RESPONSE ---');
+            console.log('[DTDCTrackingProvider] Status Code:', statusCode);
+            console.log('[DTDCTrackingProvider] Response Body:', responseText);
+
+            const debugInfo = {
+                url: targetUrl,
+                method: 'GET',
+                status_code: statusCode,
+                response_body: responseText
+            };
+
             if (!response.ok) {
-                if (response.status === 404 || response.status === 400) {
-                    return { success: false, error_type: 'INVALID_TRACKING' };
-                }
-                console.error(`[DTDCTrackingProvider] API responded with HTTP ${response.status}`);
-                return { success: false, error_type: 'API_UNAVAILABLE' };
+                console.error(`[DTDCTrackingProvider] API failed with HTTP ${statusCode}`);
+                return { 
+                    success: false, 
+                    error_type: statusCode === 404 ? 'INVALID_TRACKING' : 'API_UNAVAILABLE',
+                    message: `DTDC API error: HTTP ${statusCode}. Response: ${responseText.slice(0, 500)}`,
+                    debug_info: debugInfo
+                };
             }
 
-            const rawData = await response.json();
+            let rawData = null;
+            try {
+                rawData = JSON.parse(responseText);
+            } catch (e) {
+                console.error('[DTDCTrackingProvider] Failed to parse JSON response text.');
+                return { 
+                    success: false, 
+                    error_type: 'API_UNAVAILABLE', 
+                    message: 'Invalid JSON response from DTDC API.',
+                    debug_info: debugInfo 
+                };
+            }
             
             // Handle standard response variations (direct object, wrapped in data or array)
             let consignment = null;
@@ -64,10 +104,12 @@ class DTDCTrackingProvider {
             }
 
             if (!consignment || !consignment.events || !Array.isArray(consignment.events) || consignment.events.length === 0) {
-                if (rawData && (rawData.error || rawData.status === 'FAILED' || rawData.status === 'ERROR')) {
-                    return { success: false, error_type: 'INVALID_TRACKING' };
-                }
-                return { success: false, error_type: 'INVALID_TRACKING' };
+                return { 
+                    success: false, 
+                    error_type: 'INVALID_TRACKING',
+                    message: 'No shipment tracking events found in DTDC response.',
+                    debug_info: debugInfo
+                };
             }
 
             // Parse official DTDC Customer Consignment Tracking events
@@ -111,12 +153,18 @@ class DTDCTrackingProvider {
                 courier_name: 'DTDC',
                 tracking_number: consignment.reference_number || trackingNumber,
                 status: consignment.status || (timeline[0] ? timeline[0].customer_update : 'In Transit'),
-                timeline: timeline
+                timeline: timeline,
+                debug_info: debugInfo
             };
 
         } catch (error) {
-            console.error('[DTDCTrackingProvider] Error querying DTDC API:', error);
-            return { success: false, error_type: 'API_UNAVAILABLE' };
+            console.error('[DTDCTrackingProvider] Network exception querying DTDC API:', error);
+            return { 
+                success: false, 
+                error_type: 'API_UNAVAILABLE',
+                message: `Network exception: ${error.message || error}`,
+                debug_info: { url: targetUrl || this.apiUrl, method: 'GET', exception: String(error) }
+            };
         }
     }
 }
