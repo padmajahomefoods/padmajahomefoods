@@ -286,6 +286,12 @@ async function searchProducts() {
     clearBtn.classList.add('active');
 
     const matches = await DB.searchProducts(query);
+    clearTimeout(window._fbqSearchTimeout);
+    window._fbqSearchTimeout = setTimeout(() => {
+        if (typeof fbq === 'function') {
+            fbq('track', 'Search', { search_string: query });
+        }
+    }, 1500);
 
     if (matches.length === 0) {
         results.innerHTML = '<div class="search-no-results">No products found</div>';
@@ -517,6 +523,16 @@ async function initProductPage() {
     // Set initial price
     const initialWeight = product.weights[0];
     const initialPrice = getPriceForWeight(product, initialWeight);
+
+    if (typeof fbq === 'function') {
+        fbq('track', 'ViewContent', {
+            content_name: product.name,
+            content_ids: [product.id],
+            content_type: 'product',
+            value: initialPrice,
+            currency: 'INR'
+        });
+    }
 
     document.getElementById('pdpPrice').textContent = '\u20B9' + initialPrice;
 

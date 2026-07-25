@@ -41,6 +41,9 @@ function calculateDeliveryCharge(weightInGrams) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    if (typeof fbq === 'function') {
+        fbq('track', 'InitiateCheckout');
+    }
     // Fetch absolute latest settings directly from DB first
     await fetchLatestDeliverySettings();
 
@@ -402,6 +405,13 @@ async function handleCheckoutSubmit(e) {
                     // Clear cart after successful payment
                     if (typeof CartService !== 'undefined' && CartService.clearCart) {
                         CartService.clearCart();
+                    }
+                    
+                    if (typeof fbq === 'function') {
+                        fbq('track', 'Purchase', {
+                            currency: 'INR',
+                            value: typeof totalAmount !== 'undefined' ? totalAmount : 0
+                        });
                     }
 
                     // Redirect to success page

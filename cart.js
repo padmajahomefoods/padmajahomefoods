@@ -354,6 +354,13 @@ const CartService = {
 
     async addItem(item) {
         console.log('[CartService.addItem] Adding:', item.name, item.weight, 'qty:', item.quantity);
+        if (typeof fbq === 'function') {
+            fbq('track', 'AddToCart', {
+                content_name: item.name,
+                value: item.price * (item.quantity || 1),
+                currency: 'INR'
+            });
+        }
         if (this._isLoggedIn()) {
             await this._addToSupabase(item);
         } else {
