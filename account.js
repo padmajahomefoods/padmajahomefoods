@@ -1263,6 +1263,24 @@ async function loadOrdersTab() {
                                   `;
                               })()}
                           </div>
+
+                          ${(order.status === 'shipped' || (order.tracking_number && order.tracking_number.trim() !== '')) ? `
+                          <div class="shipment-tracking-section" style="margin-top: 15px; padding: 14px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px;">
+                              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                  <div>
+                                      <p style="margin: 0; font-size: 0.88rem; color: #64748B;">Courier: <strong style="color: #1E293B;">${escapeHTML(order.courier_name || 'DTDC')}</strong></p>
+                                      <p style="margin: 4px 0 0 0; font-size: 0.88rem; color: #64748B;">Tracking Number: <strong style="color: #1E293B;">${escapeHTML(order.tracking_number || 'N/A')}</strong></p>
+                                  </div>
+                                  ${order.tracking_number ? `
+                                  <button type="button" class="btn-secondary" onclick="fetchShipmentTracking('${escapeHTML(order.order_number)}', '${escapeHTML(order.courier_name || 'DTDC')}', '${escapeHTML(order.tracking_number)}')" id="btn-track-${escapeHTML(order.order_number)}" style="padding: 6px 14px; font-size: 0.85rem; border-radius: 6px; cursor: pointer; background: white; border: 1px solid #CBD5E1; font-weight: 600; color: var(--primary, #1E293B);">
+                                      <i class="fas fa-shipping-fast" style="margin-right: 4px;"></i> Track Shipment
+                                  </button>
+                                  ` : ''}
+                              </div>
+                              <div id="tracking-timeline-${escapeHTML(order.order_number)}" style="margin-top: 15px; display: none;"></div>
+                          </div>
+                          ` : ''}
+
                     </div>
                 </div>
             `;
@@ -1272,6 +1290,82 @@ async function loadOrdersTab() {
     html += '</div>';
 
     container.innerHTML = html;
+}
+
+async function fetchShipmentTracking(orderNumber, courierName, trackingNumber) {
+    const timelineEl = document.getElementById(`tracking-timeline-${orderNumber}`);
+    const btnEl = document.getElementById(`btn-track-${orderNumber}`);
+    if (!timelineEl) return;
+
+    if (timelineEl.style.display === 'block' && timelineEl.dataset.loaded === 'true') {
+        timelineEl.style.display = 'none';
+        return;
+    }
+
+    timelineEl.style.display = 'block';
+    timelineEl.innerHTML = '<div style="text-align: center; padding: 12px; color: #64748B; font-size: 0.88rem;"><i class="fas fa-spinner fa-spin"></i> Fetching latest tracking updates...</div>';
+    if (btnEl) btnEl.disabled = true;
+
+    try {
+        const response = await fetch('/api/track-shipment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                courier_name: courierName,
+                tracking_number: trackingNumber
+            })
+        });
+
+        const data = await response.json().catch(() => ({ success: false }));
+
+        if (!response.ok || !data.success) {
+            if (data && data.error_type === 'INVALID_TRACKING') {
+                timelineEl.innerHTML = '<div style="padding: 10px 14px; background: #FEF2F2; border-left: 3px solid #EF4444; color: #B91C1C; font-size: 0.88rem; border-radius: 4px;">Tracking information is currently unavailable.</div>';
+            } else {
+                timelineEl.innerHTML = '<div style="padding: 10px 14px; background: #FFFBEB; border-left: 3px solid #F59E0B; color: #92400E; font-size: 0.88rem; border-radius: 4px;">Unable to fetch latest tracking updates.<br>Please try again later.</div>';
+            }
+            if (btnEl) btnEl.disabled = false;
+            return;
+        }
+
+        const events = data.timeline || [];
+        if (events.length === 0) {
+            timelineEl.innerHTML = '<div style="padding: 10px 14px; background: #F8FAFC; border: 1px solid #E2E8F0; color: #475569; font-size: 0.88rem; border-radius: 4px;">No tracking events reported yet. Please check back shortly.</div>';
+            timelineEl.dataset.loaded = 'true';
+            if (btnEl) btnEl.disabled = false;
+            return;
+        }
+
+        let timelineHTML = '<div style="position: relative; padding-left: 18px; border-left: 2px solid #E2E8F0; margin-left: 6px; margin-top: 10px;">';
+        events.forEach((evt, idx) => {
+            const isLatest = idx === 0;
+            const dotColor = isLatest ? 'var(--primary, #10B981)' : '#94A3B8';
+            const textColor = isLatest ? 'var(--text-dark, #1E293B)' : '#475569';
+            const fontWeight = isLatest ? '700' : '500';
+            
+            timelineHTML += `
+                <div style="position: relative; margin-bottom: ${idx === events.length - 1 ? '0' : '16px'};">
+                    <div style="position: absolute; left: -24px; top: 1px; width: 10px; height: 10px; border-radius: 50%; background: ${dotColor}; border: 2px solid white; box-shadow: 0 0 0 2px ${dotColor};"></div>
+                    <div style="font-weight: ${fontWeight}; color: ${textColor}; font-size: 0.9rem;">
+                        ${escapeHTML(evt.customer_update || evt.status || 'Update')}
+                    </div>
+                    <div style="font-size: 0.8rem; color: #64748B; margin-top: 2px; display: flex; flex-wrap: wrap; gap: 10px;">
+                        ${evt.location ? `<span><i class="fas fa-map-marker-alt" style="margin-right: 3px;"></i>${escapeHTML(evt.location)}</span>` : ''}
+                        ${evt.time ? `<span><i class="far fa-clock" style="margin-right: 3px;"></i>${escapeHTML(evt.time)}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        timelineHTML += '</div>';
+
+        timelineEl.innerHTML = timelineHTML;
+        timelineEl.dataset.loaded = 'true';
+    } catch (err) {
+        console.error('Error tracking shipment:', err);
+        timelineEl.innerHTML = '<div style="padding: 10px 14px; background: #FFFBEB; border-left: 3px solid #F59E0B; color: #92400E; font-size: 0.88rem; border-radius: 4px;">Unable to fetch latest tracking updates.<br>Please try again later.</div>';
+    } finally {
+        if (btnEl) btnEl.disabled = false;
+    }
 }
 
 // Close account menu when clicking outside

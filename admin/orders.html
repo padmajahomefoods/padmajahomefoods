@@ -345,15 +345,14 @@
                             <div id="trackingFields" class="tracking-fields">
                                 <div class="form-group">
                                     <label>Courier Name</label>
-                                    <input type="text" id="courierName" placeholder="e.g. DTDC, Delhivery">
+                                    <select id="courierName" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.9rem; font-family: inherit; color: var(--text-dark); background: white;">
+                                        <option value="DTDC">DTDC</option>
+                                        <option value="Delhivery">Delhivery</option>
+                                    </select>
                                 </div>
                                 <div class="form-group">
                                     <label>Tracking Number</label>
                                     <input type="text" id="trackingNumber" placeholder="AWB Number">
-                                </div>
-                                <div class="form-group">
-                                    <label>Tracking URL</label>
-                                    <input type="url" id="trackingUrl" placeholder="https://...">
                                 </div>
                             </div>
                             
@@ -771,9 +770,8 @@ function selectOrder(orderId, element) {
 
     // Forms
     document.getElementById('statusSelect').value = currentOrder.status || 'confirmed';
-    document.getElementById('courierName').value = currentOrder.courier_name || '';
+    document.getElementById('courierName').value = currentOrder.courier_name || 'DTDC';
     document.getElementById('trackingNumber').value = currentOrder.tracking_number || '';
-    document.getElementById('trackingUrl').value = currentOrder.tracking_url || '';
     
     // Accounting Fields
     document.getElementById('actualCourierCost').value = currentOrder.actual_courier_cost || '';
@@ -848,7 +846,6 @@ async function saveOrderStatus() {
     const newStatus = document.getElementById('statusSelect').value;
     const courier = document.getElementById('courierName').value;
     const trackingNo = document.getElementById('trackingNumber').value;
-    const trackingUrl = document.getElementById('trackingUrl').value;
     
     const updatePayload = {
         status: newStatus
@@ -865,7 +862,7 @@ async function saveOrderStatus() {
     if (newStatus === 'shipped') {
         updatePayload.courier_name = courier;
         updatePayload.tracking_number = trackingNo;
-        updatePayload.tracking_url = trackingUrl;
+        updatePayload.tracking_url = null;
     }
     
     // Always save actual courier cost if entered
@@ -916,7 +913,7 @@ async function saveOrderStatus() {
         if(newStatus === 'shipped') {
             currentOrder.courier_name = courier;
             currentOrder.tracking_number = trackingNo;
-            currentOrder.tracking_url = trackingUrl;
+            currentOrder.tracking_url = null;
         }
         
         currentOrder.actual_courier_cost = updatePayload.actual_courier_cost;
