@@ -300,6 +300,203 @@ class DTDCTrackingProvider {
     }
 }
 
+
+
+class NimbuspostTrackingProvider {
+    constructor(env) {
+        this.email = env.NIMBUSPOST_EMAIL || '';
+        this.password = env.NIMBUSPOST_PASSWORD || '';
+        this.staticToken = env.NIMBUSPOST_TOKEN || '';
+        this.authUrl = 'https://ship.nimbuspost.com/api/users/login';
+        this.trackUrlBase = 'https://ship.nimbuspost.com/api/shipmentcargo/track/';
+        this.accessToken = null;
+    }
+
+    async getAccessToken() {
+        if (this.accessToken) return { error: false, token: this.accessToken };
+
+        if (this.staticToken) {
+            this.accessToken = this.staticToken;
+            return { error: false, token: this.accessToken };
+        }
+
+        if (this.email && this.password) {
+            try {
+                console.log('[NimbuspostTrackingProvider] --- OUTGOING AUTH REQUEST ---');
+                console.log('[NimbuspostTrackingProvider] HTTP Method: POST');
+                console.log('[NimbuspostTrackingProvider] Auth URL:', this.authUrl);
+                
+                const response = await fetch(this.authUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: this.email, password: this.password })
+                });
+
+                const status = response.status;
+                const responseText = await response.text();
+                
+                console.log('[NimbuspostTrackingProvider] --- AUTH RESPONSE ---');
+                console.log('[NimbuspostTrackingProvider] Status:', status);
+                console.log('[NimbuspostTrackingProvider] Body:', status === 200 ? '<REDACTED_SUCCESS>' : responseText.slice(0, 200));
+
+                if (!response.ok) {
+                    return { error: true, status, message: `Nimbuspost Auth failed: HTTP ${status}` };
+                }
+
+                let json;
+                try {
+                    json = JSON.parse(responseText);
+                } catch (e) {
+                    return { error: true, status: 500, message: 'Invalid JSON from Nimbuspost Auth' };
+                }
+
+                if (json.status === true && json.data) {
+                    this.accessToken = json.data;
+                    return { error: false, token: this.accessToken };
+                } else {
+                    return { error: true, status: 200, message: 'Auth failed: Token not found in response' };
+                }
+            } catch (err) {
+                console.error('[NimbuspostTrackingProvider] Auth network exception:', err);
+                return { error: true, status: 500, message: `Auth exception: ${err.message || err}` };
+            }
+        }
+
+        return {
+            error: true,
+            status: 401,
+            message: 'Nimbuspost credentials (NIMBUSPOST_EMAIL and NIMBUSPOST_PASSWORD) are not configured.'
+        };
+    }
+
+    async track(trackingNumber) {
+        if (!trackingNumber || trackingNumber.trim() === '') {
+            return { success: false, error_type: 'INVALID_TRACKING', message: 'Tracking number is required.' };
+        }
+
+        const authResult = await this.getAccessToken();
+        if (authResult.error) {
+            console.error('[NimbuspostTrackingProvider] Auth handshake failed:', authResult.message);
+            return {
+                success: false,
+                error_type: 'API_UNAVAILABLE',
+                message: `Nimbuspost Authentication Error: ${authResult.message}`,
+                debug_info: { endpoint: 'login', error: authResult.message }
+            };
+        }
+
+        const targetUrl = this.trackUrlBase + encodeURIComponent(trackingNumber.trim());
+
+        console.log('[NimbuspostTrackingProvider] --- OUTGOING TRACKING REQUEST ---');
+        console.log('[NimbuspostTrackingProvider] HTTP Method: GET');
+        console.log('[NimbuspostTrackingProvider] URL:', targetUrl);
+
+        try {
+            const response = await fetch(targetUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authResult.token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const statusCode = response.status;
+            const responseText = await response.text();
+
+            console.log('[NimbuspostTrackingProvider] --- TRACKING RESPONSE ---');
+            console.log('[NimbuspostTrackingProvider] Status Code:', statusCode);
+            console.log('[NimbuspostTrackingProvider] Response Body:', responseText);
+
+            const debugInfo = { url: targetUrl, method: 'GET', status_code: statusCode, response_body: responseText };
+
+            let rawData;
+            try {
+                rawData = JSON.parse(responseText);
+            } catch (e) {
+                return { success: false, error_type: 'API_UNAVAILABLE', message: 'Invalid JSON response from Nimbuspost', debug_info: debugInfo };
+            }
+
+            if (!response.ok || rawData.status === false) {
+                // Determine if it's invalid tracking vs unavailable API
+                const isInvalid = statusCode === 404 || (rawData.message && String(rawData.message).toLowerCase().includes('not found'));
+                return {
+                    success: false,
+                    error_type: isInvalid ? 'INVALID_TRACKING' : 'API_UNAVAILABLE',
+                    message: rawData.message || `API Error HTTP ${statusCode}`,
+                    debug_info: debugInfo
+                };
+            }
+
+            const data = rawData.data;
+            if (!data || !data.history || !Array.isArray(data.history) || data.history.length === 0) {
+                return {
+                    success: false,
+                    error_type: 'INVALID_TRACKING',
+                    message: 'No tracking history found for this shipment.',
+                    debug_info: debugInfo
+                };
+            }
+
+            const events = data.history.map((evt, idx) => {
+                let formattedTime = evt.event_time || '';
+                let unixTimestamp = 0;
+
+                if (evt.event_time) {
+                    try {
+                        const dateObj = new Date(evt.event_time);
+                        if (!isNaN(dateObj.getTime())) {
+                            unixTimestamp = dateObj.getTime();
+                            formattedTime = dateObj.toLocaleString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                            });
+                        }
+                    } catch (e) {}
+                }
+
+                return {
+                    customer_update: evt.message || evt.status_code || 'Update',
+                    location: evt.location || '',
+                    time: formattedTime,
+                    raw_time: unixTimestamp,
+                    original_idx: idx
+                };
+            });
+
+            // Sort newest first
+            events.sort((a, b) => {
+                if (b.raw_time === a.raw_time) {
+                    return b.original_idx - a.original_idx; // fallback to index based on their API response logic (assume returned order is chronological)
+                }
+                return b.raw_time - a.raw_time;
+            });
+
+            const timeline = events.map(({ raw_time, original_idx, ...rest }) => rest);
+            const overallStatus = data.status || (timeline[0] ? timeline[0].customer_update : 'In Transit');
+
+            return {
+                success: true,
+                courier_name: 'Nimbuspost',
+                tracking_number: data.awb_number || trackingNumber,
+                status: overallStatus,
+                timeline: timeline,
+                debug_info: debugInfo
+            };
+        } catch (error) {
+            console.error('[NimbuspostTrackingProvider] Network exception:', error);
+            return {
+                success: false,
+                error_type: 'API_UNAVAILABLE',
+                message: `Network exception: ${error.message || error}`,
+                debug_info: { url: targetUrl, method: 'GET', exception: String(error) }
+            };
+        }
+    }
+}
 class DelhiveryTrackingProvider {
     constructor(env) {
         this.env = env;
@@ -319,6 +516,7 @@ class TrackingService {
         this.env = env;
         this.providers = {
             'DTDC': new DTDCTrackingProvider(env),
+            'Nimbuspost': new NimbuspostTrackingProvider(env),
             'Delhivery': new DelhiveryTrackingProvider(env)
         };
     }
