@@ -24,8 +24,8 @@ class DTDCTrackingProvider {
         );
         this.trackingUrl = env.DTDC_TRACK_URL || (
             isStaging 
-                ? 'https://dtdcstagingapi.dtdc.com/dtdc-tracking-api/dtdc-api/rest/JSONCnTrk/getTrackDetails' 
-                : 'https://blktracksvc.dtdc.com/dtdc-tracking-api/dtdc-api/rest/JSONCnTrk/getTrackDetails'
+                ? 'https://dtdcstagingapi.dtdc.com/dtdc-api/rest/JSONCnTrk/getTrackDetails' 
+                : 'https://blktracksvc.dtdc.com/dtdc-api/rest/JSONCnTrk/getTrackDetails'
         );
         this.accessToken = null;
     }
