@@ -256,28 +256,42 @@ function renderShipmentProgress(order) {
 
     let stepsHtml = '';
     stages.forEach((st, idx) => {
-        const done    = idx < stage;
-        const current = idx === stage;
+        const done = idx <= stage;
         const pending = idx > stage;
+        const current = idx === stage;
 
-        let circleColor  = pending ? GRAY   : done ? GREEN : ORANGE;
+        let circleColor  = done ? GREEN : GRAY;
         let iconColor    = pending ? '#94A3B8' : WHITE;
-        let labelColor   = pending ? '#94A3B8' : current ? ORANGE : '#1E293B';
-        let labelWeight  = current ? '700' : done ? '600' : '400';
-        let glow         = current ? `box-shadow: 0 0 0 4px ${ORANGE}33;` : '';
+        let labelColor   = pending ? '#94A3B8' : '#1E293B';
+        let labelWeight  = done ? '600' : '400';
 
         // Connecting line after each step except last
         let lineHtml = '';
         if (idx < stages.length - 1) {
-            const lineColor = idx < stage ? GREEN : GRAY;
-            lineHtml = `<div class="od-prog-line" style="background: ${lineColor};"></div>`;
+            let lineClasses = 'od-prog-line';
+            let lineStyles = '';
+            
+            if (idx < stage) {
+                // Completed line
+                lineStyles = `background: ${GREEN};`;
+            } else if (idx === stage && stage < 3) {
+                // Active progress line to next step
+                lineClasses += ' od-prog-line-active';
+                lineStyles = `background: ${ORANGE}; box-shadow: 0 0 8px ${ORANGE}4D;`;
+            } else {
+                // Pending line
+                lineStyles = `background: ${GRAY};`;
+            }
+            
+            lineHtml = `<div class="${lineClasses}" style="${lineStyles}">
+                ${idx === stage && stage < 3 ? '<div class="od-prog-line-flow"></div>' : ''}
+            </div>`;
         }
 
         stepsHtml += `
             <div class="od-prog-step">
-                <div class="od-prog-circle" style="background:${circleColor}; ${glow}">
+                <div class="od-prog-circle" style="background:${circleColor};">
                     <i class="fas ${st.icon}" style="color:${iconColor}; font-size:0.85rem;"></i>
-                    ${current ? '<span class="od-prog-pulse"></span>' : ''}
                 </div>
                 <div class="od-prog-label" style="color:${labelColor}; font-weight:${labelWeight};">${st.label}</div>
             </div>

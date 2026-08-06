@@ -5751,35 +5751,31 @@ html, body {
 /* Connecting horizontal line between steps */
 .od-prog-line {
     flex: 1;
-    height: 3px;
+    height: 4px;
     border-radius: 2px;
     margin-bottom: 34px; /* align with circle midpoint */
     transition: background 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
-/* Step label */
-.od-prog-label {
-    font-size: 0.75rem;
-    text-align: center;
-    line-height: 1.3;
-    letter-spacing: 0.01em;
-    font-family: var(--font-body, sans-serif);
-    white-space: nowrap;
+.od-prog-line-active {
+    /* No additional styles needed here; handled inline */
 }
 
-/* Current step pulse ring animation */
-@keyframes od-pulse {
-    0%   { transform: scale(1);   opacity: 0.6; }
-    70%  { transform: scale(1.9); opacity: 0; }
-    100% { transform: scale(2);   opacity: 0; }
+/* Current step line flow animation */
+@keyframes od-flow {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
 }
-.od-prog-pulse {
+.od-prog-line-flow {
     position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: #F59E0B55;
-    animation: od-pulse 1.8s ease-out infinite;
-    pointer-events: none;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+    animation: od-flow 1.5s linear infinite;
 }
 
 /* Mobile: shrink labels */
