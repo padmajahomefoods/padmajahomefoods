@@ -5621,3 +5621,15 @@ html, body {
 .od-timeline-scroll:hover::-webkit-scrollbar-thumb {
     background: var(--gray-400, #bdbdbd);
 }
+
+
+/* Mobile CSS flex ordering for Order Details */
+@media (max-width: 767px) {
+    .od-grid {
+        display: flex;
+        flex-direction: column;
+    }
+    .od-col-left, .od-col-right {
+        display: contents;
+    }
+}
