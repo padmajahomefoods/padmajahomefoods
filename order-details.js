@@ -90,11 +90,36 @@ async function initOrderDetails() {
             .select('*')
             .eq('order_id', data.id);
             
+        
         if (itemsErr) {
             console.warn('Error fetching order items:', itemsErr);
             data.order_items = [];
         } else {
-            data.order_items = items || [];
+            // Resolve missing images dynamically using product_id
+            const resolvedItems = [];
+            for (const item of (items || [])) {
+                let rawImage = item.image || item.image_url;
+                if (!rawImage && item.product_id) {
+                    try {
+                        const { data: prodData } = await client
+                            .from(typeof CONFIG !== 'undefined' && CONFIG.TABLES && CONFIG.TABLES.PRODUCTS ? CONFIG.TABLES.PRODUCTS : 'products')
+                            .select('image')
+                            .eq('id', item.product_id)
+                            .single();
+                        if (prodData && prodData.image) {
+                            rawImage = prodData.image;
+                        }
+                    } catch(e) {
+                        console.warn('Could not fetch product image for item', item.id);
+                    }
+                }
+                
+                if (rawImage) {
+                    item.resolved_image_url = typeof DB !== 'undefined' && typeof DB.getImageUrl === 'function' ? DB.getImageUrl(rawImage) : rawImage;
+                }
+                resolvedItems.push(item);
+            }
+            data.order_items = resolvedItems;
         }
 
         renderOrderPage(data);
@@ -205,14 +230,14 @@ function renderOrderPage(order) {
 function renderProducts(items) {
     let html = `<div class="od-card"><h3 class="od-card-title">Products Ordered</h3><div>`;
     items.forEach(item => {
-        let itemImage = item.image || item.image_url;
+        let itemImage = item.resolved_image_url || item.image || item.image_url;
         let imgHtml = '';
         if (itemImage && itemImage.trim() !== '' && itemImage !== 'assets/logo.png') {
-            imgHtml = `<img src="${itemImage}" alt="${item.product_name || 'Product'}" class="od-item-img">`;
+            imgHtml = `<img src="${itemImage}" alt="${escapeHTML(item.product_name || 'Product')}" class="od-item-img" onerror="this.style.display='none'">`;
         }
         
-        let safeName = item.product_name || 'Product';
-        let safeWeight = item.weight ? '| ' + item.weight : '';
+        let safeName = escapeHTML(item.product_name || 'Product');
+        let safeWeight = item.weight ? '| ' + escapeHTML(item.weight) : '';
         
         html += `
             <div class="od-item">

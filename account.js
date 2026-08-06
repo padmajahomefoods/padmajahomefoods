@@ -1153,7 +1153,8 @@ async function loadOrdersTab() {
         html += '<div class="account-empty"><i class="fas fa-shopping-bag"></i><p>No orders yet.</p><a href="index.html" class="btn-primary" style="display:inline-flex;">Start Shopping</a></div>';
     } else {
         html += '<div class="orders-list">';
-        orders.forEach(order => {
+        
+        for (const order of orders) {
             const statusClass = 'status-' + order.status;
             const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
             const date = new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -1161,13 +1162,33 @@ async function loadOrdersTab() {
             const items = order.order_items || [];
             const itemCount = items.length;
             
-            let firstImage = 'assets/logo.png'; // Placeholder
+            let firstImage = '';
             let firstName = 'Products';
             
             if (itemCount > 0) {
                 firstName = items[0].product_name;
-                if (items[0].image) firstImage = items[0].image;
-                else if (items[0].image_url) firstImage = items[0].image_url;
+                let rawImage = items[0].image || items[0].image_url;
+                
+                // If no image on order_item, fetch from product table
+                if (!rawImage && items[0].product_id) {
+                    try {
+                        const product = await DB.getProductById(items[0].product_id);
+                        if (product && product.image) {
+                            rawImage = product.image;
+                        }
+                    } catch (e) {
+                        console.warn('Could not fetch product image', e);
+                    }
+                }
+                
+                if (rawImage) {
+                    firstImage = typeof DB !== 'undefined' && typeof DB.getImageUrl === 'function' ? DB.getImageUrl(rawImage) : rawImage;
+                }
+            }
+            
+            let imgHtml = '';
+            if (firstImage) {
+                imgHtml = `<img src="${firstImage}" class="order-compact-img" alt="${escapeHTML(firstName)}" onerror="this.style.display='none'">`;
             }
             
             html += `
@@ -1177,7 +1198,7 @@ async function loadOrdersTab() {
                         <span class="order-status ${statusClass}">${statusText}</span>
                     </div>
                     <div class="order-compact-body">
-                        <img src="${firstImage}" class="order-compact-img" alt="${escapeHTML(firstName)}" onerror="this.src='assets/logo.png'">
+                        ${imgHtml}
                         <div class="order-compact-info">
                             <span class="order-compact-title">${escapeHTML(firstName)}</span>
                             ${itemCount > 1 ? `<span class="order-compact-more">+ ${itemCount - 1} more item${itemCount - 1 > 1 ? 's' : ''}</span>` : ''}
@@ -1189,7 +1210,8 @@ async function loadOrdersTab() {
                     </div>
                 </div>
             `;
-        });
+        }
+
         html += '</div>';
     }
     html += '</div>';
