@@ -313,7 +313,7 @@ function renderShipmentProgress(order) {
 
 
 function renderProducts(items) {
-    let html = `<div class="od-card" style="order: 1;"><h3 class="od-card-title">Products Ordered</h3><div>`;
+    let html = `<div class="od-card"><h3 class="od-card-title">Products Ordered</h3><div>`;
     items.forEach(item => {
         let itemImage = item.resolved_image_url || item.image || item.image_url;
         
@@ -350,7 +350,7 @@ function renderCourier(order) {
     let tNum = order.tracking_number || 'N/A';
     
     return `
-        <div class="od-card" style="order: 2;">
+        <div class="od-card">
             <h3 class="od-card-title">Delivery Status</h3>
             <div style="margin-bottom: 16px; font-size: 0.95rem; color: var(--text-dark);">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
@@ -371,7 +371,7 @@ function renderCourier(order) {
 function renderSummary(order, date, sub, del, disc) {
     const paymentMethod = (order.payment_method || 'Online').toUpperCase();
     return `
-        <div class="od-card" style="order: 2;">
+        <div class="od-card">
             <h3 class="od-card-title">Order Summary</h3>
             <div class="od-summary-row"><span>Order ID</span> <strong>${order.order_number}</strong></div>
             <div class="od-summary-row"><span>Order Date</span> <strong>${date}</strong></div>
