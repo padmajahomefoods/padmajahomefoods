@@ -1,4 +1,6 @@
 // order-details.js
+console.log("order-details.js loaded");
+console.log(window.location.href);
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Wait for Account module to initialize if necessary
