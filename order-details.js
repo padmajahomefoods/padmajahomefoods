@@ -186,8 +186,10 @@ function renderOrderPage(order) {
     const summaryHtml   = renderSummary(order, date, sub, del, disc);
 
     // Layout:
-    // Full-width: Products → Address → Progress
+    // Full-width: Products
+    // Full-width: Shipment Progress
     // Side-by-side (desktop): Delivery Status | Order Summary
+    // Full-width: Delivery Address
     // Full-width: Shipment Timeline (injected by tracking button)
     content.innerHTML = `
         ${headerHtml}
@@ -196,17 +198,17 @@ function renderOrderPage(order) {
             <!-- 1. Products Ordered -->
             ${itemsHtml}
 
-            <!-- 2. Delivery Address -->
-            ${addressHtml}
-
-            <!-- 3. Shipment Progress -->
+            <!-- 2. Shipment Progress -->
             ${progressHtml}
 
-            <!-- 4. Delivery Status + Order Summary side-by-side -->
+            <!-- 3. Delivery Status + Order Summary side-by-side -->
             <div class="od-row-pair">
                 ${courierHtml}
                 ${summaryHtml}
             </div>
+
+            <!-- 4. Delivery Address -->
+            ${addressHtml}
 
             <!-- 5. Shipment Timeline (hidden until Track is clicked) -->
             <div id="od-timeline-container" style="display:none;"></div>
