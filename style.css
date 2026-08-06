@@ -5686,3 +5686,114 @@ html, body {
 .skeleton-line.w80 { width: 80%; }
 .skeleton-line.w60 { width: 60%; }
 .skeleton-line.w40 { width: 40%; }
+
+/* =======================================================
+   ORDER DETAILS PAGE — REDESIGN 2026
+   Layout: Full-width sections stacked vertically.
+   Row 4: Delivery Status + Order Summary side-by-side.
+   ======================================================= */
+
+/* Main wrapper — centered container */
+.od-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* Row 4 — Courier card + Summary card side-by-side */
+.od-row-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+@media (max-width: 767px) {
+    .od-row-pair {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Shipment Progress Tracker ─────────────────────── */
+.od-progress-card {
+    padding: 24px 28px;
+}
+
+.od-prog-track {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+}
+
+/* Step circle + label stacked */
+.od-prog-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    z-index: 1;
+}
+
+/* Circle icon */
+.od-prog-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: transform 0.2s ease;
+}
+
+/* Connecting horizontal line between steps */
+.od-prog-line {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    margin-bottom: 34px; /* align with circle midpoint */
+    transition: background 0.3s ease;
+}
+
+/* Step label */
+.od-prog-label {
+    font-size: 0.75rem;
+    text-align: center;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+    font-family: var(--font-body, sans-serif);
+    white-space: nowrap;
+}
+
+/* Current step pulse ring animation */
+@keyframes od-pulse {
+    0%   { transform: scale(1);   opacity: 0.6; }
+    70%  { transform: scale(1.9); opacity: 0; }
+    100% { transform: scale(2);   opacity: 0; }
+}
+.od-prog-pulse {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: #F59E0B55;
+    animation: od-pulse 1.8s ease-out infinite;
+    pointer-events: none;
+}
+
+/* Mobile: shrink labels */
+@media (max-width: 480px) {
+    .od-prog-label {
+        font-size: 0.65rem;
+        white-space: normal;
+        max-width: 56px;
+    }
+    .od-prog-circle {
+        width: 36px;
+        height: 36px;
+    }
+    .od-prog-line {
+        margin-bottom: 28px;
+    }
+}

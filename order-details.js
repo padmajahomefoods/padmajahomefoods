@@ -179,31 +179,39 @@ function renderOrderPage(order) {
         });
     }
 
-    const itemsHtml = renderProducts(order.order_items || []);
-    const courierHtml = renderCourier(order);
-    const summaryHtml = renderSummary(order, date, sub, del, disc);
-    const addressHtml = renderAddress(order.delivery_address);
+    const itemsHtml     = renderProducts(order.order_items || []);
+    const addressHtml   = renderAddress(order.delivery_address);
+    const progressHtml  = renderShipmentProgress(order);
+    const courierHtml   = renderCourier(order);
+    const summaryHtml   = renderSummary(order, date, sub, del, disc);
 
+    // Layout:
+    // Full-width: Products → Address → Progress
+    // Side-by-side (desktop): Delivery Status | Order Summary
+    // Full-width: Shipment Timeline (injected by tracking button)
     content.innerHTML = `
         ${headerHtml}
-        <div class="od-grid">
-            <!-- Left Column: Products, Address, Timeline -->
-            <div class="od-col-left">
-                ${itemsHtml}
-                
-                ${addressHtml}
-                <div id="od-timeline-container" style="display:none; order: 5; width: 100%;"></div>
-            </div>
-            
-            <!-- Right Column: Courier, Summary -->
-            <div class="od-col-right">
+        <div class="od-sections">
+
+            <!-- 1. Products Ordered -->
+            ${itemsHtml}
+
+            <!-- 2. Delivery Address -->
+            ${addressHtml}
+
+            <!-- 3. Shipment Progress -->
+            ${progressHtml}
+
+            <!-- 4. Delivery Status + Order Summary side-by-side -->
+            <div class="od-row-pair">
                 ${courierHtml}
                 ${summaryHtml}
             </div>
+
+            <!-- 5. Shipment Timeline (hidden until Track is clicked) -->
+            <div id="od-timeline-container" style="display:none;"></div>
         </div>
     `;
-    
-    // Mobile stacking is handled purely via CSS (display: contents on columns and flex ordering)
     
     const trackBtn = document.getElementById('btn-track-package');
     if (trackBtn) {
@@ -214,6 +222,80 @@ function renderOrderPage(order) {
         });
     }
 }
+
+// ─────────────────────────────────────────────────────────────
+// SHIPMENT PROGRESS TRACKER
+// ─────────────────────────────────────────────────────────────
+function getShipmentStage(order) {
+    const s = (order.status || '').toLowerCase();
+    // Delivered
+    if (s === 'delivered') return 3;
+    // Out for delivery  — check tracking_number text or status
+    if (s === 'out_for_delivery' || s === 'out for delivery') return 2;
+    // Shipped / in transit
+    if (s === 'shipped' || s === 'in_transit' || s === 'in transit') return 1;
+    // Everything else: processing / confirmed / pending / payment_failed etc.
+    return 0;
+}
+
+function renderShipmentProgress(order) {
+    const stage = getShipmentStage(order);
+
+    const stages = [
+        { label: 'Preparing',        icon: 'fa-box-open' },
+        { label: 'Shipped',          icon: 'fa-shipping-fast' },
+        { label: 'Out for Delivery', icon: 'fa-truck' },
+        { label: 'Delivered',        icon: 'fa-check-circle' },
+    ];
+
+    // Colours from existing design system
+    const GREEN  = 'var(--primary, #10B981)';
+    const ORANGE = '#F59E0B';
+    const GRAY   = '#CBD5E1';
+    const WHITE  = '#ffffff';
+
+    let stepsHtml = '';
+    stages.forEach((st, idx) => {
+        const done    = idx < stage;
+        const current = idx === stage;
+        const pending = idx > stage;
+
+        let circleColor  = pending ? GRAY   : done ? GREEN : ORANGE;
+        let iconColor    = pending ? '#94A3B8' : WHITE;
+        let labelColor   = pending ? '#94A3B8' : current ? ORANGE : '#1E293B';
+        let labelWeight  = current ? '700' : done ? '600' : '400';
+        let glow         = current ? `box-shadow: 0 0 0 4px ${ORANGE}33;` : '';
+
+        // Connecting line after each step except last
+        let lineHtml = '';
+        if (idx < stages.length - 1) {
+            const lineColor = idx < stage ? GREEN : GRAY;
+            lineHtml = `<div class="od-prog-line" style="background: ${lineColor};"></div>`;
+        }
+
+        stepsHtml += `
+            <div class="od-prog-step">
+                <div class="od-prog-circle" style="background:${circleColor}; ${glow}">
+                    <i class="fas ${st.icon}" style="color:${iconColor}; font-size:0.85rem;"></i>
+                    ${current ? '<span class="od-prog-pulse"></span>' : ''}
+                </div>
+                <div class="od-prog-label" style="color:${labelColor}; font-weight:${labelWeight};">${st.label}</div>
+            </div>
+            ${lineHtml}
+        `;
+    });
+
+    return `
+        <div class="od-card od-progress-card">
+            <h3 class="od-card-title" style="margin-bottom:24px;">Shipment Progress</h3>
+            <div class="od-prog-track">
+                ${stepsHtml}
+            </div>
+        </div>
+    `;
+}
+
+
 function renderProducts(items) {
     let html = `<div class="od-card" style="order: 1;"><h3 class="od-card-title">Products Ordered</h3><div>`;
     items.forEach(item => {
