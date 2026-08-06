@@ -1145,8 +1145,11 @@ async function loadOrdersTab() {
     if (!container) return;
 
     const orders = await Account.getOrders();
+    
+    // Store orders globally for quick access in details view
+    window.currentCustomerOrders = {};
 
-    let html = '<div class="account-section">';
+    let html = '<div class="account-section" id="orders-list-view">';
     html += '<h4><i class="fas fa-box"></i> My Orders</h4>';
 
     if (orders.length === 0) {
@@ -1154,133 +1157,40 @@ async function loadOrdersTab() {
     } else {
         html += '<div class="orders-list">';
         orders.forEach(order => {
+            window.currentCustomerOrders[order.order_number] = order;
+            
             const statusClass = 'status-' + order.status;
             const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
             const date = new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
             const total = Number(order.total_amount).toLocaleString('en-IN');
-            const itemCount = order.order_items?.length || 0;
+            const items = order.order_items || [];
+            const itemCount = items.length;
             
-            function formatAddress(address) {
-                if (!address) return '';
-                let obj;
-                if (typeof address === 'string') {
-                    if (address.trim().startsWith('{')) {
-                        try { obj = JSON.parse(address); } catch(e) { return escapeHTML(address); }
-                    } else {
-                        return escapeHTML(address);
-                    }
-                } else {
-                    obj = address;
-                }
-                
-                const lines = [];
-                if (obj.full_name) lines.push(obj.full_name);
-                if (obj.phone) lines.push(obj.phone);
-                if (obj.email) lines.push(obj.email);
-                if (obj.address_line1) lines.push(obj.address_line1);
-                if (obj.address_line2) lines.push(obj.address_line2);
-                
-                const csp = [];
-                if (obj.city) csp.push(obj.city);
-                if (obj.state) csp.push(obj.state);
-                let cspStr = csp.join(', ');
-                if (obj.pincode) cspStr += (cspStr ? ' - ' : '') + obj.pincode;
-                if (cspStr) lines.push(cspStr);
-                
-                if (lines.length === 0) {
-                    return obj.full_address ? escapeHTML(obj.full_address) : escapeHTML(JSON.stringify(obj));
-                }
-                
-                return lines.map(l => escapeHTML(l)).join('<br>');
+            let firstImage = 'assets/logo.png'; // Placeholder
+            let firstName = 'Products';
+            
+            if (itemCount > 0) {
+                firstName = items[0].product_name;
+                if (items[0].image) firstImage = items[0].image;
+                else if (items[0].image_url) firstImage = items[0].image_url;
             }
             
-            let sourceBadge = '';
-            if (order.order_source === 'whatsapp') {
-                sourceBadge = '<span style="display:inline-flex; align-items:center; gap:5px; background:var(--whatsapp-green, #1DA851); color:white; padding:2px 8px; border-radius:12px; font-size:0.75rem; margin-top:5px;"><i class="fab fa-whatsapp"></i> WhatsApp Order</span>';
-            } else if (order.order_source === 'offline') {
-                sourceBadge = '<span style="display:inline-flex; align-items:center; gap:5px; background:#666; color:white; padding:2px 8px; border-radius:12px; font-size:0.75rem; margin-top:5px;"><i class="fas fa-store"></i> Offline Order</span>';
-            } else {
-                sourceBadge = '<span style="display:inline-flex; align-items:center; gap:5px; background:var(--primary); color:white; padding:2px 8px; border-radius:12px; font-size:0.75rem; margin-top:5px;"><i class="fas fa-globe"></i> Website Order</span>';
-            }
-
             html += `
-                <div class="order-card">
-                    <div class="order-card-header">
-                        <div>
-                            <span class="order-number">${order.order_number}</span>
-                            <span class="order-date">${date}</span>
-                            <div style="margin-top: 4px;">${sourceBadge}</div>
-                        </div>
+                <div class="order-compact-card" onclick="showOrderDetails('${order.order_number}')">
+                    <div class="order-compact-header">
+                        <span class="order-compact-date">Ordered on ${date}</span>
                         <span class="order-status ${statusClass}">${statusText}</span>
                     </div>
-                    <div class="order-card-body">
-                        <p class="order-items-count">${itemCount} item${itemCount !== 1 ? 's' : ''}</p>
-                        <p class="order-total">Total: <strong>₹${total}</strong></p>
-                        ${order.delivery_address ? `<p class="order-address" style="margin-top: 10px; line-height: 1.4;"><i class="fas fa-map-marker-alt" style="margin-right: 5px;"></i><span style="display: inline-block; vertical-align: top;">${formatAddress(order.delivery_address)}</span></p>` : ''}
-                    </div>
-                    <div class="order-card-items">
-                        ${(order.order_items || []).map(item => `
-                            <div class="order-item-row">
-                                <span class="order-item-name">${escapeHTML(item.product_name)}</span>
-                                <span class="order-item-detail">${escapeHTML(item.weight)} × ${item.quantity}</span>
-                                <span class="order-item-price">₹${Number(item.total).toLocaleString('en-IN')}</span>
-                            </div>
-                        `).join('')}
-                          <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed var(--border); font-size: 0.9rem;">
-                              ${(() => {
-                                  let sub = order.subtotal || order.total_amount;
-                                  let del = order.delivery_charge || 0;
-                                  let disc = order.delivery_discount || 0;
-                                  
-                                  if (order.notes && typeof order.notes === 'string' && order.notes.includes('Subtotal:')) {
-                                      const parts = order.notes.split('|').map(s => s.trim());
-                                      parts.forEach(p => {
-                                          if (p.startsWith('Subtotal:')) sub = parseFloat(p.replace('Subtotal:', '').trim()) || sub;
-                                          if (p.startsWith('Delivery:')) del = parseFloat(p.replace('Delivery:', '').trim()) || del;
-                                          if (p.startsWith('Discount:')) disc = parseFloat(p.replace('Discount:', '').trim()) || disc;
-                                      });
-                                  }
-                                  
-                                  return `
-                                      <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: var(--text-gray);">
-                                          <span>Subtotal</span>
-                                          <span>₹${Number(sub).toLocaleString('en-IN')}</span>
-                                      </div>
-                                      <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: var(--text-gray);">
-                                          <span>Delivery Charge</span>
-                                          <span>${Number(del) === 0 ? 'Free' : '₹' + Number(del).toLocaleString('en-IN')}</span>
-                                      </div>
-                                      ${Number(disc) > 0 ? `
-                                      <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #48BB78; font-weight: 500;">
-                                          <span>Delivery Discount</span>
-                                          <span>-₹${Number(disc).toLocaleString('en-IN')}</span>
-                                      </div>
-                                      ` : ''}
-                                      <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); font-weight: 600; color: var(--text-dark);">
-                                          <span>Grand Total</span>
-                                          <span>₹${Number(order.total_amount).toLocaleString('en-IN')}</span>
-                                      </div>
-                                  `;
-                              })()}
-                          </div>
-
-                          ${(order.status === 'shipped' || (order.tracking_number && order.tracking_number.trim() !== '')) ? `
-                          <div class="shipment-tracking-section" style="margin-top: 15px; padding: 14px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px;">
-                              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                                  <div>
-                                      <p style="margin: 0; font-size: 0.88rem; color: #64748B;">Courier: <strong style="color: #1E293B;">${escapeHTML(order.courier_name || 'DTDC')}</strong></p>
-                                      <p style="margin: 4px 0 0 0; font-size: 0.88rem; color: #64748B;">Tracking Number: <strong style="color: #1E293B;">${escapeHTML(order.tracking_number || 'N/A')}</strong></p>
-                                  </div>
-                                  ${order.tracking_number ? `
-                                  <button type="button" class="btn-secondary" onclick="fetchShipmentTracking('${escapeHTML(order.order_number)}', '${escapeHTML(order.courier_name || 'DTDC')}', '${escapeHTML(order.tracking_number)}')" id="btn-track-${escapeHTML(order.order_number)}" style="padding: 6px 14px; font-size: 0.85rem; border-radius: 6px; cursor: pointer; background: white; border: 1px solid #CBD5E1; font-weight: 600; color: var(--primary, #1E293B);">
-                                      <i class="fas fa-shipping-fast" style="margin-right: 4px;"></i> Track Shipment
-                                  </button>
-                                  ` : ''}
-                              </div>
-                              <div id="tracking-timeline-${escapeHTML(order.order_number)}" style="margin-top: 15px; display: none;"></div>
-                          </div>
-                          ` : ''}
-
+                    <div class="order-compact-body">
+                        <img src="${firstImage}" class="order-compact-img" alt="${escapeHTML(firstName)}" onerror="this.src='assets/logo.png'">
+                        <div class="order-compact-info">
+                            <span class="order-compact-title">${escapeHTML(firstName)}</span>
+                            ${itemCount > 1 ? `<span class="order-compact-more">+ ${itemCount - 1} more item${itemCount - 1 > 1 ? 's' : ''}</span>` : ''}
+                            <span class="order-compact-total">₹${total}</span>
+                        </div>
+                        <div>
+                            <i class="fas fa-chevron-right" style="color: var(--text-gray);"></i>
+                        </div>
                     </div>
                 </div>
             `;
@@ -1289,7 +1199,162 @@ async function loadOrdersTab() {
     }
     html += '</div>';
 
+    // Order Details View Container
+    html += '<div id="order-details-view" class="order-details-view"></div>';
+
     container.innerHTML = html;
+}
+
+function hideOrderDetails() {
+    document.getElementById('order-details-view').style.display = 'none';
+    document.getElementById('orders-list-view').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showOrderDetails(orderNumber) {
+    const order = window.currentCustomerOrders[orderNumber];
+    if (!order) return;
+    
+    document.getElementById('orders-list-view').style.display = 'none';
+    const detailsView = document.getElementById('order-details-view');
+    detailsView.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    const statusClass = 'status-' + order.status;
+    const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
+    const date = new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const items = order.order_items || [];
+    
+    let sub = order.subtotal || order.total_amount;
+    let del = order.delivery_charge || 0;
+    let disc = order.delivery_discount || 0;
+    
+    if (order.notes && typeof order.notes === 'string' && order.notes.includes('Subtotal:')) {
+        const parts = order.notes.split('|').map(s => s.trim());
+        parts.forEach(p => {
+            if (p.startsWith('Subtotal:')) sub = parseFloat(p.replace('Subtotal:', '').trim()) || sub;
+            if (p.startsWith('Delivery:')) del = parseFloat(p.replace('Delivery:', '').trim()) || del;
+            if (p.startsWith('Discount:')) disc = parseFloat(p.replace('Discount:', '').trim()) || disc;
+        });
+    }
+
+    function formatAddress(address) {
+        if (!address) return '';
+        let obj;
+        if (typeof address === 'string') {
+            if (address.trim().startsWith('{')) {
+                try { obj = JSON.parse(address); } catch(e) { return escapeHTML(address); }
+            } else {
+                return escapeHTML(address);
+            }
+        } else {
+            obj = address;
+        }
+        
+        const lines = [];
+        if (obj.full_name) lines.push(obj.full_name);
+        if (obj.phone) lines.push(obj.phone);
+        if (obj.email) lines.push(obj.email);
+        if (obj.address_line1) lines.push(obj.address_line1);
+        if (obj.address_line2) lines.push(obj.address_line2);
+        
+        const csp = [];
+        if (obj.city) csp.push(obj.city);
+        if (obj.state) csp.push(obj.state);
+        let cspStr = csp.join(', ');
+        if (obj.pincode) cspStr += (cspStr ? ' - ' : '') + obj.pincode;
+        if (cspStr) lines.push(cspStr);
+        
+        if (lines.length === 0) {
+            return obj.full_address ? escapeHTML(obj.full_address) : escapeHTML(JSON.stringify(obj));
+        }
+        
+        return lines.map(l => escapeHTML(l)).join('<br>');
+    }
+
+    let itemsHtml = items.map(item => {
+        let itemImage = item.image || item.image_url || 'assets/logo.png';
+        return `
+            <div class="order-detail-item">
+                <img src="${itemImage}" class="order-detail-img" onerror="this.src='assets/logo.png'">
+                <div class="order-detail-info">
+                    <strong style="color: var(--text-dark);">${escapeHTML(item.product_name)}</strong>
+                    <div style="font-size: 0.85rem; color: var(--text-gray); margin-top: 4px;">${escapeHTML(item.weight)} &times; ${item.quantity}</div>
+                    <div style="font-weight: 600; color: var(--text-dark); margin-top: auto;">&#8377;${Number(item.total).toLocaleString('en-IN')}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    let trackingBtnHtml = '';
+    let trackingTimelineHtml = '';
+    if (order.status === 'shipped' || order.status === 'delivered' || (order.tracking_number && order.tracking_number.trim() !== '')) {
+        trackingBtnHtml = `
+            <button type="button" class="btn-track-package" id="btn-track-${escapeHTML(order.order_number)}" onclick="fetchShipmentTracking('${escapeHTML(order.order_number)}', '${escapeHTML(order.courier_name || 'DTDC')}', '${escapeHTML(order.tracking_number)}')">
+                <i class="fas fa-shipping-fast"></i> Track Package
+            </button>
+        `;
+        trackingTimelineHtml = `
+            <div id="tracking-timeline-${escapeHTML(order.order_number)}" class="tracking-timeline-container"></div>
+        `;
+    }
+
+    let paymentMethod = (order.payment_method || 'Online').toUpperCase();
+
+    detailsView.innerHTML = `
+        <div class="order-details-header">
+            <button class="btn-back" onclick="hideOrderDetails()"><i class="fas fa-arrow-left"></i></button>
+            <h4 class="order-details-title">Order Details</h4>
+            <span class="order-status ${statusClass}">${statusText}</span>
+        </div>
+        
+        <div class="order-details-grid">
+            <!-- Left Side: Products -->
+            <div>
+                <div class="order-details-section">
+                    <div class="order-details-section-title">Items Ordered</div>
+                    ${itemsHtml}
+                </div>
+            </div>
+            
+            <!-- Right Side: Tracking & Summary -->
+            <div>
+                ${trackingBtnHtml ? `
+                <div class="order-details-section" style="margin-bottom: 24px;">
+                    ${trackingBtnHtml}
+                    <div style="font-size: 0.9rem; color: var(--text-gray); text-align: center;">
+                        <p style="margin:0 0 4px 0;">Courier: <strong style="color: var(--text-dark);">${escapeHTML(order.courier_name || 'DTDC')}</strong></p>
+                        <p style="margin:0;">Tracking Number: <strong style="color: var(--text-dark);">${escapeHTML(order.tracking_number || 'N/A')}</strong></p>
+                    </div>
+                    ${trackingTimelineHtml}
+                </div>
+                ` : ''}
+
+                <div class="order-details-section">
+                    <div class="order-details-section-title">Order Summary</div>
+                    <div class="order-summary-row"><span>Order ID</span> <strong>${order.order_number}</strong></div>
+                    <div class="order-summary-row"><span>Order Date</span> <strong>${date}</strong></div>
+                    <div class="order-summary-row"><span>Payment</span> <strong>${paymentMethod}</strong></div>
+                    
+                    <div style="border-top: 1px dashed var(--border-light, #e2e8f0); margin: 16px 0;"></div>
+                    
+                    <div class="order-summary-row"><span>Subtotal</span> <strong>&#8377;${Number(sub).toLocaleString('en-IN')}</strong></div>
+                    <div class="order-summary-row"><span>Delivery</span> <strong>${Number(del) === 0 ? 'Free' : '&#8377;' + Number(del).toLocaleString('en-IN')}</strong></div>
+                    ${Number(disc) > 0 ? `<div class="order-summary-row" style="color: #48BB78;"><span>Discount</span> <strong>-&#8377;${Number(disc).toLocaleString('en-IN')}</strong></div>` : ''}
+                    
+                    <div style="border-top: 1px dashed var(--border-light, #e2e8f0); margin: 16px 0;"></div>
+                    
+                    <div class="order-summary-row" style="font-size: 1.1rem; color: var(--text-dark);"><span>Grand Total</span> <strong>&#8377;${Number(order.total_amount).toLocaleString('en-IN')}</strong></div>
+                    
+                    <div style="border-top: 1px dashed var(--border-light, #e2e8f0); margin: 16px 0;"></div>
+                    <div class="order-details-section-title" style="border:none; margin-bottom: 8px; padding-bottom:0; font-size: 1rem;">Shipping Address</div>
+                    <div style="font-size: 0.9rem; color: var(--text-gray); line-height: 1.5;">
+                        ${formatAddress(order.delivery_address)}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 async function fetchShipmentTracking(orderNumber, courierName, trackingNumber) {
