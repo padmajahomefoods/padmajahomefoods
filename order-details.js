@@ -8,52 +8,100 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function initOrderDetails() {
+    console.log('initOrderDetails started');
     const urlParams = new URLSearchParams(window.location.search);
     const orderId = urlParams.get('orderId');
+    console.log('Parsed orderId:', orderId);
 
     const skeleton = document.getElementById('order-details-skeleton');
-    const content = document.getElementById('order-details-content');
+    const content_el = document.getElementById('order-details-content');
 
     if (!orderId) {
-        showError("Invalid Order ID provided.");
+        showError('Invalid Order ID provided.');
         return;
     }
 
     try {
-        // We will fetch the specific order from Supabase
-        // Note: Account.js uses supabaseClient which is exposed globally via db.js (supabase)
-        if (!window.supabase) {
-            console.error("Supabase client not loaded");
-            showError("System error. Please try again later.");
+        let client;
+        if (typeof window.getSupabaseClient === 'function') {
+            client = await window.getSupabaseClient();
+        } else if (window.supabase) {
+            client = window.supabase;
+        }
+
+        if (!client) {
+            console.error('Supabase client not loaded');
+            showError('System error. Please try again later.');
             return;
         }
 
-        const { data: order, error } = await window.supabase
-            .from('orders')
-            .select('*, order_items(*)')
+        // Wait for session to be restored if not already
+        if (typeof Account !== 'undefined' && typeof Account.checkSession === 'function' && !Account._currentUser) {
+             console.log('Checking Account session...');
+             await Account.checkSession();
+        }
+        
+        let user;
+        if (typeof Account !== 'undefined' && Account.getCurrentUser) {
+            user = await Account.getCurrentUser();
+        }
+        
+        if (!user) {
+            console.error('User not logged in');
+            showError('Please log in to view order details.');
+            return;
+        }
+
+        console.log('Querying order for order_number:', orderId);
+        
+        // Use CONFIG if available, else hardcode table names
+        const ordersTable = (typeof CONFIG !== 'undefined' && CONFIG.TABLES && CONFIG.TABLES.ORDERS) ? CONFIG.TABLES.ORDERS : 'orders';
+        const itemsTable = (typeof CONFIG !== 'undefined' && CONFIG.TABLES && CONFIG.TABLES.ORDER_ITEMS) ? CONFIG.TABLES.ORDER_ITEMS : 'order_items';
+        
+        // 1. Fetch Order
+        const { data: order, error: orderErr } = await client
+            .from(ordersTable)
+            .select('*')
             .eq('order_number', orderId)
+            .eq('user_id', user.id)
             .single();
 
-        if (error || !order) {
-            console.error(error);
-            showError("Order Not Found");
+        if (orderErr) {
+            console.error('Supabase query error (orders):', orderErr);
+            showError('Order Not Found');
             return;
         }
 
-        // Verify that the logged-in user owns this order
-        // if Account._currentUser is available, check it. (Sometimes they might not be fully loaded, we rely on RLS anyway)
-        
+        if (!order) {
+            console.error('No order returned from query');
+            showError('Order Not Found');
+            return;
+        }
+
+        // 2. Fetch Order Items (No foreign key assumption)
+        const { data: items, error: itemsErr } = await client
+            .from(itemsTable)
+            .select('*')
+            .eq('order_id', order.id);
+            
+        if (itemsErr) {
+            console.warn('Error fetching order items:', itemsErr);
+            order.order_items = [];
+        } else {
+            order.order_items = items || [];
+        }
+
+        console.log('Order fetched successfully:', order);
         renderOrderPage(order);
         
-        skeleton.style.display = 'none';
-        content.style.display = 'block';
+        if (skeleton) skeleton.style.display = 'none';
+        if (content_el) content_el.style.display = 'block';
 
     } catch (err) {
-        console.error("Error fetching order:", err);
-        showError("Unable to load order details at this time.");
+        console.error('Error fetching order:', err);
+        showError('Unable to load order details at this time.');
     }
 }
-
 function showError(msg) {
     const skeleton = document.getElementById('order-details-skeleton');
     skeleton.innerHTML = `
