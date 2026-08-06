@@ -18,6 +18,8 @@
 const SupabaseAdapter = {
     _client: null,
     _clientPromise: null,
+    _cachedProducts: null,
+    _cachedProducts: null,
 
     async _initClient() {
         if (this._client) return this._client;
@@ -105,13 +107,47 @@ const SupabaseAdapter = {
 
     // --- PRODUCTS ---
     async getProducts() {
+        // ── CACHE: Memory first (fastest) ──
+        if (this._cachedProducts) {
+            console.log('[DB] getProducts() — from memory cache');
+            return this._cachedProducts;
+        }
+        // ── CACHE: sessionStorage (cross-navigation) ──
+        try {
+            const raw = sessionStorage.getItem('phf_products_cache');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && parsed.ts && (Date.now() - parsed.ts) < 5 * 60 * 1000) {
+                    console.log('[DB] getProducts() — from sessionStorage cache (' + Math.round((Date.now() - parsed.ts) / 1000) + 's old)');
+                    this._cachedProducts = parsed.data;
+                    return parsed.data;
+                }
+            }
+        } catch(e) {}
+
+        // ── FETCH: Supabase with selective columns ──
+        const t0 = performance.now();
         const client = await this._getClient();
         const { data, error } = await client
             .from(CONFIG.TABLES.PRODUCTS)
-            .select('*')
+            .select('id, name, category, cat_id, desc, image, badge, available, weights, price_100g, price_250, price_500, price_1000')
             .order('name');
         if (error) throw error;
-        return (data || []).map(r => this._rowToProduct(r));
+        const products = (data || []).map(r => this._rowToProduct(r));
+        const elapsed = Math.round(performance.now() - t0);
+        console.log('[DB] getProducts() — fetched', products.length, 'products from Supabase in', elapsed + 'ms');
+
+        // Store in memory + sessionStorage
+        this._cachedProducts = products;
+        try {
+            sessionStorage.setItem('phf_products_cache', JSON.stringify({ ts: Date.now(), data: products }));
+        } catch(e) {}
+        return products;
+    },
+
+    clearProductsCache() {
+        this._cachedProducts = null;
+        try { sessionStorage.removeItem('phf_products_cache'); } catch(e) {}
     },
 
     async getProductById(id) {

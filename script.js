@@ -663,20 +663,41 @@ function createProductCard(product, isPriority) {
 }
 
 // ============================================
-// RENDER SHOP PAGE
+// RENDER SHOP PAGE  (with skeleton + cache)
 // ============================================
-async function renderShopPage() {
-    const [categories, products] = await Promise.all([
-        DB.getCategories(),
-        DB.getProducts()
-    ]);
 
-    // Render filter buttons from categories
+/** Render shimmer skeleton cards inside .shop-container while data loads */
+function renderSkeletons() {
+    const shopContainer = document.querySelector('.shop-container');
+    if (!shopContainer || shopContainer.querySelector('.product-card')) return; // already rendered
+    let html = '';
+    // 2 skeleton sections × 4 skeleton cards
+    for (let s = 0; s < 2; s++) {
+        html += '<section class="products-section active" style="margin-bottom:40px;">';
+        html += '<div class="skeleton-section-title"></div>';
+        html += '<div class="products-grid">';
+        for (let i = 0; i < 4; i++) {
+            html += '<div class="product-card skeleton-card">' +
+                '<div class="skeleton-img"></div>' +
+                '<div class="skeleton-line w80"></div>' +
+                '<div class="skeleton-line w60"></div>' +
+                '<div class="skeleton-line w40"></div>' +
+            '</div>';
+        }
+        html += '</div></section>';
+    }
+    shopContainer.innerHTML = html;
+}
+
+/**
+ * Actually render the live products into the DOM.
+ * Idempotent — safe to call a second time with fresh data.
+ */
+function renderProductsIntoDOM(categories, products) {
     const filterContainer = document.querySelector('.category-filter');
     if (filterContainer) {
         const activeBtn = filterContainer.querySelector('.filter-btn.active');
         const currentFilter = activeBtn ? (activeBtn.getAttribute('data-category') || 'all') : 'all';
-
         let html = '<button class="filter-btn ' + (currentFilter === 'all' ? 'active' : '') + '" onclick="filterCategory(\'all\')" data-category="all">All</button>';
         categories.forEach(cat => {
             html += '<button class="filter-btn ' + (currentFilter === cat.id ? 'active' : '') + '" onclick="filterCategory(\'' + cat.id + '\')" data-category="' + cat.id + '">' + cat.name + '</button>';
@@ -684,23 +705,19 @@ async function renderShopPage() {
         filterContainer.innerHTML = html;
     }
 
-    // Render category sections from categories
     const shopContainer = document.querySelector('.shop-container');
     if (shopContainer) {
         shopContainer.innerHTML = '';
         let renderedCount = 0;
-
         categories.forEach(cat => {
             const catProducts = products.filter(p => p.catId === cat.id && p.available !== false);
             if (catProducts.length === 0) return;
-
             const section = document.createElement('section');
             section.className = 'products-section active';
             section.id = cat.id;
             section.setAttribute('data-category', cat.id);
             section.innerHTML = '<div class="section-header-row"><h3><i class="fas ' + (cat.icon || 'fa-tag') + '"></i> ' + cat.name + '</h3><span class="section-count">' + catProducts.length + ' items</span></div><div class="products-grid"></div>';
             shopContainer.appendChild(section);
-
             const grid = section.querySelector('.products-grid');
             if (grid) {
                 grid.innerHTML = catProducts.map((p, i) => {
@@ -711,9 +728,41 @@ async function renderShopPage() {
             }
         });
     }
-
     initScrollAnimations();
     injectImagePreloads(products);
+}
+
+async function renderShopPage() {
+    const t0 = performance.now();
+
+    // ── Step 1: Show skeletons immediately ──
+    renderSkeletons();
+
+    // ── Step 2: Try to load categories (small table, fast) ──
+    // Then attempt to serve from cache instantly
+    const [categories, cachedProducts] = await Promise.all([
+        DB.getCategories(),
+        DB.getProducts()   // returns cache instantly if available
+    ]);
+
+    renderProductsIntoDOM(categories, cachedProducts);
+    console.log('[Shop] Initial render in', Math.round(performance.now() - t0) + 'ms');
+
+    // ── Step 3: Stale-while-revalidate: if products came from cache,
+    //           refresh from Supabase in background and silently update UI ──
+    try {
+        const raw = sessionStorage.getItem('phf_products_cache');
+        const wasFromCache = raw && JSON.parse(raw).ts < Date.now() - 500; // served <500ms ago = cache hit
+        if (wasFromCache) {
+            // Bust cache and re-fetch in background
+            DB.clearProductsCache();
+            const freshProducts = await DB.getProducts();
+            const freshElapsed = Math.round(performance.now() - t0);
+            console.log('[Shop] Background refresh complete in', freshElapsed + 'ms — updating UI');
+            renderProductsIntoDOM(categories, freshProducts);
+        }
+    } catch(e) {}
+
 }
 
 // Inject <link rel="preload"> for first 4 product images
@@ -756,8 +805,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (!loaded) return;
         initProductPage();
     } else if (path.includes('index.html') || path === '/' || path.endsWith('/')) {
-        const loaded = await loadProducts();
-        if (!loaded) return;
+        // Don't await — renderShopPage() handles its own loading internally
         renderShopPage();
     }
 
