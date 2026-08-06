@@ -1145,9 +1145,6 @@ async function loadOrdersTab() {
     if (!container) return;
 
     const orders = await Account.getOrders();
-    
-    // Store orders globally for quick access in details view
-    window.currentCustomerOrders = {};
 
     let html = '<div class="account-section" id="orders-list-view">';
     html += '<h4><i class="fas fa-box"></i> My Orders</h4>';
@@ -1157,8 +1154,6 @@ async function loadOrdersTab() {
     } else {
         html += '<div class="orders-list">';
         orders.forEach(order => {
-            window.currentCustomerOrders[order.order_number] = order;
-            
             const statusClass = 'status-' + order.status;
             const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
             const date = new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -1176,7 +1171,7 @@ async function loadOrdersTab() {
             }
             
             html += `
-                <div class="order-compact-card" onclick="showOrderDetails('${order.order_number}')">
+                <div class="order-compact-card" onclick="window.location.href='order-details.html?orderId=${escapeHTML(order.order_number)}'">
                     <div class="order-compact-header">
                         <span class="order-compact-date">Ordered on ${date}</span>
                         <span class="order-status ${statusClass}">${statusText}</span>
@@ -1186,7 +1181,7 @@ async function loadOrdersTab() {
                         <div class="order-compact-info">
                             <span class="order-compact-title">${escapeHTML(firstName)}</span>
                             ${itemCount > 1 ? `<span class="order-compact-more">+ ${itemCount - 1} more item${itemCount - 1 > 1 ? 's' : ''}</span>` : ''}
-                            <span class="order-compact-total">₹${total}</span>
+                            <span class="order-compact-total">&#8377;${total}</span>
                         </div>
                         <div>
                             <i class="fas fa-chevron-right" style="color: var(--text-gray);"></i>
@@ -1199,238 +1194,7 @@ async function loadOrdersTab() {
     }
     html += '</div>';
 
-    // Order Details View Container
-    html += '<div id="order-details-view" class="order-details-view"></div>';
-
     container.innerHTML = html;
-}
-
-function hideOrderDetails() {
-    document.getElementById('order-details-view').style.display = 'none';
-    document.getElementById('orders-list-view').style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function showOrderDetails(orderNumber) {
-    const order = window.currentCustomerOrders[orderNumber];
-    if (!order) return;
-    
-    document.getElementById('orders-list-view').style.display = 'none';
-    const detailsView = document.getElementById('order-details-view');
-    detailsView.style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
-    const statusClass = 'status-' + order.status;
-    const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
-    const date = new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-    const items = order.order_items || [];
-    
-    let sub = order.subtotal || order.total_amount;
-    let del = order.delivery_charge || 0;
-    let disc = order.delivery_discount || 0;
-    
-    if (order.notes && typeof order.notes === 'string' && order.notes.includes('Subtotal:')) {
-        const parts = order.notes.split('|').map(s => s.trim());
-        parts.forEach(p => {
-            if (p.startsWith('Subtotal:')) sub = parseFloat(p.replace('Subtotal:', '').trim()) || sub;
-            if (p.startsWith('Delivery:')) del = parseFloat(p.replace('Delivery:', '').trim()) || del;
-            if (p.startsWith('Discount:')) disc = parseFloat(p.replace('Discount:', '').trim()) || disc;
-        });
-    }
-
-    function formatAddress(address) {
-        if (!address) return '';
-        let obj;
-        if (typeof address === 'string') {
-            if (address.trim().startsWith('{')) {
-                try { obj = JSON.parse(address); } catch(e) { return escapeHTML(address); }
-            } else {
-                return escapeHTML(address);
-            }
-        } else {
-            obj = address;
-        }
-        
-        const lines = [];
-        if (obj.full_name) lines.push(obj.full_name);
-        if (obj.phone) lines.push(obj.phone);
-        if (obj.email) lines.push(obj.email);
-        if (obj.address_line1) lines.push(obj.address_line1);
-        if (obj.address_line2) lines.push(obj.address_line2);
-        
-        const csp = [];
-        if (obj.city) csp.push(obj.city);
-        if (obj.state) csp.push(obj.state);
-        let cspStr = csp.join(', ');
-        if (obj.pincode) cspStr += (cspStr ? ' - ' : '') + obj.pincode;
-        if (cspStr) lines.push(cspStr);
-        
-        if (lines.length === 0) {
-            return obj.full_address ? escapeHTML(obj.full_address) : escapeHTML(JSON.stringify(obj));
-        }
-        
-        return lines.map(l => escapeHTML(l)).join('<br>');
-    }
-
-    let itemsHtml = items.map(item => {
-        let itemImage = item.image || item.image_url || 'assets/logo.png';
-        return `
-            <div class="order-detail-item">
-                <img src="${itemImage}" class="order-detail-img" onerror="this.src='assets/logo.png'">
-                <div class="order-detail-info">
-                    <strong style="color: var(--text-dark);">${escapeHTML(item.product_name)}</strong>
-                    <div style="font-size: 0.85rem; color: var(--text-gray); margin-top: 4px;">${escapeHTML(item.weight)} &times; ${item.quantity}</div>
-                    <div style="font-weight: 600; color: var(--text-dark); margin-top: auto;">&#8377;${Number(item.total).toLocaleString('en-IN')}</div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    let trackingBtnHtml = '';
-    let trackingTimelineHtml = '';
-    if (order.status === 'shipped' || order.status === 'delivered' || (order.tracking_number && order.tracking_number.trim() !== '')) {
-        trackingBtnHtml = `
-            <button type="button" class="btn-track-package" id="btn-track-${escapeHTML(order.order_number)}" onclick="fetchShipmentTracking('${escapeHTML(order.order_number)}', '${escapeHTML(order.courier_name || 'DTDC')}', '${escapeHTML(order.tracking_number)}')">
-                <i class="fas fa-shipping-fast"></i> Track Package
-            </button>
-        `;
-        trackingTimelineHtml = `
-            <div id="tracking-timeline-${escapeHTML(order.order_number)}" class="tracking-timeline-container"></div>
-        `;
-    }
-
-    let paymentMethod = (order.payment_method || 'Online').toUpperCase();
-
-    detailsView.innerHTML = `
-        <div class="order-details-header">
-            <button class="btn-back" onclick="hideOrderDetails()"><i class="fas fa-arrow-left"></i></button>
-            <h4 class="order-details-title">Order Details</h4>
-            <span class="order-status ${statusClass}">${statusText}</span>
-        </div>
-        
-        <div class="order-details-grid">
-            <!-- Left Side: Products -->
-            <div>
-                <div class="order-details-section">
-                    <div class="order-details-section-title">Items Ordered</div>
-                    ${itemsHtml}
-                </div>
-            </div>
-            
-            <!-- Right Side: Tracking & Summary -->
-            <div>
-                ${trackingBtnHtml ? `
-                <div class="order-details-section" style="margin-bottom: 24px;">
-                    ${trackingBtnHtml}
-                    <div style="font-size: 0.9rem; color: var(--text-gray); text-align: center;">
-                        <p style="margin:0 0 4px 0;">Courier: <strong style="color: var(--text-dark);">${escapeHTML(order.courier_name || 'DTDC')}</strong></p>
-                        <p style="margin:0;">Tracking Number: <strong style="color: var(--text-dark);">${escapeHTML(order.tracking_number || 'N/A')}</strong></p>
-                    </div>
-                    ${trackingTimelineHtml}
-                </div>
-                ` : ''}
-
-                <div class="order-details-section">
-                    <div class="order-details-section-title">Order Summary</div>
-                    <div class="order-summary-row"><span>Order ID</span> <strong>${order.order_number}</strong></div>
-                    <div class="order-summary-row"><span>Order Date</span> <strong>${date}</strong></div>
-                    <div class="order-summary-row"><span>Payment</span> <strong>${paymentMethod}</strong></div>
-                    
-                    <div style="border-top: 1px dashed var(--border-light, #e2e8f0); margin: 16px 0;"></div>
-                    
-                    <div class="order-summary-row"><span>Subtotal</span> <strong>&#8377;${Number(sub).toLocaleString('en-IN')}</strong></div>
-                    <div class="order-summary-row"><span>Delivery</span> <strong>${Number(del) === 0 ? 'Free' : '&#8377;' + Number(del).toLocaleString('en-IN')}</strong></div>
-                    ${Number(disc) > 0 ? `<div class="order-summary-row" style="color: #48BB78;"><span>Discount</span> <strong>-&#8377;${Number(disc).toLocaleString('en-IN')}</strong></div>` : ''}
-                    
-                    <div style="border-top: 1px dashed var(--border-light, #e2e8f0); margin: 16px 0;"></div>
-                    
-                    <div class="order-summary-row" style="font-size: 1.1rem; color: var(--text-dark);"><span>Grand Total</span> <strong>&#8377;${Number(order.total_amount).toLocaleString('en-IN')}</strong></div>
-                    
-                    <div style="border-top: 1px dashed var(--border-light, #e2e8f0); margin: 16px 0;"></div>
-                    <div class="order-details-section-title" style="border:none; margin-bottom: 8px; padding-bottom:0; font-size: 1rem;">Shipping Address</div>
-                    <div style="font-size: 0.9rem; color: var(--text-gray); line-height: 1.5;">
-                        ${formatAddress(order.delivery_address)}
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-async function fetchShipmentTracking(orderNumber, courierName, trackingNumber) {
-    const timelineEl = document.getElementById(`tracking-timeline-${orderNumber}`);
-    const btnEl = document.getElementById(`btn-track-${orderNumber}`);
-    if (!timelineEl) return;
-
-    if (timelineEl.style.display === 'block' && timelineEl.dataset.loaded === 'true') {
-        timelineEl.style.display = 'none';
-        return;
-    }
-
-    timelineEl.style.display = 'block';
-    timelineEl.innerHTML = '<div style="text-align: center; padding: 12px; color: #64748B; font-size: 0.88rem;"><i class="fas fa-spinner fa-spin"></i> Fetching latest tracking updates...</div>';
-    if (btnEl) btnEl.disabled = true;
-
-    try {
-        const response = await fetch('/api/track-shipment', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                courier_name: courierName,
-                tracking_number: trackingNumber
-            })
-        });
-
-        const data = await response.json().catch(() => ({ success: false }));
-
-        if (!response.ok || !data.success) {
-            if (data && data.error_type === 'INVALID_TRACKING') {
-                timelineEl.innerHTML = '<div style="padding: 10px 14px; background: #FEF2F2; border-left: 3px solid #EF4444; color: #B91C1C; font-size: 0.88rem; border-radius: 4px;">Tracking information is currently unavailable.</div>';
-            } else {
-                timelineEl.innerHTML = '<div style="padding: 10px 14px; background: #FFFBEB; border-left: 3px solid #F59E0B; color: #92400E; font-size: 0.88rem; border-radius: 4px;">Unable to fetch latest tracking updates.<br>Please try again later.</div>';
-            }
-            if (btnEl) btnEl.disabled = false;
-            return;
-        }
-
-        const events = data.timeline || [];
-        if (events.length === 0) {
-            timelineEl.innerHTML = '<div style="padding: 10px 14px; background: #F8FAFC; border: 1px solid #E2E8F0; color: #475569; font-size: 0.88rem; border-radius: 4px;">No tracking events reported yet. Please check back shortly.</div>';
-            timelineEl.dataset.loaded = 'true';
-            if (btnEl) btnEl.disabled = false;
-            return;
-        }
-
-        let timelineHTML = '<div style="position: relative; padding-left: 18px; border-left: 2px solid #E2E8F0; margin-left: 6px; margin-top: 10px;">';
-        events.forEach((evt, idx) => {
-            const isLatest = idx === 0;
-            const dotColor = isLatest ? 'var(--primary, #10B981)' : '#94A3B8';
-            const textColor = isLatest ? 'var(--text-dark, #1E293B)' : '#475569';
-            const fontWeight = isLatest ? '700' : '500';
-            
-            timelineHTML += `
-                <div style="position: relative; margin-bottom: ${idx === events.length - 1 ? '0' : '16px'};">
-                    <div style="position: absolute; left: -24px; top: 1px; width: 10px; height: 10px; border-radius: 50%; background: ${dotColor}; border: 2px solid white; box-shadow: 0 0 0 2px ${dotColor};"></div>
-                    <div style="font-weight: ${fontWeight}; color: ${textColor}; font-size: 0.9rem;">
-                        ${escapeHTML(evt.customer_update || evt.status || 'Update')}
-                    </div>
-                    <div style="font-size: 0.8rem; color: #64748B; margin-top: 2px; display: flex; flex-wrap: wrap; gap: 10px;">
-                        ${evt.location ? `<span><i class="fas fa-map-marker-alt" style="margin-right: 3px;"></i>${escapeHTML(evt.location)}</span>` : ''}
-                        ${evt.time ? `<span><i class="far fa-clock" style="margin-right: 3px;"></i>${escapeHTML(evt.time)}</span>` : ''}
-                    </div>
-                </div>
-            `;
-        });
-        timelineHTML += '</div>';
-
-        timelineEl.innerHTML = timelineHTML;
-        timelineEl.dataset.loaded = 'true';
-    } catch (err) {
-        console.error('Error tracking shipment:', err);
-        timelineEl.innerHTML = '<div style="padding: 10px 14px; background: #FFFBEB; border-left: 3px solid #F59E0B; color: #92400E; font-size: 0.88rem; border-radius: 4px;">Unable to fetch latest tracking updates.<br>Please try again later.</div>';
-    } finally {
-        if (btnEl) btnEl.disabled = false;
-    }
 }
 
 // Close account menu when clicking outside
