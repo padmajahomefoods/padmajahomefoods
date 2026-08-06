@@ -395,11 +395,14 @@ async function fetchShipmentTracking(orderNumber, courierName, trackingNumber, b
             return;
         }
 
+        
         let timelineHTML = `
             <div class="od-card" style="border: 1px solid var(--primary);">
                 <h3 class="od-card-title" style="margin-bottom: 24px;">Shipment Timeline</h3>
-                <div style="position: relative; padding-left: 20px; border-left: 2px solid #E2E8F0; margin-left: 10px;">
+                <div class="od-timeline-scroll">
+                    <div style="position: relative; padding-left: 20px; border-left: 2px solid #E2E8F0; margin-left: 10px; padding-bottom: 10px;">
         `;
+
         
         events.forEach((evt, idx) => {
             const isLatest = idx === 0;
@@ -420,7 +423,7 @@ async function fetchShipmentTracking(orderNumber, courierName, trackingNumber, b
                 </div>
             `;
         });
-        timelineHTML += '</div></div>';
+        timelineHTML += '</div></div></div>';
 
         container.innerHTML = timelineHTML;
 

@@ -5592,3 +5592,32 @@ html, body {
     display: block;
     margin-bottom: 4px;
 }
+
+
+/* Timeline Scrollable Container */
+.od-timeline-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 380px;
+    padding-right: 12px;
+}
+@media (min-width: 768px) {
+    .od-timeline-scroll {
+        height: 500px;
+    }
+}
+/* Thin modern scrollbar */
+.od-timeline-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+.od-timeline-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+.od-timeline-scroll::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 4px;
+    transition: background 0.3s;
+}
+.od-timeline-scroll:hover::-webkit-scrollbar-thumb {
+    background: var(--gray-400, #bdbdbd);
+}
