@@ -91,6 +91,7 @@ async function initOrderDetails() {
             .eq('order_id', data.id);
             
         
+        
         if (itemsErr) {
             console.warn('Error fetching order items:', itemsErr);
             data.order_items = [];
@@ -99,15 +100,11 @@ async function initOrderDetails() {
             const resolvedItems = [];
             for (const item of (items || [])) {
                 let rawImage = item.image || item.image_url;
-                if (!rawImage && item.product_id) {
+                if (!rawImage && item.product_id && typeof DB !== 'undefined' && typeof DB.getProductById === 'function') {
                     try {
-                        const { data: prodData } = await client
-                            .from(typeof CONFIG !== 'undefined' && CONFIG.TABLES && CONFIG.TABLES.PRODUCTS ? CONFIG.TABLES.PRODUCTS : 'products')
-                            .select('image')
-                            .eq('id', item.product_id)
-                            .single();
-                        if (prodData && prodData.image) {
-                            rawImage = prodData.image;
+                        const product = await DB.getProductById(item.product_id);
+                        if (product && product.image) {
+                            rawImage = product.image;
                         }
                     } catch(e) {
                         console.warn('Could not fetch product image for item', item.id);
@@ -231,10 +228,13 @@ function renderProducts(items) {
     let html = `<div class="od-card"><h3 class="od-card-title">Products Ordered</h3><div>`;
     items.forEach(item => {
         let itemImage = item.resolved_image_url || item.image || item.image_url;
-        let imgHtml = '';
-        if (itemImage && itemImage.trim() !== '' && itemImage !== 'assets/logo.png') {
-            imgHtml = `<img src="${itemImage}" alt="${escapeHTML(item.product_name || 'Product')}" class="od-item-img" onerror="this.style.display='none'">`;
+        
+        // Show placeholder if no image exists
+        if (!itemImage || itemImage.trim() === '') {
+            itemImage = 'assets/logo.png';
         }
+        
+        let imgHtml = `<img src="${itemImage}" alt="${escapeHTML(item.product_name || 'Product')}" class="od-item-img" onerror="this.src='assets/logo.png'">`;
         
         let safeName = escapeHTML(item.product_name || 'Product');
         let safeWeight = item.weight ? '| ' + escapeHTML(item.weight) : '';
