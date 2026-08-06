@@ -136,8 +136,10 @@ function renderOrderPage(order) {
 
     let headerHtml = `
         <div class="od-header">
-            <a href="index.html?tab=orders" class="btn-back" title="Back to Orders"><i class="fas fa-arrow-left"></i></a>
-            <h1 class="od-title">Order Details</h1>
+            <div class="od-header-left">
+                <a href="index.html?tab=orders" class="btn-back" title="Back to Orders"><i class="fas fa-arrow-left"></i></a>
+                <h1 class="od-title">Order Details</h1>
+            </div>
             <span class="order-status ${statusClass}">${statusText}</span>
         </div>
     `;
@@ -163,46 +165,61 @@ function renderOrderPage(order) {
     content.innerHTML = `
         ${headerHtml}
         <div class="od-grid">
+            <!-- Left Column: Products, Address, Timeline -->
             <div class="od-col-left">
                 ${itemsHtml}
+                <!-- Mobile only: Courier and Summary shown here between Products and Address -->
+                <div class="od-mobile-only" style="display:none;"></div>
                 ${addressHtml}
                 <div id="od-timeline-container" style="display:none;"></div>
             </div>
+            
+            <!-- Right Column: Courier, Summary -->
             <div class="od-col-right">
                 ${courierHtml}
                 ${summaryHtml}
-                
-                <div class="od-actions-card">
-                    <h3 class="od-card-title">Order Actions</h3>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <button class="btn-secondary" onclick="alert('Feature coming soon!')"><i class="fas fa-file-invoice"></i> Download Invoice</button>
-                        <button class="btn-secondary" onclick="alert('Feature coming soon!')"><i class="fas fa-sync"></i> Reorder Items</button>
-                        ${order.status === 'pending' || order.status === 'processing' ? `<button class="btn-secondary" style="color: var(--spice-red); border-color: #fca5a5;" onclick="alert('Feature coming soon!')"><i class="fas fa-times"></i> Cancel Order</button>` : ''}
-                    </div>
-                </div>
             </div>
         </div>
     `;
     
-    // Attach Tracking Event Listener
+    // For mobile stacking requirement, we use CSS flex column order or just JS insertion
+    if (window.innerWidth < 768) {
+        const rightCol = document.querySelector('.od-col-right');
+        const leftCol = document.querySelector('.od-col-left');
+        const addressEl = leftCol.querySelectorAll('.od-card')[1]; // Address is 2nd card in left
+        // Move Courier & Summary before address
+        leftCol.insertBefore(rightCol.children[0], addressEl); // Courier
+        leftCol.insertBefore(rightCol.children[0], addressEl); // Summary
+        rightCol.style.display = 'none'; // Hide right col completely
+    }
+    
     const trackBtn = document.getElementById('btn-track-package');
     if (trackBtn) {
         trackBtn.addEventListener('click', () => {
-            fetchShipmentTracking(order.order_number, order.courier_name, order.tracking_number, trackBtn);
+            if (typeof fetchShipmentTracking === 'function') {
+                fetchShipmentTracking(order.order_number, order.courier_name, order.tracking_number, trackBtn);
+            }
         });
     }
 }
-
 function renderProducts(items) {
-    let html = `<div class="od-card"><h3 class="od-card-title">Products Ordered</h3><div class="od-items-list">`;
+    let html = `<div class="od-card"><h3 class="od-card-title">Products Ordered</h3><div>`;
     items.forEach(item => {
-        let itemImage = item.image || item.image_url || 'assets/logo.png';
+        let itemImage = item.image || item.image_url;
+        let imgHtml = '';
+        if (itemImage && itemImage.trim() !== '' && itemImage !== 'assets/logo.png') {
+            imgHtml = `<img src="${itemImage}" alt="${item.product_name || 'Product'}" class="od-item-img">`;
+        }
+        
+        let safeName = item.product_name || 'Product';
+        let safeWeight = item.weight ? '| ' + item.weight : '';
+        
         html += `
             <div class="od-item">
-                <img src="${itemImage}" alt="${escapeHTML(item.product_name)}" class="od-item-img" onerror="this.src='assets/logo.png'">
+                ${imgHtml}
                 <div class="od-item-info">
-                    <div class="od-item-name">${escapeHTML(item.product_name)}</div>
-                    <div class="od-item-meta">${escapeHTML(item.weight)} &times; ${item.quantity}</div>
+                    <div class="od-item-name">${safeName}</div>
+                    <div class="od-item-meta">Qty: ${item.quantity} ${safeWeight}</div>
                     <div class="od-item-price">&#8377;${Number(item.total).toLocaleString('en-IN')}</div>
                 </div>
             </div>
@@ -211,34 +228,33 @@ function renderProducts(items) {
     html += `</div></div>`;
     return html;
 }
-
 function renderCourier(order) {
     if (order.status !== 'shipped' && order.status !== 'delivered' && !(order.tracking_number && order.tracking_number.trim() !== '')) {
         return '';
     }
     
+    let cName = order.courier_name || 'DTDC';
+    let tNum = order.tracking_number || 'N/A';
+    
     return `
         <div class="od-card">
             <h3 class="od-card-title">Delivery Status</h3>
             <div style="margin-bottom: 16px; font-size: 0.95rem; color: var(--text-dark);">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                     <span style="color: var(--text-gray);">Courier</span>
-                    <strong>${escapeHTML(order.courier_name || 'DTDC')}</strong>
+                    <strong>${cName}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
                     <span style="color: var(--text-gray);">Tracking #</span>
-                    <strong>${escapeHTML(order.tracking_number || 'N/A')}</strong>
+                    <strong>${tNum}</strong>
                 </div>
             </div>
             ${order.tracking_number ? `
-                <button type="button" id="btn-track-package" class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    <i class="fas fa-shipping-fast"></i> <span>Track Package</span>
-                </button>
+                <button type="button" id="btn-track-package" class="btn-primary" style="width: 100%;"><i class="fas fa-shipping-fast" style="margin-right: 8px;"></i>Track Package</button>
             ` : ''}
         </div>
     `;
 }
-
 function renderSummary(order, date, sub, del, disc) {
     const paymentMethod = (order.payment_method || 'Online').toUpperCase();
     return `
