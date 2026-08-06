@@ -125,12 +125,6 @@ function showError(msg) {
     }
 }
 
-function escapeHTML(str) {
-    if (!str) return '';
-    return String(str).replace(/[&<>'"]/g, tag => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-    }[tag] || tag));
-}
 
 function renderOrderPage(order) {
     const content = document.getElementById('order-details-content');
