@@ -499,15 +499,254 @@ class NimbuspostTrackingProvider {
 }
 class DelhiveryTrackingProvider {
     constructor(env) {
-        this.env = env;
+        this.apiToken = env.DELHIVERY_API_TOKEN || '';
+        this.trackUrlBase = 'https://track.delhivery.com/api/v1/packages/json/?waybill=';
+    }
+
+    // Helper to deeply search the JSON for the most likely tracking events array
+    findTrackingArray(obj) {
+        let bestArray = [];
+        const search = (current) => {
+            if (Array.isArray(current)) {
+                if (current.length > 0 && typeof current[0] === 'object' && current[0] !== null) {
+                    // Flatten to check nested keys (e.g. Scans: [{ ScanDetail: { ScanDateTime: ... } }])
+                    const sample = this.extractEventDetails(current[0]);
+                    const hasTime = !!sample.eventTimeStr;
+                    const hasStatus = sample.customerUpdate !== 'Update';
+                    
+                    if (hasTime && hasStatus && current.length > bestArray.length) {
+                        bestArray = current;
+                    }
+                }
+                for (const item of current) {
+                    if (typeof item === 'object' && item !== null) search(item);
+                }
+            } else if (typeof current === 'object' && current !== null) {
+                for (const key in current) {
+                    search(current[key]);
+                }
+            }
+        };
+        search(obj);
+        return bestArray;
+    }
+
+    // Helper to extract fields dynamically from an unknown event object
+    extractEventDetails(evtObj) {
+        // Flatten nested objects (e.g. ScanDetail: { Scan: '...', ScannedLocation: '...' })
+        const flatObj = {};
+        const flatten = (obj, prefix = '') => {
+            if (typeof obj !== 'object' || obj === null) return;
+            for (const [k, v] of Object.entries(obj)) {
+                if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+                    flatten(v, prefix + k + '_');
+                } else if (typeof v === 'string' || typeof v === 'number') {
+                    flatObj[(prefix + k).toLowerCase()] = String(v);
+                }
+            }
+        };
+        flatten(evtObj);
+
+        let customerUpdate = 'Update';
+        let location = '';
+        let eventTimeStr = '';
+
+        // Priority heuristics for mapping keys
+        for (const key in flatObj) {
+            const val = flatObj[key];
+            if (!val) continue;
+
+            if ((key.includes('status') || key.includes('scan') || key.includes('activity') || key.includes('instruction') || key.includes('remark')) && !key.includes('date') && !key.includes('time')) {
+                if (customerUpdate === 'Update' || val.length > customerUpdate.length) {
+                    customerUpdate = val;
+                }
+            }
+            if (key.includes('location') || key.includes('origin') || key.includes('destination') || key.includes('hub')) {
+                location = val;
+            }
+            if (key.includes('date') || key.includes('time')) {
+                // Prefer longer date strings (e.g. "2023-05-19 19:29" over "2023-05-19")
+                if (val.length > eventTimeStr.length) {
+                    eventTimeStr = val;
+                }
+            }
+        }
+
+        let unixTimestamp = 0;
+        let formattedTime = eventTimeStr;
+        if (eventTimeStr) {
+            const parsed = Date.parse(eventTimeStr);
+            if (!isNaN(parsed)) {
+                unixTimestamp = parsed;
+                formattedTime = new Date(parsed).toLocaleString('en-IN', {
+                    day: '2-digit', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', hour12: true
+                });
+            }
+        }
+
+        return { customerUpdate, location, eventTimeStr: formattedTime, unixTimestamp };
     }
 
     async track(trackingNumber) {
-        return {
-            success: false,
-            error_type: 'INVALID_TRACKING',
-            message: 'Live tracking for Delhivery will be available soon.'
-        };
+        if (!trackingNumber || trackingNumber.trim() === '') {
+            return { success: false, error_type: 'INVALID_TRACKING', message: 'Tracking number is required.' };
+        }
+
+        if (!this.apiToken) {
+            return {
+                success: false,
+                error_type: 'API_UNAVAILABLE',
+                message: 'Delhivery credentials (DELHIVERY_API_TOKEN) are not configured.'
+            };
+        }
+
+        const targetUrl = this.trackUrlBase + encodeURIComponent(trackingNumber.trim());
+
+        console.log('[DelhiveryTrackingProvider] --- OUTGOING TRACKING REQUEST ---');
+        console.log('[DelhiveryTrackingProvider] HTTP Method: GET');
+        console.log('[DelhiveryTrackingProvider] URL:', targetUrl);
+        console.log('[DelhiveryTrackingProvider] Headers: { "Authorization": "Token <REDACTED>", "Content-Type": "application/json" }');
+
+        try {
+            const response = await fetch(targetUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Token ${this.apiToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const statusCode = response.status;
+            const responseText = await response.text();
+
+            console.log('[DelhiveryTrackingProvider] --- TRACKING RESPONSE ---');
+            console.log('[DelhiveryTrackingProvider] Status Code:', statusCode);
+            console.log('[DelhiveryTrackingProvider] Response Body Length:', responseText.length);
+            
+            // Log full raw JSON for mapping in dev/monitoring
+            if (statusCode === 200) {
+                console.log('[DelhiveryTrackingProvider] Raw JSON Payload:', responseText.slice(0, 1500) + (responseText.length > 1500 ? '...' : ''));
+            }
+
+            const debugInfo = { url: targetUrl, method: 'GET', status_code: statusCode, raw_json: responseText.slice(0, 5000) };
+
+            if (statusCode === 401 || statusCode === 403) {
+                return {
+                    success: false,
+                    error_type: 'API_UNAVAILABLE',
+                    message: 'Delhivery API token is unauthorized or expired.',
+                    debug_info: debugInfo
+                };
+            }
+
+            if (statusCode === 429) {
+                return {
+                    success: false,
+                    error_type: 'API_UNAVAILABLE',
+                    message: 'Delhivery API rate limit exceeded.',
+                    debug_info: debugInfo
+                };
+            }
+
+            let rawData;
+            try {
+                rawData = JSON.parse(responseText);
+            } catch (e) {
+                return { success: false, error_type: 'API_UNAVAILABLE', message: 'Invalid JSON response from Delhivery API.', debug_info: debugInfo };
+            }
+
+            if (!response.ok) {
+                return {
+                    success: false,
+                    error_type: statusCode === 404 ? 'INVALID_TRACKING' : 'API_UNAVAILABLE',
+                    message: `Delhivery API returned HTTP ${statusCode}`,
+                    debug_info: debugInfo
+                };
+            }
+
+            // Check if Delhivery explicitly returned an error embedded in a 200 OK
+            // e.g. {"Error": "Waybill not found"}
+            const strRaw = responseText.toLowerCase();
+            if (strRaw.includes('not found') || strRaw.includes('invalid') || (rawData.Error && !rawData.ShipmentData)) {
+                return {
+                    success: false,
+                    error_type: 'INVALID_TRACKING',
+                    message: rawData.Error || 'Tracking number not found in Delhivery system.',
+                    debug_info: debugInfo
+                };
+            }
+
+            // 1. DYNAMICALLY PARSE TIMELINE ARRAY
+            const eventsArray = this.findTrackingArray(rawData);
+
+            if (!eventsArray || eventsArray.length === 0) {
+                return {
+                    success: false,
+                    error_type: 'INVALID_TRACKING', // Possibly invalid if history is empty
+                    message: 'No tracking history or milestone events found for this shipment yet.',
+                    debug_info: debugInfo
+                };
+            }
+
+            // 2. EXTRACT EVENT FIELDS
+            const timeline = eventsArray.map((evtObj, idx) => {
+                const { customerUpdate, location, eventTimeStr, unixTimestamp } = this.extractEventDetails(evtObj);
+                return {
+                    customer_update: customerUpdate,
+                    location: location,
+                    time: eventTimeStr,
+                    raw_time: unixTimestamp,
+                    original_idx: idx
+                };
+            });
+
+            // 3. SORT CHRONOLOGICALLY (NEWEST FIRST)
+            timeline.sort((a, b) => {
+                if (b.raw_time === a.raw_time) {
+                    return b.original_idx - a.original_idx; // fallback to their returned array order
+                }
+                return b.raw_time - a.raw_time;
+            });
+
+            // 4. DETERMINE OVERALL STATUS
+            // Try to find a root "Status" or "Status.Status" field
+            let overallStatus = '';
+            const findRootStatus = (obj) => {
+                if (!obj || typeof obj !== 'object') return;
+                for (const [k, v] of Object.entries(obj)) {
+                    if (k.toLowerCase() === 'status' && typeof v === 'string') overallStatus = v;
+                    else if (k.toLowerCase() === 'status' && typeof v === 'object' && v.Status) overallStatus = v.Status;
+                    else if (typeof v === 'object') findRootStatus(v);
+                }
+            };
+            findRootStatus(rawData);
+
+            if (!overallStatus && timeline.length > 0) {
+                overallStatus = timeline[0].customer_update; // fallback to newest event
+            }
+
+            // Strip internal properties
+            const finalTimeline = timeline.map(({ raw_time, original_idx, ...rest }) => rest);
+
+            return {
+                success: true,
+                courier_name: 'Delhivery',
+                tracking_number: trackingNumber,
+                status: overallStatus || 'In Transit',
+                timeline: finalTimeline,
+                debug_info: debugInfo
+            };
+
+        } catch (error) {
+            console.error('[DelhiveryTrackingProvider] Network exception:', error);
+            return {
+                success: false,
+                error_type: 'API_UNAVAILABLE',
+                message: `Network exception during Delhivery tracking lookup: ${error.message || error}`,
+                debug_info: { url: targetUrl, method: 'GET', exception: String(error) }
+            };
+        }
     }
 }
 
