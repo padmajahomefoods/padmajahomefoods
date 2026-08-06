@@ -8,20 +8,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function initOrderDetails() {
-    console.log('initOrderDetails started');
-    const urlParams = new URLSearchParams(window.location.search);
-    const orderId = urlParams.get('orderId');
-    console.log('Parsed orderId:', orderId);
-
-    const skeleton = document.getElementById('order-details-skeleton');
-    const content_el = document.getElementById('order-details-content');
-
-    if (!orderId) {
-        showError('Invalid Order ID provided.');
-        return;
-    }
-
     try {
+        console.log('initOrderDetails started');
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('orderId');
+        console.log('orderId =', orderId);
+
+        const skeleton = document.getElementById('order-details-skeleton');
+        const content_el = document.getElementById('order-details-content');
+
+        if (!orderId) {
+            showError('Invalid Order ID provided.');
+            return;
+        }
+
         let client;
         if (typeof window.getSupabaseClient === 'function') {
             client = await window.getSupabaseClient();
@@ -34,17 +34,22 @@ async function initOrderDetails() {
             showError('System error. Please try again later.');
             return;
         }
+        console.log('Supabase initialized');
 
-        // Wait for session to be restored if not already
-        if (typeof Account !== 'undefined' && typeof Account.checkSession === 'function' && !Account._currentUser) {
-             console.log('Checking Account session...');
+        if (typeof Account !== 'undefined' && typeof Account.checkSession === 'function') {
              await Account.checkSession();
         }
         
-        let user;
+        let user = null;
+        let session = null;
         if (typeof Account !== 'undefined' && Account.getCurrentUser) {
             user = await Account.getCurrentUser();
         }
+        
+        // Also grab session to log
+        const { data: sessionData, error: sessionErr } = await client.auth.getSession();
+        session = sessionData?.session || null;
+        console.log('Current session =', session);
         
         if (!user) {
             console.error('User not logged in');
@@ -52,65 +57,70 @@ async function initOrderDetails() {
             return;
         }
 
-        console.log('Querying order for order_number:', orderId);
+        console.log('Fetching order...');
         
-        // Use CONFIG if available, else hardcode table names
         const ordersTable = (typeof CONFIG !== 'undefined' && CONFIG.TABLES && CONFIG.TABLES.ORDERS) ? CONFIG.TABLES.ORDERS : 'orders';
         const itemsTable = (typeof CONFIG !== 'undefined' && CONFIG.TABLES && CONFIG.TABLES.ORDER_ITEMS) ? CONFIG.TABLES.ORDER_ITEMS : 'order_items';
         
-        // 1. Fetch Order
-        const { data: order, error: orderErr } = await client
+        const { data, error } = await client
             .from(ordersTable)
             .select('*')
             .eq('order_number', orderId)
-            .eq('user_id', user.id)
             .single();
 
-        if (orderErr) {
-            console.error('Supabase query error (orders):', orderErr);
+        console.log('Query result =', data);
+        if (error) console.log('Supabase error =', error);
+
+        if (error) {
+            console.error('Supabase query error (orders):', error);
             showError('Order Not Found');
             return;
         }
 
-        if (!order) {
+        if (!data) {
             console.error('No order returned from query');
             showError('Order Not Found');
             return;
         }
 
-        // 2. Fetch Order Items (No foreign key assumption)
         const { data: items, error: itemsErr } = await client
             .from(itemsTable)
             .select('*')
-            .eq('order_id', order.id);
+            .eq('order_id', data.id);
             
         if (itemsErr) {
             console.warn('Error fetching order items:', itemsErr);
-            order.order_items = [];
+            data.order_items = [];
         } else {
-            order.order_items = items || [];
+            data.order_items = items || [];
         }
 
-        console.log('Order fetched successfully:', order);
-        renderOrderPage(order);
+        renderOrderPage(data);
         
         if (skeleton) skeleton.style.display = 'none';
         if (content_el) content_el.style.display = 'block';
 
     } catch (err) {
-        console.error('Error fetching order:', err);
-        showError('Unable to load order details at this time.');
+        console.error('FATAL ERROR in initOrderDetails:', err.stack || err);
+        showError('Unable to load order details. Check console for details.');
     }
 }
 function showError(msg) {
     const skeleton = document.getElementById('order-details-skeleton');
-    skeleton.innerHTML = `
-        <div style="text-align: center; padding: 60px 20px;">
-            <i class="fas fa-exclamation-circle fa-3x" style="color: var(--spice-red, #dc2626); margin-bottom: 20px;"></i>
-            <h3 style="font-family: var(--font-heading); color: var(--text-dark); margin-bottom: 10px;">${escapeHTML(msg)}</h3>
-            <a href="index.html?tab=orders" class="btn-primary" style="display: inline-block; margin-top: 20px;">Return to My Orders</a>
-        </div>
-    `;
+    if (skeleton) {
+        skeleton.style.display = 'block'; // Ensure visible
+        skeleton.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px;">
+                <i class="fas fa-exclamation-circle fa-3x" style="color: var(--spice-red, #dc2626); margin-bottom: 20px;"></i>
+                <h3 style="font-family: var(--font-heading); color: var(--text-dark); margin-bottom: 10px;">${escapeHTML(msg)}</h3>
+                <a href="index.html?tab=orders" class="btn-primary" style="display: inline-block; margin-top: 20px;">Return to My Orders</a>
+            </div>
+        `;
+    }
+    const content_el = document.getElementById('order-details-content');
+    if (content_el) {
+        content_el.style.display = 'none';
+    }
 }
 
 function escapeHTML(str) {
