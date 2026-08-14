@@ -1027,11 +1027,6 @@ async function savePaymentDetails() {
         payment_id: pId || null
     };
     
-    // Set payment_date if transitioning to paid and we didn't have a payment_date
-    if (pStatus === 'paid' && (currentOrder.payment_status || '').toLowerCase() !== 'paid' && !currentOrder.payment_date) {
-        updatePayload.payment_date = new Date().toISOString();
-    }
-    
     try {
         const { error } = await fetchAdminData(
             CONFIG.TABLES.ORDERS,
@@ -1050,9 +1045,6 @@ async function savePaymentDetails() {
         currentOrder.payment_method = updatePayload.payment_method;
         currentOrder.payment_status = updatePayload.payment_status;
         currentOrder.payment_id = updatePayload.payment_id;
-        if (updatePayload.payment_date) {
-            currentOrder.payment_date = updatePayload.payment_date;
-        }
         
         // Update display UI
         document.getElementById('detailPaymentMethod').textContent = updatePayload.payment_method;
