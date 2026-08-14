@@ -342,6 +342,35 @@
                                 </select>
                             </div>
                             
+                            <!-- Payment Details Section -->
+                            <div style="margin-top: 15px; border: 1px solid #E2E8F0; padding: 12px; border-radius: 6px; background: #F8FAFC; margin-bottom: 15px;">
+                                <h4 style="font-size: 0.95rem; margin-top: 0; margin-bottom: 12px; color: var(--text-dark);">Payment Details</h4>
+                                <div class="form-group">
+                                    <label>Payment Method</label>
+                                    <select id="paymentMethodSelect" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.9rem; font-family: inherit; color: var(--text-dark); background: white;">
+                                        <option value="Cash">Cash</option>
+                                        <option value="UPI / PhonePe">UPI / PhonePe</option>
+                                        <option value="Google Pay">Google Pay</option>
+                                        <option value="Bank Transfer">Bank Transfer</option>
+                                        <option value="Razorpay">Razorpay</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-top: 10px;">
+                                    <label>Payment Status</label>
+                                    <select id="paymentStatusSelect" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.9rem; font-family: inherit; color: var(--text-dark); background: white;">
+                                        <option value="pending">Pending</option>
+                                        <option value="paid">Paid</option>
+                                        <option value="failed">Failed</option>
+                                        <option value="refunded">Refunded</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-top: 10px;">
+                                    <label>Transaction ID (Optional)</label>
+                                    <input type="text" id="paymentIdInput" placeholder="UTR or Transaction Ref">
+                                </div>
+                            </div>
+                            
                             <div id="trackingFields" class="tracking-fields">
                                 <div class="form-group">
                                     <label>Courier Name</label>
@@ -771,6 +800,20 @@ function selectOrder(orderId, element) {
 
     // Forms
     document.getElementById('statusSelect').value = currentOrder.status || 'confirmed';
+    
+    // Payment Details
+    document.getElementById('paymentMethodSelect').value = currentOrder.payment_method || 'Cash';
+    
+    let paymentStatusVal = (currentOrder.payment_status || 'pending').toLowerCase();
+    // Default to 'paid' if missing but there is a Razorpay ID
+    if (!currentOrder.payment_status && currentOrder.payment_id && currentOrder.payment_id.startsWith('pay_')) {
+        paymentStatusVal = 'paid';
+    }
+    document.getElementById('paymentStatusSelect').value = paymentStatusVal;
+    
+    document.getElementById('paymentIdInput').value = currentOrder.payment_id || '';
+
+    // Courier Fields
     document.getElementById('courierName').value = currentOrder.courier_name || 'DTDC';
     document.getElementById('trackingNumber').value = currentOrder.tracking_number || '';
     
@@ -848,9 +891,21 @@ async function saveOrderStatus() {
     const courier = document.getElementById('courierName').value;
     const trackingNo = document.getElementById('trackingNumber').value;
     
+    const pMethod = document.getElementById('paymentMethodSelect').value;
+    const pStatus = document.getElementById('paymentStatusSelect').value;
+    const pId = document.getElementById('paymentIdInput').value;
+    
     const updatePayload = {
-        status: newStatus
+        status: newStatus,
+        payment_method: pMethod,
+        payment_status: pStatus,
+        payment_id: pId || null
     };
+    
+    // Set payment_date if transitioning to paid and we didn't have a payment_date
+    if (pStatus === 'paid' && (currentOrder.payment_status || '').toLowerCase() !== 'paid' && !currentOrder.payment_date) {
+        updatePayload.payment_date = new Date().toISOString();
+    }
     
     // Accounting / Test Fields
     updatePayload.is_test_order = document.getElementById('isTestOrder').checked;
@@ -922,7 +977,19 @@ async function saveOrderStatus() {
         currentOrder.gateway_charges = updatePayload.gateway_charges;
         currentOrder.accounting_notes = updatePayload.accounting_notes;
         
+        currentOrder.payment_method = updatePayload.payment_method;
+        currentOrder.payment_status = updatePayload.payment_status;
+        currentOrder.payment_id = updatePayload.payment_id;
+        if (updatePayload.payment_date) {
+            currentOrder.payment_date = updatePayload.payment_date;
+        }
+        
+        // Update modal UI text
         document.getElementById('detailStatus').textContent = newStatus.toUpperCase();
+        document.getElementById('detailPaymentMethod').textContent = updatePayload.payment_method;
+        document.getElementById('detailPaymentStatus').textContent = (updatePayload.payment_status.charAt(0).toUpperCase() + updatePayload.payment_status.slice(1)) || 'Pending';
+        document.getElementById('detailPaymentId').textContent = updatePayload.payment_id || 'N/A';
+        
         if (currentOrder.is_test_order) {
             document.getElementById('detailTestBadge').style.display = 'inline-block';
         } else {
