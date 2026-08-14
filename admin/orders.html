@@ -279,11 +279,51 @@
                                 <p><i class="fas fa-envelope"></i> <span id="detailEmail">Email</span></p>
                             </div>
                             <div class="detail-box">
-                                <h5>Payment & Delivery</h5>
-                                <p><strong>Payment Method:</strong> <span id="detailPaymentMethod">N/A</span></p>
-                                <p><strong>Payment Status:</strong> <span id="detailPaymentStatus">Success</span></p>
-                                <p><strong>Payment ID:</strong> <span id="detailPaymentId" style="font-family:monospace;font-size:0.85rem;">N/A</span></p>
-                                <p><strong>Address:</strong></p>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <h5>Payment & Delivery</h5>
+                                    <button onclick="togglePaymentEditor()" style="background: none; border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; color: var(--text-dark);">
+                                        <i class="fas fa-edit"></i> Edit Payment
+                                    </button>
+                                </div>
+                                <div id="paymentDisplaySection">
+                                    <p><strong>Payment Method:</strong> <span id="detailPaymentMethod">N/A</span></p>
+                                    <p><strong>Payment Status:</strong> <span id="detailPaymentStatus">Success</span></p>
+                                    <p><strong>Payment ID:</strong> <span id="detailPaymentId" style="font-family:monospace;font-size:0.85rem;">N/A</span></p>
+                                </div>
+                                
+                                <!-- Hidden Inline Editor -->
+                                <div id="paymentEditSection" style="display: none; margin-top: 10px; border: 1px solid #E2E8F0; padding: 12px; border-radius: 6px; background: #F8FAFC;">
+                                    <div class="form-group" style="margin-bottom: 8px;">
+                                        <label style="font-size: 0.8rem;">Payment Method</label>
+                                        <select id="paymentMethodSelect" style="width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem;">
+                                            <option value="Cash">Cash</option>
+                                            <option value="UPI / PhonePe">UPI / PhonePe</option>
+                                            <option value="Google Pay">Google Pay</option>
+                                            <option value="Bank Transfer">Bank Transfer</option>
+                                            <option value="Razorpay">Razorpay</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 8px;">
+                                        <label style="font-size: 0.8rem;">Payment Status</label>
+                                        <select id="paymentStatusSelect" style="width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem;">
+                                            <option value="pending">Pending</option>
+                                            <option value="paid">Paid</option>
+                                            <option value="failed">Failed</option>
+                                            <option value="refunded">Refunded</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 12px;">
+                                        <label style="font-size: 0.8rem;">Transaction ID (Optional)</label>
+                                        <input type="text" id="paymentIdInput" placeholder="UTR or Transaction Ref" style="padding: 6px; font-size: 0.85rem;">
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="btn btn-primary" style="flex: 1; padding: 6px; font-size: 0.85rem;" onclick="savePaymentDetails()">Save Payment</button>
+                                        <button style="flex: 1; padding: 6px; font-size: 0.85rem; background: #E2E8F0; border: none; border-radius: var(--radius); cursor: pointer;" onclick="togglePaymentEditor()">Cancel</button>
+                                    </div>
+                                </div>
+                                
+                                <p style="margin-top: 12px;"><strong>Address:</strong></p>
                                 <p style="font-size: 0.85rem;" id="detailAddress">Address Line</p>
                             </div>
                         </div>
@@ -342,35 +382,7 @@
                                 </select>
                             </div>
                             
-                            <!-- Payment Details Section -->
-                            <div style="margin-top: 15px; border: 1px solid #E2E8F0; padding: 12px; border-radius: 6px; background: #F8FAFC; margin-bottom: 15px;">
-                                <h4 style="font-size: 0.95rem; margin-top: 0; margin-bottom: 12px; color: var(--text-dark);">Payment Details</h4>
-                                <div class="form-group">
-                                    <label>Payment Method</label>
-                                    <select id="paymentMethodSelect" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.9rem; font-family: inherit; color: var(--text-dark); background: white;">
-                                        <option value="Cash">Cash</option>
-                                        <option value="UPI / PhonePe">UPI / PhonePe</option>
-                                        <option value="Google Pay">Google Pay</option>
-                                        <option value="Bank Transfer">Bank Transfer</option>
-                                        <option value="Razorpay">Razorpay</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="margin-top: 10px;">
-                                    <label>Payment Status</label>
-                                    <select id="paymentStatusSelect" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.9rem; font-family: inherit; color: var(--text-dark); background: white;">
-                                        <option value="pending">Pending</option>
-                                        <option value="paid">Paid</option>
-                                        <option value="failed">Failed</option>
-                                        <option value="refunded">Refunded</option>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="margin-top: 10px;">
-                                    <label>Transaction ID (Optional)</label>
-                                    <input type="text" id="paymentIdInput" placeholder="UTR or Transaction Ref">
-                                </div>
-                            </div>
-                            
+                            <!-- Payment Details Section removed to inline editor above -->
                             <div id="trackingFields" class="tracking-fields">
                                 <div class="form-group">
                                     <label>Courier Name</label>
@@ -812,6 +824,10 @@ function selectOrder(orderId, element) {
     document.getElementById('paymentStatusSelect').value = paymentStatusVal;
     
     document.getElementById('paymentIdInput').value = currentOrder.payment_id || '';
+    
+    // Ensure the inline editor is hidden and display section is visible
+    document.getElementById('paymentEditSection').style.display = 'none';
+    document.getElementById('paymentDisplaySection').style.display = 'block';
 
     // Courier Fields
     document.getElementById('courierName').value = currentOrder.courier_name || 'DTDC';
@@ -891,21 +907,9 @@ async function saveOrderStatus() {
     const courier = document.getElementById('courierName').value;
     const trackingNo = document.getElementById('trackingNumber').value;
     
-    const pMethod = document.getElementById('paymentMethodSelect').value;
-    const pStatus = document.getElementById('paymentStatusSelect').value;
-    const pId = document.getElementById('paymentIdInput').value;
-    
     const updatePayload = {
-        status: newStatus,
-        payment_method: pMethod,
-        payment_status: pStatus,
-        payment_id: pId || null
+        status: newStatus
     };
-    
-    // Set payment_date if transitioning to paid and we didn't have a payment_date
-    if (pStatus === 'paid' && (currentOrder.payment_status || '').toLowerCase() !== 'paid' && !currentOrder.payment_date) {
-        updatePayload.payment_date = new Date().toISOString();
-    }
     
     // Accounting / Test Fields
     updatePayload.is_test_order = document.getElementById('isTestOrder').checked;
@@ -977,18 +981,8 @@ async function saveOrderStatus() {
         currentOrder.gateway_charges = updatePayload.gateway_charges;
         currentOrder.accounting_notes = updatePayload.accounting_notes;
         
-        currentOrder.payment_method = updatePayload.payment_method;
-        currentOrder.payment_status = updatePayload.payment_status;
-        currentOrder.payment_id = updatePayload.payment_id;
-        if (updatePayload.payment_date) {
-            currentOrder.payment_date = updatePayload.payment_date;
-        }
-        
         // Update modal UI text
         document.getElementById('detailStatus').textContent = newStatus.toUpperCase();
-        document.getElementById('detailPaymentMethod').textContent = updatePayload.payment_method;
-        document.getElementById('detailPaymentStatus').textContent = (updatePayload.payment_status.charAt(0).toUpperCase() + updatePayload.payment_status.slice(1)) || 'Pending';
-        document.getElementById('detailPaymentId').textContent = updatePayload.payment_id || 'N/A';
         
         if (currentOrder.is_test_order) {
             document.getElementById('detailTestBadge').style.display = 'inline-block';
@@ -1001,6 +995,78 @@ async function saveOrderStatus() {
         
     } catch(err) {
         alert('Failed to update status: ' + err.message);
+    }
+}
+
+// ----------------------------------------------------------------------
+// Payment Editor Logic
+// ----------------------------------------------------------------------
+function togglePaymentEditor() {
+    const editSec = document.getElementById('paymentEditSection');
+    const dispSec = document.getElementById('paymentDisplaySection');
+    
+    if (editSec.style.display === 'none' || editSec.style.display === '') {
+        editSec.style.display = 'block';
+        dispSec.style.display = 'none';
+    } else {
+        editSec.style.display = 'none';
+        dispSec.style.display = 'block';
+    }
+}
+
+async function savePaymentDetails() {
+    if(!currentOrder) return;
+    
+    const pMethod = document.getElementById('paymentMethodSelect').value;
+    const pStatus = document.getElementById('paymentStatusSelect').value;
+    const pId = document.getElementById('paymentIdInput').value;
+    
+    const updatePayload = {
+        payment_method: pMethod,
+        payment_status: pStatus,
+        payment_id: pId || null
+    };
+    
+    // Set payment_date if transitioning to paid and we didn't have a payment_date
+    if (pStatus === 'paid' && (currentOrder.payment_status || '').toLowerCase() !== 'paid' && !currentOrder.payment_date) {
+        updatePayload.payment_date = new Date().toISOString();
+    }
+    
+    try {
+        const { error } = await fetchAdminData(
+            CONFIG.TABLES.ORDERS,
+            'update',
+            { 
+                match: { id: currentOrder.id },
+                payload: updatePayload
+            }
+        );
+            
+        if (error) throw error;
+        
+        showAdminToast('Payment details updated successfully.');
+        
+        // Update local state
+        currentOrder.payment_method = updatePayload.payment_method;
+        currentOrder.payment_status = updatePayload.payment_status;
+        currentOrder.payment_id = updatePayload.payment_id;
+        if (updatePayload.payment_date) {
+            currentOrder.payment_date = updatePayload.payment_date;
+        }
+        
+        // Update display UI
+        document.getElementById('detailPaymentMethod').textContent = updatePayload.payment_method;
+        document.getElementById('detailPaymentStatus').textContent = (updatePayload.payment_status.charAt(0).toUpperCase() + updatePayload.payment_status.slice(1)) || 'Pending';
+        document.getElementById('detailPaymentId').textContent = updatePayload.payment_id || 'N/A';
+        
+        // Refresh orders list to reflect payment change in analytics/tables if needed
+        filterOrders();
+        
+        // Close editor
+        togglePaymentEditor();
+        
+    } catch(err) {
+        alert('Failed to update payment details: ' + err.message);
     }
 }
 
