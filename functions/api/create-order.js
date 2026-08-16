@@ -115,13 +115,16 @@ export async function onRequestPost(context) {
 
         const orderPayload = {
             order_number: orderNumber,
-            user_id: user_id || null,
             total_amount: amount,
             delivery_address: addressObj || null,
             status: 'pending',
             razorpay_order_id: rzpOrder.id,
             notes: orderNotes
         };
+        
+        if (user_id) {
+            orderPayload.user_id = user_id;
+        }
 
         const orderRes = await fetch(`${supabaseUrl}/rest/v1/orders`, {
             method: 'POST',
