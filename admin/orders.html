@@ -687,7 +687,7 @@ function selectOrder(orderId, element) {
         if (!address) return 'N/A';
         let obj;
         if (typeof address === 'string') {
-            if (address.trim().startsWith('{')) {
+            if (address.trim().startsWith('{') || address.trim().startsWith('[')) {
                 try { obj = JSON.parse(address); } catch(e) { return address; }
             } else {
                 return address;
@@ -695,7 +695,16 @@ function selectOrder(orderId, element) {
         } else {
             obj = address;
         }
-        
+
+        if (typeof obj === 'string') return obj;
+
+        if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+            if (obj.full_address) return obj.full_address;
+            if (obj.address) return obj.address;
+            if (obj.delivery_address) return obj.delivery_address;
+            if (obj.deliveryAddress) return obj.deliveryAddress;
+        }
+
         const lines = [];
         if (obj.full_name) lines.push(obj.full_name);
         if (obj.phone) lines.push(obj.phone);
@@ -703,17 +712,27 @@ function selectOrder(orderId, element) {
         if (obj.address_line1) lines.push(obj.address_line1);
         if (obj.address_line2) lines.push(obj.address_line2);
         
+        // Handle nested full_address just in case
+        if (obj.address && typeof obj.address === 'object' && obj.address.full_address) {
+             lines.push(obj.address.full_address);
+        }
+
         const csp = [];
         if (obj.city) csp.push(obj.city);
         if (obj.state) csp.push(obj.state);
         let cspStr = csp.join(', ');
         if (obj.pincode) cspStr += (cspStr ? ' - ' : '') + obj.pincode;
         if (cspStr) lines.push(cspStr);
-        
+
         if (lines.length === 0) {
-            return obj.full_address || JSON.stringify(obj);
+            // Extract the first string value we can find if it's an unknown object schema
+            if (obj && typeof obj === 'object') {
+                const values = Object.values(obj).filter(v => typeof v === 'string' && v.trim() !== '');
+                if (values.length > 0) return values.join(', ');
+            }
+            return JSON.stringify(obj);
         }
-        
+
         return lines.join('<br>');
     }
 
