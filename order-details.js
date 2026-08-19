@@ -593,6 +593,8 @@ async function handleBuyAgain(orderNumber) {
 
     let addedCount = 0;
     let missingCount = 0;
+    let outOfStockCount = 0;
+    let skippedNames = [];
 
     for (const item of order.order_items) {
         let product = null;
@@ -606,6 +608,13 @@ async function handleBuyAgain(orderNumber) {
         
         if (!product) {
             missingCount++;
+            skippedNames.push(item.product_name || 'An item');
+            continue;
+        }
+
+        if (product.available === false) {
+            outOfStockCount++;
+            skippedNames.push(product.name);
             continue;
         }
 
@@ -640,8 +649,10 @@ async function handleBuyAgain(orderNumber) {
     }
 
     if (addedCount > 0) {
-        if (missingCount > 0 && typeof showToast === 'function') {
-            showToast('Added ' + addedCount + ' items to cart. ' + missingCount + ' item(s) are no longer available.', 'info');
+        const totalUnavailable = missingCount + outOfStockCount;
+        if (totalUnavailable > 0 && typeof showToast === 'function') {
+            const namesText = skippedNames.slice(0, 2).join(', ') + (skippedNames.length > 2 ? ' etc.' : '');
+            showToast(`Added ${addedCount} item(s). ${namesText} is currently out of stock or unavailable.`, 'warning');
         } else if (typeof showToast === 'function') {
             showToast('Items added to cart successfully!', 'success');
         }
@@ -653,7 +664,7 @@ async function handleBuyAgain(orderNumber) {
         }
     } else {
         if (typeof showToast === 'function') {
-            showToast('The products in this order are no longer available.', 'error');
+            showToast('All products from this order are currently unavailable or out of stock.', 'error');
         }
     }
 }
