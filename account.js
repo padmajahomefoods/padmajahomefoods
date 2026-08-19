@@ -166,6 +166,12 @@ const Account = {
             return { success: false, message: error.message };
         }
 
+        // Detect if email already exists when enumeration protection is enabled
+        // Supabase returns a fake user with an empty identities array in this case
+        if (data && data.user && data.user.identities && data.user.identities.length === 0) {
+            return { success: false, message: 'This email is already registered. Please log in.' };
+        }
+
         // FIX: Always try to upsert profile immediately after signUp.
         // If email confirmation is required, the user won't have a session yet,
         // so we use the service role key approach OR we rely on a database trigger.
