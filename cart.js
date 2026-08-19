@@ -36,6 +36,9 @@ const CartService = {
             console.log('[CartService.init] User is guest, using local cart only');
         }
 
+        // Validate availability of all loaded items
+        await this.validateCartAvailability();
+
         this._notifyUpdate();
         console.log('[CartService.init] Initialization complete. Total items:', this.getTotalItems());
     },
@@ -354,6 +357,18 @@ const CartService = {
 
     async addItem(item) {
         console.log('[CartService.addItem] Adding:', item.name, item.weight, 'qty:', item.quantity);
+        
+        if (typeof DB !== 'undefined' && typeof DB.getProducts === 'function') {
+            const products = await DB.getProducts();
+            const product = products.find(p => p.id === item.product_id || p.name === item.name);
+            if (!product || product.available === false) {
+                if (typeof showToast === 'function') {
+                    showToast(`${item.name} is currently out of stock and cannot be added.`, 'error');
+                }
+                return; // Abort adding to cart
+            }
+        }
+
         if (typeof fbq === 'function') {
             fbq('track', 'AddToCart', {
                 content_name: item.name,
@@ -381,6 +396,23 @@ const CartService = {
 
     async updateQuantity(indexOrId, change) {
         console.log('[CartService.updateQuantity] Changing qty for:', indexOrId, 'by:', change);
+        
+        if (change > 0 && typeof DB !== 'undefined' && typeof DB.getProducts === 'function') {
+            const items = this.getItems();
+            const item = items[indexOrId];
+            if (item) {
+                const products = await DB.getProducts();
+                const product = products.find(p => p.id === item.product_id || p.name === item.name);
+                if (!product || product.available === false) {
+                    if (typeof showToast === 'function') {
+                        showToast(`${item.name} is currently out of stock.`, 'warning');
+                    }
+                    await this.validateCartAvailability();
+                    return;
+                }
+            }
+        }
+
         if (this._isLoggedIn()) {
             await this._updateSupabaseQty(indexOrId, change);
         } else {
@@ -649,6 +681,44 @@ const CartService = {
                 totalPrice: this.getTotalPrice()
             }
         }));
+    },
+
+    async validateCartAvailability() {
+        if (typeof DB === 'undefined' || typeof DB.getProducts !== 'function') return false;
+        const products = await DB.getProducts();
+        if (!products || products.length === 0) return false;
+
+        let hasChanges = false;
+        let removedItems = [];
+        
+        const items = this.getItems();
+        // Iterate backwards to safely remove items by index
+        for (let i = items.length - 1; i >= 0; i--) {
+            const item = items[i];
+            // Try to find the exact product record
+            const product = products.find(p => p.id === item.product_id);
+            
+            if (!product || product.available === false) {
+                removedItems.push(item.name || 'An item');
+                // Remove without notifying UI immediately, we will do it at the end
+                if (this._isLoggedIn()) {
+                    await this._removeFromSupabase(i);
+                } else {
+                    this._localCart.splice(i, 1);
+                    this._saveLocalCart();
+                }
+                hasChanges = true;
+            }
+        }
+        
+        if (hasChanges) {
+            this._notifyUpdate();
+            if (typeof showToast === 'function') {
+                const namesText = removedItems.slice(0, 2).join(', ') + (removedItems.length > 2 ? ' etc.' : '');
+                showToast(`${namesText} is currently out of stock and was removed from your cart.`, 'error');
+            }
+        }
+        return hasChanges;
     }
 };
 

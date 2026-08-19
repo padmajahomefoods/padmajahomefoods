@@ -205,7 +205,20 @@ function proceedToCheckoutSingleItem() {
     }
 }
 
-function goToCheckout() {
+async function goToCheckout() {
+    if (typeof CartService !== 'undefined' && typeof CartService.validateCartAvailability === 'function') {
+        const hadRemovedItems = await CartService.validateCartAvailability();
+        if (hadRemovedItems) {
+            // Cart was modified to remove out of stock items. Stop navigation so user can review.
+            return;
+        }
+    }
+    
+    if (typeof CartService !== 'undefined' && typeof CartService.isEmpty === 'function' && CartService.isEmpty()) {
+        if (typeof showToast === 'function') showToast('Your cart is empty! Add some items first.', 'error');
+        return;
+    }
+    
     window.location.assign('checkout.html');
 }
 
