@@ -152,19 +152,36 @@ function renderOrderPage(order) {
     const content = document.getElementById('order-details-content');
     
     // Top Section
-    const statusClass = 'status-' + order.status;
-    const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
+    let activeStatus = order.status;
+    let statusClass = 'status-' + activeStatus;
+    let statusText = activeStatus.charAt(0).toUpperCase() + activeStatus.slice(1);
+    
+    if (order.payment_status === 'failed' || order.payment_status === 'cancelled') {
+        activeStatus = order.payment_status;
+        statusClass = 'status-cancelled';
+        statusText = 'Payment ' + (activeStatus.charAt(0).toUpperCase() + activeStatus.slice(1));
+    } else if (order.status === 'payment_failed') {
+        statusClass = 'status-cancelled';
+        statusText = 'Payment Failed';
+    }
+
     const date = new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
     let headerHtml = `
-        <div class="od-header">
-            <div class="od-header-left">
+        <div class="od-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div class="od-header-left" style="display: flex; align-items: center; gap: 10px;">
                 <a href="index.html?tab=orders" class="btn-back" title="Back to Orders"><i class="fas fa-arrow-left"></i></a>
-                <h1 class="od-title">Order Details</h1>
+                <h1 class="od-title" style="margin: 0;">Order Details</h1>
+                <span class="order-status ${statusClass}" style="margin-left: 10px;">${statusText}</span>
             </div>
-            <span class="order-status ${statusClass}">${statusText}</span>
+            <button class="btn-primary" id="btn-buy-again" style="padding: 8px 16px; font-size: 0.9rem;" onclick="handleBuyAgain('${order.order_number}')">
+                <i class="fas fa-redo" style="margin-right: 6px;"></i> Buy Again
+            </button>
         </div>
     `;
+
+    // Attach order data to window so handleBuyAgain can access it
+    window._currentOrderData = order;
 
     // Extract financials
     let sub = order.subtotal || order.total_amount;
@@ -230,6 +247,10 @@ function renderOrderPage(order) {
 // ─────────────────────────────────────────────────────────────
 function getShipmentStage(order) {
     const s = (order.status || '').toLowerCase();
+    const p = (order.payment_status || '').toLowerCase();
+    
+    if (p === 'failed' || p === 'cancelled' || s === 'payment_failed' || s === 'cancelled') return -1;
+    
     // Delivered
     if (s === 'delivered') return 3;
     // Out for delivery  — check tracking_number text or status
@@ -242,6 +263,17 @@ function getShipmentStage(order) {
 
 function renderShipmentProgress(order) {
     const stage = getShipmentStage(order);
+    
+    if (stage === -1) {
+        let msg = 'Payment Failed';
+        if (order.status === 'cancelled' || (order.payment_status || '').toLowerCase() === 'cancelled') msg = 'Order Cancelled';
+        return `
+            <div class="od-card od-progress-card" style="border: 1px solid #FECACA; background: #FEF2F2;">
+                <h3 class="od-card-title" style="margin-bottom:10px; color: #DC2626;"><i class="fas fa-times-circle" style="margin-right: 8px;"></i>${msg}</h3>
+                <p style="color: #991B1B; font-size: 0.95rem; margin: 0;">This order will not be fulfilled. If you'd like to try again, you can use the Buy Again button above.</p>
+            </div>
+        `;
+    }
 
     const stages = [
         { label: 'Preparing',        icon: 'fa-box-open' },
@@ -370,12 +402,16 @@ function renderCourier(order) {
 }
 function renderSummary(order, date, sub, del, disc) {
     const paymentMethod = (order.payment_method || 'Online').toUpperCase();
+    let paymentStatus = (order.payment_status || 'Pending');
+    paymentStatus = paymentStatus.charAt(0).toUpperCase() + paymentStatus.slice(1);
+    
     return `
         <div class="od-card">
             <h3 class="od-card-title">Order Summary</h3>
             <div class="od-summary-row"><span>Order ID</span> <strong>${order.order_number}</strong></div>
             <div class="od-summary-row"><span>Order Date</span> <strong>${date}</strong></div>
-            <div class="od-summary-row"><span>Payment</span> <strong>${paymentMethod}</strong></div>
+            <div class="od-summary-row"><span>Payment Method</span> <strong>${paymentMethod}</strong></div>
+            <div class="od-summary-row"><span>Payment Status</span> <strong style="color: ${paymentStatus.toLowerCase() === 'failed' || paymentStatus.toLowerCase() === 'cancelled' ? '#DC2626' : (paymentStatus.toLowerCase() === 'paid' || paymentStatus.toLowerCase() === 'successful' ? '#10B981' : 'inherit')}">${paymentStatus}</strong></div>
             
             <hr class="od-divider">
             
@@ -534,6 +570,90 @@ async function fetchShipmentTracking(orderNumber, courierName, trackingNumber, b
         // Scroll to timeline on mobile if needed
         if (window.innerWidth < 768) {
             container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+}
+
+
+// ============================================
+// BUY AGAIN LOGIC
+// ============================================
+async function handleBuyAgain(orderNumber) {
+    const order = window._currentOrderData;
+    if (!order || !order.order_items || order.order_items.length === 0) {
+        if (typeof showToast === 'function') showToast('No items found in this order.', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('btn-buy-again');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 6px;"></i> Adding...';
+    }
+
+    let addedCount = 0;
+    let missingCount = 0;
+
+    for (const item of order.order_items) {
+        let product = null;
+        if (item.product_id && typeof DB !== 'undefined' && typeof DB.getProductById === 'function') {
+            try {
+                product = await DB.getProductById(item.product_id);
+            } catch (e) {
+                console.warn('Product fetch failed', e);
+            }
+        }
+        
+        if (!product) {
+            missingCount++;
+            continue;
+        }
+
+        let currentPrice = product.price; 
+        if (item.weight && product.variants && product.variants.length > 0) {
+            const variant = product.variants.find(v => v.weight === item.weight);
+            if (variant) {
+                currentPrice = variant.price;
+            }
+        } else if (item.price) {
+            currentPrice = item.price; 
+        }
+
+        const cartItem = {
+            product_id: product.id,
+            name: product.name,
+            weight: item.weight || '',
+            price: currentPrice,
+            quantity: item.quantity || 1,
+            image: product.image
+        };
+
+        if (typeof CartService !== 'undefined') {
+            await CartService.addItem(cartItem);
+            addedCount++;
+        }
+    }
+
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-redo" style="margin-right: 6px;"></i> Buy Again';
+    }
+
+    if (addedCount > 0) {
+        if (missingCount > 0 && typeof showToast === 'function') {
+            showToast('Added ' + addedCount + ' items to cart. ' + missingCount + ' item(s) are no longer available.', 'info');
+        } else if (typeof showToast === 'function') {
+            showToast('Items added to cart successfully!', 'success');
+        }
+        
+        if (typeof CartService !== 'undefined' && typeof CartService.toggleCart === 'function') {
+            CartService.toggleCart();
+        } else {
+            window.location.href = 'checkout.html';
+        }
+    } else {
+        if (typeof showToast === 'function') {
+            showToast('The products in this order are no longer available.', 'error');
         }
     }
 }
