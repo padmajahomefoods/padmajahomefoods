@@ -59,6 +59,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function preloadCustomerData() {
     if (typeof Account !== 'undefined' && Account.isLoggedIn()) {
         try {
+            const guestSection = document.getElementById('guestAccountCreationSection');
+            if (guestSection) guestSection.style.display = 'none';
+
             const user = await Account.getCurrentUser();
             const profile = await Account.getProfile();
             const addresses = await Account.getAddresses();
@@ -283,9 +286,53 @@ async function handleCheckoutSubmit(e) {
 
     // Determine user_id for the order (null for guests)
     let userId = null;
+    let createdNewAccount = false;
+    
     if (typeof Account !== 'undefined' && Account.isLoggedIn()) {
         const user = await Account.getCurrentUser();
         if (user) userId = user.id;
+    } else {
+        // Optional Account Creation for Guests
+        const createAccountCheckbox = document.getElementById('createAccountCheckbox');
+        if (createAccountCheckbox && createAccountCheckbox.checked) {
+            const password = document.getElementById('checkoutPassword').value;
+            const confirmPassword = document.getElementById('checkoutConfirmPassword').value;
+            const errorDiv = document.getElementById('checkoutSignupError');
+            
+            if (password !== confirmPassword) {
+                errorDiv.innerHTML = 'Passwords do not match.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            if (password.length < 6) {
+                errorDiv.innerHTML = 'Password must be at least 6 characters.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            errorDiv.style.display = 'none';
+            payButton.disabled = true;
+            payBtnText.textContent = 'Creating Account...';
+            
+            const signUpRes = await Account.signUp(customerEmail, password, customerName, customerPhone);
+            if (!signUpRes.success) {
+                payButton.disabled = false;
+                payBtnText.textContent = 'Pay Now';
+                
+                if (signUpRes.message.includes('already registered')) {
+                    errorDiv.innerHTML = 'This email is already registered. Please <a href="#" onclick="document.getElementById(\'loginModal\').style.display=\'flex\'; return false;" style="color: #C53030; text-decoration: underline;">Log In</a>.';
+                } else {
+                    errorDiv.innerHTML = signUpRes.message;
+                }
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            if (signUpRes.userId) {
+                userId = signUpRes.userId;
+            }
+            createdNewAccount = true;
+        }
     }
 
     // Idempotency: Reuse pending order if cart hasn't changed
@@ -415,9 +462,11 @@ async function handleCheckoutSubmit(e) {
                     }
 
                     // Redirect to success page
-                    window.location.assign(
-                        `order-success.html?order=${encodeURIComponent(verifyData.order_number)}&payment=${encodeURIComponent(response.razorpay_payment_id)}`
-                    );
+                    let successUrl = `order-success.html?order=${encodeURIComponent(verifyData.order_number)}&payment=${encodeURIComponent(response.razorpay_payment_id)}`;
+                    if (createdNewAccount) {
+                        successUrl += '&account_created=true';
+                    }
+                    window.location.assign(successUrl);
                 } else {
                     showCheckoutError('Payment was received but verification failed. Please contact support. Ref: ' + response.razorpay_payment_id);
                     payButton.disabled = false;
@@ -494,3 +543,11 @@ function parseWeight(wStr) {
     }
     return parseFloat(s);
 }
+
+window.toggleAccountFields = function() {
+    const checkbox = document.getElementById('createAccountCheckbox');
+    const fields = document.getElementById('accountPasswordFields');
+    if (checkbox && fields) {
+        fields.style.display = checkbox.checked ? 'block' : 'none';
+    }
+};

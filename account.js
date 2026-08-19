@@ -195,10 +195,10 @@ const Account = {
             this._currentUser = data.user;
             localStorage.setItem(CONFIG.CUSTOMER_SESSION_KEY, 'active');
             this._updateAuthUI();
-            return { success: true, message: 'Account created successfully!' };
+            return { success: true, message: 'Account created successfully!', userId: data.user.id };
         }
 
-        return { success: true, message: 'Please check your email to confirm your account.' };
+        return { success: true, message: 'Please check your email to confirm your account.', userId: data.user?.id };
     },
 
     // --- LOG IN ---
