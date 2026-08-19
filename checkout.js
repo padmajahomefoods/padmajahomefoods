@@ -320,7 +320,7 @@ async function handleCheckoutSubmit(e) {
                 payBtnText.textContent = 'Pay Now';
                 
                 if (signUpRes.message.includes('already registered')) {
-                    errorDiv.innerHTML = 'This email is already registered. Please <a href="#" onclick="document.getElementById(\'loginModal\').style.display=\'flex\'; return false;" style="color: #C53030; text-decoration: underline;">Log In</a>.';
+                    errorDiv.innerHTML = 'This email is already registered. Please <a href="#" onclick="if(typeof openAuthModal === \'function\') openAuthModal(); return false;" style="color: #C53030; text-decoration: underline;">Log In</a>.';
                 } else {
                     errorDiv.innerHTML = signUpRes.message;
                 }
@@ -551,3 +551,25 @@ window.toggleAccountFields = function() {
         fields.style.display = checkbox.checked ? 'block' : 'none';
     }
 };
+
+// Handle post-login state on checkout page
+window.addEventListener('userLoggedIn', () => {
+    const accountSection = document.getElementById('guestAccountCreationSection');
+    if (accountSection) {
+        accountSection.style.display = 'none';
+    }
+    const createAccountCheckbox = document.getElementById('createAccountCheckbox');
+    if (createAccountCheckbox) {
+        createAccountCheckbox.checked = false;
+    }
+    const errorDiv = document.getElementById('checkoutSignupError');
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
+    }
+    const payBtn = document.getElementById('checkoutPayBtn');
+    if (payBtn) {
+        payBtn.disabled = false;
+        const btnText = document.getElementById('checkoutPayBtnText');
+        if (btnText) btnText.textContent = 'Pay Now';
+    }
+});
