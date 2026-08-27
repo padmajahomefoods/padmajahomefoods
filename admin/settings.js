@@ -203,3 +203,198 @@ function showToast(msg, type = 'info') {
     c.appendChild(t);
     setTimeout(() => t.remove(), 3000);
 }
+
+// ============================================
+// TAB LOGIC
+// ============================================
+function switchSettingsTab(tabName) {
+    document.querySelectorAll('.admin-tab').forEach(t => {
+        t.classList.remove('active');
+        t.style.borderBottom = 'none';
+        t.style.color = 'var(--text-gray)';
+        t.style.fontWeight = '500';
+    });
+    
+    document.querySelectorAll('.settings-card').forEach(c => c.style.display = 'none');
+    
+    const activeTab = document.getElementById('tabBtn-' + tabName);
+    if(activeTab) {
+        activeTab.classList.add('active');
+        activeTab.style.borderBottom = '3px solid var(--primary)';
+        activeTab.style.color = 'var(--primary)';
+        activeTab.style.fontWeight = '600';
+    }
+    
+    const activeContent = document.getElementById('tabContent-' + tabName);
+    if(activeContent) activeContent.style.display = 'block';
+    
+    if(tabName === 'coupons') {
+        loadCoupons();
+    }
+}
+
+// ============================================
+// COUPONS LOGIC
+// ============================================
+let _allCoupons = [];
+
+async function loadCoupons() {
+    const tbody = document.getElementById('couponsTableBody');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-gray);">Loading coupons...</td></tr>';
+    
+    try {
+        const client = await SupabaseAdapter._getClient();
+        const { data, error } = await client.from('coupons').select('*').order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        _allCoupons = data || [];
+        renderCouponsTable();
+    } catch(err) {
+        console.error('Failed to load coupons:', err);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--spice-red);">Failed to load coupons</td></tr>';
+    }
+}
+
+function renderCouponsTable() {
+    const tbody = document.getElementById('couponsTableBody');
+    
+    if (_allCoupons.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-gray);">No coupons found. Create one above.</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    _allCoupons.forEach(c => {
+        const discountStr = c.discount_type === 'percentage' ? c.discount_value + '%' : '₹' + c.discount_value;
+        const statusBadge = c.is_active ? 
+            '<span style="background:#dcfce7; color:#166534; padding:4px 8px; border-radius:12px; font-size:0.8rem; font-weight:600;">Active</span>' : 
+            '<span style="background:#fee2e2; color:#991b1b; padding:4px 8px; border-radius:12px; font-size:0.8rem; font-weight:600;">Disabled</span>';
+            
+        let usageStr = c.used_count;
+        if(c.usage_limit) usageStr += ' / ' + c.usage_limit;
+        
+        let expiryStr = '-';
+        if(c.expiry_date) {
+            expiryStr = new Date(c.expiry_date).toLocaleDateString();
+        }
+        
+        html += `
+            <tr style="border-bottom: 1px solid var(--border);">
+                <td style="padding: 12px; font-weight: 600; color: var(--deep-brown);">${c.code}</td>
+                <td style="padding: 12px;">${discountStr}</td>
+                <td style="padding: 12px;">${statusBadge}</td>
+                <td style="padding: 12px;">${usageStr}</td>
+                <td style="padding: 12px;">${expiryStr}</td>
+                <td style="padding: 12px;">
+                    <button onclick="editCoupon('${c.id}')" style="background:none; border:none; color:var(--primary); cursor:pointer; margin-right:10px;"><i class="fas fa-edit"></i></button>
+                    <button onclick="deleteCoupon('${c.id}')" style="background:none; border:none; color:var(--text-gray); cursor:pointer;"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+function openCouponModal() {
+    document.getElementById('couponForm').reset();
+    document.getElementById('couponId').value = '';
+    document.getElementById('couponModalTitle').textContent = 'Create Coupon';
+    document.getElementById('couponModalOverlay').style.display = 'flex';
+}
+
+function closeCouponModal() {
+    document.getElementById('couponModalOverlay').style.display = 'none';
+}
+
+function editCoupon(id) {
+    const c = _allCoupons.find(x => x.id === id);
+    if(!c) return;
+    
+    document.getElementById('couponId').value = c.id;
+    document.getElementById('couponCode').value = c.code;
+    document.getElementById('couponIsActive').value = c.is_active.toString();
+    document.getElementById('couponDiscountType').value = c.discount_type;
+    document.getElementById('couponDiscountValue').value = c.discount_value;
+    document.getElementById('couponMinOrder').value = c.minimum_order_value || 0;
+    document.getElementById('couponMaxDiscount').value = c.maximum_discount || '';
+    document.getElementById('couponUsageLimit').value = c.usage_limit || '';
+    document.getElementById('couponUsagePerCustomer').value = c.usage_per_customer;
+    document.getElementById('couponCustomerEligibility').value = c.customer_eligibility;
+    
+    if(c.expiry_date) {
+        const d = new Date(c.expiry_date);
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        document.getElementById('couponExpiryDate').value = d.toISOString().slice(0,16);
+    } else {
+        document.getElementById('couponExpiryDate').value = '';
+    }
+    
+    document.getElementById('couponModalTitle').textContent = 'Edit Coupon';
+    document.getElementById('couponModalOverlay').style.display = 'flex';
+}
+
+async function handleSaveCoupon(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('saveCouponBtn');
+    btn.disabled = true;
+    btn.innerHTML = 'Saving...';
+    
+    const id = document.getElementById('couponId').value;
+    
+    const payload = {
+        code: document.getElementById('couponCode').value.trim().toUpperCase(),
+        is_active: document.getElementById('couponIsActive').value === 'true',
+        discount_type: document.getElementById('couponDiscountType').value,
+        discount_value: Number(document.getElementById('couponDiscountValue').value),
+        minimum_order_value: Number(document.getElementById('couponMinOrder').value || 0),
+        maximum_discount: document.getElementById('couponMaxDiscount').value ? Number(document.getElementById('couponMaxDiscount').value) : null,
+        usage_limit: document.getElementById('couponUsageLimit').value ? Number(document.getElementById('couponUsageLimit').value) : null,
+        usage_per_customer: document.getElementById('couponUsagePerCustomer').value,
+        customer_eligibility: document.getElementById('couponCustomerEligibility').value
+    };
+    
+    const exp = document.getElementById('couponExpiryDate').value;
+    if(exp) payload.expiry_date = new Date(exp).toISOString();
+    else payload.expiry_date = null;
+    
+    try {
+        const client = await SupabaseAdapter._getClient();
+        if(id) {
+            const { error } = await client.from('coupons').update(payload).eq('id', id);
+            if(error) throw error;
+            showToast('Coupon updated', 'success');
+        } else {
+            const { error } = await client.from('coupons').insert([payload]);
+            if(error) throw error;
+            showToast('Coupon created', 'success');
+        }
+        
+        closeCouponModal();
+        loadCoupons();
+    } catch(err) {
+        console.error('Save coupon error:', err);
+        showToast('Failed to save: ' + (err.message || 'Unknown error'), 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Save Coupon';
+    }
+}
+
+async function deleteCoupon(id) {
+    if(!confirm('Are you sure you want to delete this coupon?')) return;
+    
+    try {
+        const client = await SupabaseAdapter._getClient();
+        const { error } = await client.from('coupons').delete().eq('id', id);
+        if(error) throw error;
+        
+        showToast('Coupon deleted', 'success');
+        loadCoupons();
+    } catch(err) {
+        console.error('Delete coupon error:', err);
+        showToast('Failed to delete coupon', 'error');
+    }
+}

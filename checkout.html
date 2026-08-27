@@ -155,6 +155,24 @@ src="https://www.facebook.com/tr?id=1773052140362850&ev=PageView&noscript=1"
                         <div style="text-align: center; color: var(--gray-500); padding: 20px 0;">Loading items...</div>
                     </div>
 
+                    <!-- COUPON SECTION -->
+                    <div id="couponSection" style="margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--gray-200);">
+                        <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: var(--text-dark);">Have a coupon?</h4>
+                        <div id="couponInputGroup" style="display: flex; gap: 10px;">
+                            <input type="text" id="couponCodeInput" placeholder="Enter code" style="flex: 1; padding: 10px; border: 1px solid var(--gray-300); border-radius: 4px; text-transform: uppercase;" onkeyup="this.value = this.value.toUpperCase();">
+                            <button id="btnApplyCoupon" class="btn-primary" style="padding: 10px 20px; border-radius: 4px;" onclick="applyCoupon()">Apply</button>
+                        </div>
+                        <div id="couponMessage" style="margin-top: 10px; font-size: 0.85rem; display: none;"></div>
+                        
+                        <div id="appliedCouponContainer" style="display: none; margin-top: 10px; padding: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="color: #166534; font-weight: 600;"><i class="fas fa-check-circle"></i> <span id="displayCouponCode"></span></span>
+                                <div style="color: #15803d; font-size: 0.85rem;" id="displayCouponAmount"></div>
+                            </div>
+                            <button onclick="removeCoupon()" style="background: none; border: none; color: #dc2626; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; gap: 4px;"><i class="fas fa-times"></i> Remove</button>
+                        </div>
+                    </div>
+
                     <div class="checkout-totals" style="border-top: 1px dashed var(--gray-300); padding-top: 20px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.95rem; color: var(--text-dark);">
                             <span>Subtotal</span>
@@ -167,6 +185,10 @@ src="https://www.facebook.com/tr?id=1773052140362850&ev=PageView&noscript=1"
                         <div id="checkoutDiscountRow" style="display: none; justify-content: space-between; margin-bottom: 15px; font-size: 0.95rem; color: #48BB78; font-weight: 500;">
                             <span>Delivery Discount (Free Delivery)</span>
                             <span id="checkoutDeliveryDiscount">-₹0</span>
+                        </div>
+                        <div id="checkoutCouponDiscountRow" style="display: none; justify-content: space-between; margin-bottom: 15px; font-size: 0.95rem; color: #166534; font-weight: 600;">
+                            <span>Coupon Discount</span>
+                            <span id="checkoutCouponDiscountValue">-₹0</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--gray-200); font-weight: 700; font-size: 1.2rem; color: var(--spice-red);">
                             <span>Grand Total</span>

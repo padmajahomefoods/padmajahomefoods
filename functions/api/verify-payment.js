@@ -77,6 +77,34 @@ export async function onRequestPost(context) {
 
         const confirmedOrder = updatedOrders[0];
 
+        // 3.5 Consume Coupon Atomically
+        if (confirmedOrder.coupon_code && confirmedOrder.user_id) {
+            try {
+                const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/consume_coupon`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': supabaseKey,
+                        'Authorization': `Bearer ${supabaseKey}`
+                    },
+                    body: JSON.stringify({
+                        p_coupon_code: confirmedOrder.coupon_code,
+                        p_user_id: confirmedOrder.user_id,
+                        p_order_id: confirmedOrder.id,
+                        p_discount_amount: confirmedOrder.coupon_discount || 0
+                    })
+                });
+
+                if (!rpcRes.ok) {
+                    console.error('Failed to consume coupon via RPC:', await rpcRes.text());
+                } else {
+                    console.log('Coupon consume result:', await rpcRes.json());
+                }
+            } catch (err) {
+                console.error('Error during coupon consumption:', err);
+            }
+        }
+
         // 4. Return success
         return jsonResponse(200, {
             success: true,

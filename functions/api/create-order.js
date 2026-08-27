@@ -16,7 +16,8 @@ export async function onRequestPost(context) {
         const { 
             amount, currency, receipt, customer_name, customer_email, customer_phone,
             user_id, items, delivery_address, subtotal, total_weight, 
-            delivery_charge, delivery_discount, cart_hash, pending_order_id
+            delivery_charge, delivery_discount, cart_hash, pending_order_id,
+            coupon_code, coupon_discount
         } = body;
 
         // Validate required fields
@@ -32,6 +33,71 @@ export async function onRequestPost(context) {
         if (!keyId || !keySecret || !supabaseUrl || !supabaseKey) {
             console.error('Server configuration error');
             return jsonResponse(500, { success: false, message: 'Server configuration error' }, corsHeaders);
+        }
+
+        let finalAmount = Number(amount);
+        let finalCouponDiscount = 0;
+
+        // 0. Server-Side Coupon Validation
+        if (coupon_code) {
+            try {
+                const couponRes = await fetch(`${supabaseUrl}/rest/v1/coupons?code=eq.${encodeURIComponent(coupon_code.toUpperCase())}&select=*`, {
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+                });
+                const coupons = await couponRes.json();
+                
+                if (!coupons || coupons.length === 0) return jsonResponse(400, { success: false, message: 'Invalid coupon code' }, corsHeaders);
+                const coupon = coupons[0];
+
+                if (!coupon.is_active) return jsonResponse(400, { success: false, message: 'Coupon is not active' }, corsHeaders);
+                const now = new Date();
+                if (coupon.start_date && new Date(coupon.start_date) > now) return jsonResponse(400, { success: false, message: 'Coupon is not yet valid' }, corsHeaders);
+                if (coupon.expiry_date && new Date(coupon.expiry_date) < now) return jsonResponse(400, { success: false, message: 'Coupon has expired' }, corsHeaders);
+                
+                const st = Number(subtotal || 0);
+                if (coupon.minimum_order_value && st < coupon.minimum_order_value) return jsonResponse(400, { success: false, message: 'Minimum order requirement not met' }, corsHeaders);
+                if (coupon.usage_limit !== null && coupon.used_count >= coupon.usage_limit) return jsonResponse(400, { success: false, message: 'Coupon usage limit reached' }, corsHeaders);
+                if (!user_id) return jsonResponse(401, { success: false, message: 'Please login to use a coupon' }, corsHeaders);
+
+                if (coupon.customer_eligibility === 'first_order' || coupon.customer_eligibility === 'existing') {
+                    const ordRes = await fetch(`${supabaseUrl}/rest/v1/orders?user_id=eq.${user_id}&status=in.(confirmed,shipped,delivered)&select=id&limit=1`, {
+                        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+                    });
+                    const ords = await ordRes.json();
+                    const hasOrders = ords && ords.length > 0;
+                    if (coupon.customer_eligibility === 'first_order' && hasOrders) return jsonResponse(400, { success: false, message: 'Valid for first-time orders only' }, corsHeaders);
+                    if (coupon.customer_eligibility === 'existing' && !hasOrders) return jsonResponse(400, { success: false, message: 'For existing customers only' }, corsHeaders);
+                }
+
+                if (coupon.usage_per_customer === 'once') {
+                    const usageRes = await fetch(`${supabaseUrl}/rest/v1/coupon_usages?coupon_id=eq.${coupon.id}&user_id=eq.${user_id}&select=id&limit=1`, {
+                        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+                    });
+                    const usages = await usageRes.json();
+                    if (usages && usages.length > 0) return jsonResponse(400, { success: false, message: 'This coupon has already been used on your account' }, corsHeaders);
+                }
+
+                let calcDiscount = 0;
+                if (coupon.discount_type === 'percentage') {
+                    calcDiscount = (st * coupon.discount_value) / 100;
+                    if (coupon.maximum_discount !== null && calcDiscount > coupon.maximum_discount) calcDiscount = coupon.maximum_discount;
+                } else if (coupon.discount_type === 'fixed') {
+                    calcDiscount = coupon.discount_value;
+                }
+                if (calcDiscount > st) calcDiscount = st;
+                finalCouponDiscount = Math.round(calcDiscount);
+
+                const expectedTotal = st + Number(delivery_charge || 0) - Number(delivery_discount || 0) - finalCouponDiscount;
+                if (Math.abs(expectedTotal - Number(amount)) > 2) {
+                    console.error(`Amount mismatch: expected ${expectedTotal}, got ${amount}`);
+                    return jsonResponse(400, { success: false, message: 'Order amount mismatch due to coupon validation' }, corsHeaders);
+                }
+                finalAmount = expectedTotal;
+
+            } catch (err) {
+                console.error("Coupon validation error in create-order:", err);
+                return jsonResponse(500, { success: false, message: 'Failed to validate coupon during order creation' }, corsHeaders);
+            }
         }
 
         // 1. Lazy Cleanup of Old Pending Orders
@@ -67,7 +133,7 @@ export async function onRequestPost(context) {
                         return jsonResponse(200, {
                             success: true,
                             order_id: existing.razorpay_order_id,
-                            amount: Math.round(amount * 100),
+                            amount: Math.round(finalAmount * 100),
                             currency: currency || 'INR',
                             key_id: keyId,
                         }, corsHeaders);
@@ -86,7 +152,7 @@ export async function onRequestPost(context) {
                 'Authorization': 'Basic ' + btoa(keyId + ':' + keySecret),
             },
             body: JSON.stringify({
-                amount: Math.round(amount * 100), // Razorpay expects paise
+                amount: Math.round(finalAmount * 100), // Razorpay expects paise
                 currency: currency || 'INR',
                 receipt: receipt || 'rcpt_' + Date.now(),
                 notes: {
@@ -111,16 +177,21 @@ export async function onRequestPost(context) {
             addressObj = { full_address: addressObj };
         }
 
-        const orderNotes = `${customer_name || 'Guest'} | ${customer_email || ''} | ${customer_phone || ''} | Subtotal: ${subtotal || 0} | Delivery: ${delivery_charge || 0} | Discount: ${delivery_discount || 0} | CartHash:${cart_hash}`;
+        const orderNotes = `${customer_name || 'Guest'} | ${customer_email || ''} | ${customer_phone || ''} | Subtotal: ${subtotal || 0} | Delivery: ${delivery_charge || 0} | Discount: ${delivery_discount || 0} | Coupon: ${coupon_code || 'None'} | CartHash:${cart_hash}`;
 
         const orderPayload = {
             order_number: orderNumber,
-            total_amount: amount,
+            total_amount: finalAmount,
             delivery_address: addressObj || null,
             status: 'pending',
             razorpay_order_id: rzpOrder.id,
             notes: orderNotes
         };
+        
+        if (coupon_code) {
+            orderPayload.coupon_code = coupon_code.toUpperCase();
+            orderPayload.coupon_discount = finalCouponDiscount;
+        }
         
         if (user_id) {
             orderPayload.user_id = user_id;

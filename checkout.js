@@ -10,6 +10,7 @@ let _checkoutDeliveryCharge = 0;
 let _checkoutDeliveryDiscount = 0;
 let _checkoutTotalWeight = 0;
 let _latestDeliverySettings = null;
+let _appliedCoupon = null;
 
 async function fetchLatestDeliverySettings() {
     try {
@@ -195,7 +196,16 @@ function renderSummaryItems(items) {
         actualDeliveryCharge = 0;
     }
 
-    const grandTotal = subtotal + actualDeliveryCharge;
+    const grandTotalBeforeCoupon = subtotal + actualDeliveryCharge;
+    
+    let couponDiscountAmount = 0;
+    if (_appliedCoupon) {
+        couponDiscountAmount = _appliedCoupon.discount_amount;
+        if (couponDiscountAmount > subtotal) couponDiscountAmount = subtotal; // Safety check
+    }
+
+    const grandTotal = grandTotalBeforeCoupon - couponDiscountAmount;
+    
     _checkoutSubtotal = subtotal;
     _checkoutDeliveryCharge = actualDeliveryCharge;
     _checkoutDeliveryDiscount = deliveryDiscount;
@@ -205,6 +215,8 @@ function renderSummaryItems(items) {
     
     const discountRow = document.getElementById('checkoutDiscountRow');
     const discountEl = document.getElementById('checkoutDeliveryDiscount');
+    const couponRow = document.getElementById('checkoutCouponDiscountRow');
+    const couponVal = document.getElementById('checkoutCouponDiscountValue');
 
     if (deliveryDiscount > 0) {
         deliveryEl.textContent = '₹' + calculatedCharge;
@@ -220,9 +232,94 @@ function renderSummaryItems(items) {
         discountRow.style.display = 'none';
     }
 
+    if (couponDiscountAmount > 0) {
+        couponRow.style.display = 'flex';
+        couponVal.textContent = '-₹' + couponDiscountAmount;
+    } else {
+        couponRow.style.display = 'none';
+    }
+
     grandTotalEl.textContent = '₹' + grandTotal;
 
     if (payBtnText) payBtnText.textContent = 'Pay ₹' + grandTotal;
+}
+
+// ============================================
+// COUPON LOGIC
+// ============================================
+async function applyCoupon() {
+    const msgEl = document.getElementById('couponMessage');
+    const codeInput = document.getElementById('couponCodeInput');
+    const code = codeInput.value.trim().toUpperCase();
+    const btn = document.getElementById('btnApplyCoupon');
+
+    if (!code) {
+        msgEl.style.display = 'block';
+        msgEl.style.color = 'var(--spice-red)';
+        msgEl.textContent = 'Please enter a coupon code.';
+        return;
+    }
+
+    if (typeof Account !== 'undefined' && !Account.isLoggedIn()) {
+        msgEl.style.display = 'block';
+        msgEl.style.color = 'var(--spice-red)';
+        msgEl.innerHTML = 'Please <a href="javascript:void(0)" onclick="openAuthModal()" style="color:var(--primary); text-decoration:underline;">Log in</a> to apply a coupon.';
+        return;
+    }
+
+    msgEl.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Applying...';
+
+    try {
+        const res = await fetch('/api/validate-coupon', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                coupon_code: code,
+                cart_subtotal: _checkoutSubtotal,
+                user_id: Account.getUser()?.id,
+                cart_items: _checkoutItems
+            })
+        });
+
+        const data = await res.json();
+        
+        if (res.ok && data.success) {
+            _appliedCoupon = { code: data.coupon_code, discount_amount: data.discount_amount };
+            
+            document.getElementById('couponInputGroup').style.display = 'none';
+            const appliedContainer = document.getElementById('appliedCouponContainer');
+            appliedContainer.style.display = 'flex';
+            document.getElementById('displayCouponCode').textContent = data.coupon_code;
+            document.getElementById('displayCouponAmount').textContent = 'Saved ₹' + data.discount_amount;
+            
+            renderSummaryItems(_checkoutItems); // Recalculate totals
+            
+            msgEl.style.display = 'none';
+        } else {
+            msgEl.style.display = 'block';
+            msgEl.style.color = 'var(--spice-red)';
+            msgEl.textContent = data.message || 'Invalid coupon';
+        }
+    } catch (e) {
+        console.error("Coupon application error:", e);
+        msgEl.style.display = 'block';
+        msgEl.style.color = 'var(--spice-red)';
+        msgEl.textContent = 'Failed to verify coupon. Please try again.';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Apply';
+    }
+}
+
+function removeCoupon() {
+    _appliedCoupon = null;
+    document.getElementById('couponInputGroup').style.display = 'flex';
+    document.getElementById('couponCodeInput').value = '';
+    document.getElementById('appliedCouponContainer').style.display = 'none';
+    document.getElementById('couponMessage').style.display = 'none';
+    renderSummaryItems(_checkoutItems);
 }
 
 // ============================================
@@ -366,6 +463,8 @@ async function handleCheckoutSubmit(e) {
                 total_weight: _checkoutTotalWeight,
                 delivery_charge: _checkoutDeliveryCharge,
                 delivery_discount: _checkoutDeliveryDiscount,
+                coupon_code: _appliedCoupon ? _appliedCoupon.code : null,
+                coupon_discount: _appliedCoupon ? _appliedCoupon.discount_amount : 0,
                 cart_hash: cartHash,
                 pending_order_id: usePendingOrder
             }),

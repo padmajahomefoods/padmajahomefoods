@@ -209,7 +209,9 @@
         <!-- TAB: OVERVIEW -->
         <div id="tab-overview" class="tab-content active">
             <div class="overview-grid">
-                <div class="card"><h4>Gross Revenue</h4><div class="val" id="cardRevenue">₹0</div><div class="trend" id="trendRevenue">-</div></div>
+                <div class="card"><h4>Gross Sales</h4><div class="val" id="cardGrossSales">₹0</div><div class="trend" id="trendGrossSales">-</div></div>
+                <div class="card"><h4>Discounts</h4><div class="val" id="cardDiscounts">₹0</div><div class="trend" id="trendDiscounts">-</div></div>
+                <div class="card"><h4>Net Sales (Paid)</h4><div class="val" id="cardNetSales">₹0</div><div class="trend" id="trendNetSales">-</div></div>
                 <div class="card"><h4>Orders</h4><div class="val" id="cardOrders">0</div><div class="trend" id="trendOrders">-</div></div>
                 <div class="card"><h4>Gross Profit</h4><div class="val" id="cardGross">₹0</div><div class="trend" id="trendGross">-</div></div>
                 <div class="card"><h4>Total Expenses</h4><div class="val" id="cardExpenses" style="color: #EF4444;">₹0</div><div class="trend" id="trendExpenses">-</div></div>
@@ -625,20 +627,23 @@ function getDateBounds(range) {
 }
 
 function calculateOrderProfit(o) {
-    const rev = Number(o.total_amount || 0);
+    const netPaid = Number(o.total_amount || 0); // What customer actually paid
+    let couponDisc = Number(o.coupon_discount || 0);
     
-    let delCharge = o.delivery_charge || 0;
-    let delDiscount = o.delivery_discount || 0;
+    let delCharge = Number(o.delivery_charge || 0);
+    let delDiscount = Number(o.delivery_discount || 0);
     
     if (o.notes && typeof o.notes === 'string' && o.notes.includes('Subtotal:')) {
         const parts = o.notes.split('|').map(s => s.trim());
         parts.forEach(p => {
             if (p.startsWith('Delivery:')) delCharge = parseFloat(p.replace('Delivery:', '').trim()) || delCharge;
             if (p.startsWith('Discount:')) delDiscount = parseFloat(p.replace('Discount:', '').trim()) || delDiscount;
+            // Not reading coupon from notes as it's in a reliable DB column going forward
         });
     }
     
-    const shipChg = Math.max(0, Number(delCharge) - Number(delDiscount));
+    const grossSales = netPaid + couponDisc;
+    const shipChg = Math.max(0, delCharge - delDiscount);
     
     // Calculate estProd (Raw Material Cost)
     let estProd = 0;
@@ -653,8 +658,8 @@ function calculateOrderProfit(o) {
         gateway = o.gateway_charges !== null && o.gateway_charges !== undefined && o.gateway_charges !== '' ? Number(o.gateway_charges) : 0;
     }
 
-    const net = rev - estProd - courier - gateway;
-    return { rev, shipChg, estProd, courier, gateway, net };
+    const netProfit = netPaid - estProd - courier - gateway;
+    return { rev: netPaid, grossSales, couponDisc, shipChg, estProd, courier, gateway, net: netProfit };
 }
 
 function getCustomerName(o) {
@@ -728,12 +733,15 @@ function renderAllViews() {
 
 function updateOverviewCards() {
     const calc = (orders, expenses) => {
-        let rev=0, estProdTot=0, courierTot=0, gatewayTot=0, pendingAmt=0, freeShipCnt=0, freeShipExp=0;
+        let rev=0, grossSales=0, couponDisc=0, estProdTot=0, courierTot=0, gatewayTot=0, pendingAmt=0, freeShipCnt=0, freeShipExp=0;
         let onlineRev=0;
         
         orders.forEach(o => {
             const p = calculateOrderProfit(o);
             rev += p.rev;
+            grossSales += (p.grossSales || p.rev);
+            couponDisc += (p.couponDisc || 0);
+            
             estProdTot += p.estProd;
             courierTot += p.courier;
             gatewayTot += p.gateway;
@@ -756,16 +764,19 @@ function updateOverviewCards() {
         
         const manualExp = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
         const totalExp = manualExp + estProdTot + courierTot + gatewayTot;
-        const gross = rev - estProdTot - courierTot - gatewayTot;
+        const gross = grossSales - couponDisc - estProdTot - courierTot - gatewayTot;
         const net = gross - manualExp;
         
-        return { rev, orders: orders.length, totalExp, gross, net, pendingAmt, freeShipCnt, freeShipExp };
+        return { rev, grossSales, couponDisc, orders: orders.length, totalExp, gross, net, pendingAmt, freeShipCnt, freeShipExp };
     };
 
     const cur = calc(filteredData.orders, filteredData.expenses);
     const prv = calc(filteredData.prevOrders, filteredData.prevExpenses);
 
-    setCard('Revenue', cur.rev, prv.rev, '₹');
+    setCard('GrossSales', cur.grossSales, prv.grossSales, '₹');
+    setCard('Discounts', cur.couponDisc, prv.couponDisc, '₹', true);
+    setCard('NetSales', cur.rev, prv.rev, '₹');
+    
     setCard('Orders', cur.orders, prv.orders, '');
     setCard('Gross', cur.gross, prv.gross, '₹');
     setCard('Expenses', cur.totalExp, prv.totalExp, '₹', true);

@@ -54,7 +54,18 @@
         </div>
     </div>
     
-    <div class="settings-card">
+    <!-- TABS -->
+    <div class="admin-tabs" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 0;">
+        <button class="admin-tab active" onclick="switchSettingsTab('delivery')" id="tabBtn-delivery" style="padding: 10px 20px; border: none; background: none; font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 1rem; color: var(--primary); border-bottom: 3px solid var(--primary); cursor: pointer;">
+            <i class="fas fa-truck"></i> Delivery Settings
+        </button>
+        <button class="admin-tab" onclick="switchSettingsTab('coupons')" id="tabBtn-coupons" style="padding: 10px 20px; border: none; background: none; font-family: 'Poppins', sans-serif; font-weight: 500; font-size: 1rem; color: var(--text-gray); cursor: pointer;">
+            <i class="fas fa-tags"></i> Discounts &amp; Coupons
+        </button>
+    </div>
+    
+    <!-- TAB CONTENT: DELIVERY -->
+    <div class="settings-card" id="tabContent-delivery">
         <h2><i class="fas fa-truck"></i> Shipping Settings</h2>
         
         <div class="form-group" style="max-width: 300px;">
@@ -77,6 +88,130 @@
             <button type="button" class="btn-save" onclick="saveShippingSettings()" id="saveSettingsBtn">Save Settings</button>
             <button type="button" class="btn-reset" onclick="resetShippingSettings()">Reset to Default</button>
         </div>
+    </div>
+
+    <!-- TAB CONTENT: COUPONS -->
+    <div class="settings-card" id="tabContent-coupons" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2><i class="fas fa-tags"></i> Coupon Management</h2>
+            <button type="button" class="btn-save" onclick="openCouponModal()">
+                <i class="fas fa-plus"></i> Create New Coupon
+            </button>
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;" id="couponsTable">
+                <thead>
+                    <tr style="background: var(--bg-light); text-align: left; border-bottom: 2px solid var(--border);">
+                        <th style="padding: 12px; font-weight: 600;">Code</th>
+                        <th style="padding: 12px; font-weight: 600;">Discount</th>
+                        <th style="padding: 12px; font-weight: 600;">Status</th>
+                        <th style="padding: 12px; font-weight: 600;">Usage</th>
+                        <th style="padding: 12px; font-weight: 600;">Expires</th>
+                        <th style="padding: 12px; font-weight: 600;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="couponsTableBody">
+                    <tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-gray);">Loading coupons...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- COUPON MODAL -->
+<style>
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-content { background: white; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; border-radius: 12px; padding: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+    .modal-header h3 { margin: 0; font-size: 1.3rem; color: var(--deep-brown); }
+    .btn-close-modal { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-gray); }
+    .btn-close-modal:hover { color: var(--spice-red); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+</style>
+
+<div class="modal-overlay" id="couponModalOverlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="couponModalTitle">Create Coupon</h3>
+            <button class="btn-close-modal" onclick="closeCouponModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="couponForm" onsubmit="handleSaveCoupon(event)">
+            <input type="hidden" id="couponId">
+            
+            <div class="form-row">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Coupon Code *</label>
+                    <input type="text" id="couponCode" required placeholder="e.g. SUMMER20" style="text-transform: uppercase;" onkeyup="this.value = this.value.toUpperCase();">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Status</label>
+                    <select id="couponIsActive" style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px;">
+                        <option value="true">Active</option>
+                        <option value="false">Disabled</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Discount Type *</label>
+                    <select id="couponDiscountType" required style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px;">
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="fixed">Fixed Amount (₹)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Discount Value *</label>
+                    <input type="number" id="couponDiscountValue" required min="0" step="0.01" placeholder="e.g. 10 or 150">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Minimum Order Value (₹)</label>
+                    <input type="number" id="couponMinOrder" min="0" value="0">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Max Discount Amount (₹)</label>
+                    <input type="number" id="couponMaxDiscount" min="0" placeholder="Optional (for % discounts)">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Usage Limit (Global)</label>
+                    <input type="number" id="couponUsageLimit" min="1" placeholder="e.g. 100 (Optional)">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Usage per Customer</label>
+                    <select id="couponUsagePerCustomer" style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px;">
+                        <option value="unlimited">Unlimited (per customer)</option>
+                        <option value="once">Once per customer</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Customer Eligibility</label>
+                    <select id="couponCustomerEligibility" style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px;">
+                        <option value="all">All Customers</option>
+                        <option value="first_order">First-time Order Only</option>
+                        <option value="existing">Existing Customers Only</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Expiry Date</label>
+                    <input type="datetime-local" id="couponExpiryDate">
+                </div>
+            </div>
+
+            <div class="settings-actions" style="justify-content: flex-end;">
+                <button type="button" class="btn-reset" onclick="closeCouponModal()">Cancel</button>
+                <button type="submit" class="btn-save" id="saveCouponBtn">Save Coupon</button>
+            </div>
+        </form>
     </div>
 </div>
 
