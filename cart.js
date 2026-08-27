@@ -695,8 +695,8 @@ const CartService = {
         // Iterate backwards to safely remove items by index
         for (let i = items.length - 1; i >= 0; i--) {
             const item = items[i];
-            // Try to find the exact product record
-            const product = products.find(p => p.id === item.product_id);
+            // Try to find the exact product record by ID or Name
+            const product = products.find(p => p.id === item.product_id || p.name === item.name);
             
             if (!product || product.available === false) {
                 removedItems.push(item.name || 'An item');
@@ -857,6 +857,7 @@ async function addToCart(btn, productName, basePrice) {
     const weightInGrams = parseWeight(weight);
 
     await CartService.addItem({
+        product_id: product ? product.id : undefined,
         name: productName,
         weight: weight,
         weightInGrams: weightInGrams,
