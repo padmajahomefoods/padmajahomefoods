@@ -272,13 +272,19 @@ async function applyCoupon() {
     btn.textContent = 'Applying...';
 
     try {
+        let userId = null;
+        if (typeof Account !== 'undefined' && Account.isLoggedIn()) {
+            const user = await Account.getCurrentUser();
+            userId = user?.id || null;
+        }
+
         const res = await fetch('/api/validate-coupon', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 coupon_code: code,
                 cart_subtotal: _checkoutSubtotal,
-                user_id: Account.getUser()?.id,
+                user_id: userId,
                 cart_items: _checkoutItems
             })
         });
