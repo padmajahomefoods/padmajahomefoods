@@ -257,10 +257,12 @@
                 <button class="admin-btn-primary" onclick="openAddModal()"><i class="fas fa-plus"></i> Add Product</button>
             </div>
             <div class="admin-table-wrap">
-                <table class="admin-table">
+                <div class="table-responsive">
+<table class="admin-table">
                     <thead><tr><th>Product</th><th>Category</th><th>100g</th><th>250g</th><th>500g</th><th>1Kg</th><th>Status</th><th>Actions</th></tr></thead>
                     <tbody id="adminTableBody"></tbody>
                 </table>
+</div>
             </div>
             <div class="admin-mobile-cards" id="adminMobileCards"></div>
             </div>
@@ -276,10 +278,12 @@
                     <button class="admin-btn-primary" onclick="openCategoryModal()" style="background: var(--dark-gold);"><i class="fas fa-plus"></i> Add Category</button>
                 </div>
                 <div class="admin-table-wrap">
-                    <table class="admin-table">
+                    <div class="table-responsive">
+<table class="admin-table">
                         <thead><tr><th style="width: 80px;">Order</th><th>Category Name</th><th>ID</th><th>Icon</th><th>Products</th><th>Actions</th></tr></thead>
                         <tbody id="categoryTableBody"></tbody>
                     </table>
+</div>
                 </div>
                 <div class="admin-mobile-cards" id="categoryMobileCards"></div>
                 <div class="admin-empty" id="categoryEmpty" style="display: none; padding: 60px 20px;">
@@ -1061,3 +1065,4 @@
 </script>
 </body>
 </html>
+
