@@ -201,6 +201,45 @@
         .admin-toast i {
             font-size: 1.2rem;
         }
+    
+        /* Responsive Fixes */
+        * {
+            box-sizing: border-box;
+        }
+        .orders-layout, .orders-list-col, .order-details-col, .detail-box, .status-update-section, .orders-search {
+            box-sizing: border-box;
+            min-width: 0;
+            max-width: 100%;
+        }
+        .launcher-container {
+            box-sizing: border-box;
+            max-width: 100%;
+        }
+        .detail-box p span {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            display: inline-block;
+            max-width: 100%;
+        }
+        /* Mobile Specific Overrides */
+        @media (max-width: 768px) {
+            .orders-layout {
+                flex-direction: column;
+                height: auto;
+                width: 100%;
+            }
+            .orders-list-col, .order-details-col {
+                width: 100%;
+                flex: none;
+            }
+            .details-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .launcher-container {
+                padding: 15px !important;
+            }
+        }
+
     </style>
 </head>
 <body style="background-color: #FAFAFA; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; min-height: 100vh;">
@@ -214,7 +253,7 @@
                 <p style="margin: 0; color: var(--text-gray); font-size: 0.95rem; font-weight: 500;">Padmaja Home Foods</p>
             </div>
         </div>
-        <div class="admin-header-actions" style="display: flex; gap: 10px;">
+        <div class="admin-header-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
             <button class="admin-header-btn" onclick="window.location.href='index.html'" style="background: white; border: 1px solid var(--border); color: var(--primary); padding: 10px 24px; border-radius: 50px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: 'Poppins', sans-serif; font-weight: 600;"><i class="fas fa-arrow-left"></i> Dashboard</button>
             <button class="admin-header-btn" onclick="handleAdminLogout()" style="background: linear-gradient(135deg, #FF5A5F 0%, #D32F2F 100%); border: none; color: white; padding: 10px 24px; border-radius: 50px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: 'Poppins', sans-serif; font-weight: 600;"><i class="fas fa-sign-out-alt"></i> Logout</button>
         </div>
@@ -265,7 +304,7 @@
                                 <h2 style="margin: 0 0 5px 0; color: var(--primary);" id="detailOrderNumber">PHF000</h2>
                                 <p style="margin: 0; color: var(--text-gray); font-size: 0.9rem;" id="detailDate">Date</p>
                             </div>
-                            <div style="display: flex; gap: 10px; align-items: center;">
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                                 <span class="status-badge" style="background: #FFF5F5; color: #E53E3E; border: 1px solid #FEB2B2; display: none;" id="detailTestBadge"><i class="fas fa-vial"></i> TEST ORDER</span>
                                 <span class="status-badge" style="background: #EBF8FF; color: #3182CE;" id="detailStatus">Status</span>
                             </div>
@@ -276,10 +315,10 @@
                                 <h5>Customer Details</h5>
                                 <p><i class="fas fa-user"></i> <span id="detailName">Name</span></p>
                                 <p><i class="fas fa-phone"></i> <span id="detailMobile">Mobile</span></p>
-                                <p><i class="fas fa-envelope"></i> <span id="detailEmail">Email</span></p>
+                                <p><i class="fas fa-envelope"></i> <span id="detailEmail" style="overflow-wrap: anywhere; display: inline-block; max-width: 100%;">Email</span></p>
                             </div>
                             <div class="detail-box">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                                     <h5>Payment & Delivery</h5>
                                     <button onclick="togglePaymentEditor()" style="background: none; border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; color: var(--text-dark);">
                                         <i class="fas fa-edit"></i> Edit Payment
@@ -288,7 +327,7 @@
                                 <div id="paymentDisplaySection">
                                     <p><strong>Payment Method:</strong> <span id="detailPaymentMethod">N/A</span></p>
                                     <p><strong>Payment Status:</strong> <span id="detailPaymentStatus">Success</span></p>
-                                    <p><strong>Payment ID:</strong> <span id="detailPaymentId" style="font-family:monospace;font-size:0.85rem;">N/A</span></p>
+                                    <p><strong>Payment ID:</strong> <span id="detailPaymentId" style="font-family:monospace;font-size:0.85rem; overflow-wrap: anywhere; display: inline-block; max-width: 100%;">N/A</span></p>
                                 </div>
                                 
                                 <!-- Hidden Inline Editor -->

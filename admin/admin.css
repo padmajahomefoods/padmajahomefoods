@@ -267,9 +267,7 @@ body {
    ========================================= */
 
 /* Base Body Adjustments */
-body {
-    overflow-x: hidden;
-}
+
 
 /* Responsive Table Wrapper */
 .table-responsive {
