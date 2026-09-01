@@ -81,37 +81,7 @@
             margin-bottom: 50px;
             flex-wrap: wrap;
         }
-        .stat-circle {
-            width: 140px;
-            height: 140px;
-            border-radius: 50%;
-            background: white;
-            border: 2px solid var(--primary);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.06);
-            text-align: center;
-            padding: 10px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .stat-circle:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
-        }
-        .stat-circle .val {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 5px;
-        }
-        .stat-circle .label {
-            font-size: 0.8rem;
-            color: var(--text-gray);
-            font-weight: 500;
-            line-height: 1.2;
-        }
+        
 
         /* Grid Layout & Centered Settings */
         .launcher-grid-wrapper {
@@ -273,22 +243,33 @@
             font-size: 0.85rem;
         }
 
-        /* Stats in ONE row */
+        /* Stats in ONE row (Responsive) */
         .stats-circles {
+            display: flex;
+            flex-direction: row;
             flex-wrap: nowrap;
+            justify-content: center;
             gap: 10px;
+            width: 100%;
             margin-bottom: 30px;
         }
         .stat-circle {
-            width: 100px;
-            height: 100px;
+            flex: 1 1 0;
+            aspect-ratio: 1 / 1;
+            height: auto;
+            max-width: 115px;
             padding: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
         .stat-circle .val {
-            font-size: 1.2rem;
+            font-size: clamp(1rem, 4vw, 1.4rem);
         }
         .stat-circle .label {
-            font-size: 0.7rem;
+            font-size: clamp(0.6rem, 2.5vw, 0.75rem);
+            word-wrap: break-word;
         }
 
         /* Launcher Grid 2x2 */
