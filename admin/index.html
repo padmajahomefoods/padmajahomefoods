@@ -248,36 +248,131 @@
         }
         .admin-error.active { display: block; }
         
-    @media(max-width: 768px) {
+    @media (max-width: 768px) {
         .launcher-header {
-            flex-direction: column;
-            gap: 20px;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: space-between;
         }
         .header-brand {
-            flex-direction: column;
-            text-align: center;
+            flex-direction: row;
+            gap: 10px;
         }
-        .header-brand .header-text {
-            text-align: center;
+        .header-brand img {
+            height: 50px; /* Reduced from 70px */
         }
-        .launcher-grid { 
-            grid-template-columns: 1fr; 
-            column-gap: 25px;
-            margin-bottom: 120px; /* Space for settings below */
+        .header-brand h2 {
+            font-size: 1.3rem; /* Reduced from 1.8rem */
         }
+        .header-brand p {
+            font-size: 0.8rem;
+        }
+        .logout-btn-top {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+
+        /* Stats in ONE row */
+        .stats-circles {
+            flex-wrap: nowrap;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        .stat-circle {
+            width: 100px;
+            height: 100px;
+            padding: 5px;
+        }
+        .stat-circle .val {
+            font-size: 1.2rem;
+        }
+        .stat-circle .label {
+            font-size: 0.7rem;
+        }
+
+        /* Launcher Grid 2x2 */
+        .launcher-grid-wrapper {
+            max-width: 100%;
+        }
+        .launcher-grid {
+            grid-template-columns: 1fr 1fr;
+            column-gap: 60px; /* Space for settings in center */
+            row-gap: 15px;
+        }
+        .launcher-card {
+            padding: 10px 12px;
+            gap: 10px;
+            min-height: 80px;
+            justify-content: center;
+        }
+        .launcher-card i {
+            font-size: 1.8rem;
+        }
+        .launcher-card h3 {
+            font-size: 1rem;
+        }
+
+        /* Settings in center */
         .settings-launcher {
-            position: absolute;
-            bottom: -80px;
-            top: auto;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
+            transform: translate(-50%, -50%);
             margin-top: 0;
+            position: absolute;
+            bottom: auto;
+        }
+        .settings-launcher i {
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+        }
+        .settings-launcher a span {
+            font-size: 0.8rem;
         }
     }
-    @media(max-width: 600px) {
-        .stats-circles { gap: 20px; }
-        .stat-circle { width: 110px; height: 110px; }
-        .stat-circle .val { font-size: 1.4rem; }
+
+    @media (max-width: 390px) {
+        .launcher-grid {
+            column-gap: 50px;
+            row-gap: 12px;
+        }
+        .launcher-card {
+            padding: 8px;
+            gap: 6px;
+        }
+        .launcher-card i {
+            font-size: 1.4rem;
+        }
+        .launcher-card h3 {
+            font-size: 0.9rem;
+        }
+        .settings-launcher i {
+            font-size: 2rem;
+        }
+        
+        .stat-circle {
+            width: 90px;
+            height: 90px;
+        }
+        .stat-circle .val {
+            font-size: 1.1rem;
+        }
+        .stat-circle .label {
+            font-size: 0.65rem;
+        }
+        
+        .header-brand h2 {
+            font-size: 1.1rem;
+        }
+        .logout-btn-top {
+            padding: 6px 12px;
+            font-size: 0.75rem;
+        }
+    }
+    
+    /* Global box sizing just in case */
+    .launcher-container * {
+        box-sizing: border-box;
     }
     </style>
 </head>
