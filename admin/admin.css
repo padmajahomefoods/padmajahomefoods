@@ -324,10 +324,6 @@ input, select, textarea {
     .launcher-container {
         padding: 20px 15px;
     }
-    .stats-circles {
-        flex-direction: column;
-        gap: 20px;
-    }
     .stats-grid {
         grid-template-columns: 1fr;
     }

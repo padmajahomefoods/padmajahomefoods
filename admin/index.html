@@ -275,34 +275,51 @@
             font-size: 0.85rem;
         }
 
-        /* Stats in ONE row - Safe fixed sizing */
+        /* Stats in ONE horizontal row on mobile */
         .stats-circles {
-            flex-wrap: nowrap;
-            gap: 10px;
-            margin-bottom: 30px;
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            justify-content: center !important;
+            align-items: center !important;
+            gap: 8px !important;
+            margin-bottom: 30px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
         }
         .stat-circle {
-            width: 28vw;
-            max-width: 115px;
-            height: 28vw;
-            max-height: 115px;
-            padding: 5px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            /* Override global box sizing for mobile circles specifically */
-            box-sizing: border-box;
+            width: 28vw !important;
+            max-width: 110px !important;
+            height: 28vw !important;
+            max-height: 110px !important;
+            min-width: 80px !important;
+            min-height: 80px !important;
+            padding: 4px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 50% !important;
+            box-sizing: border-box !important;
+            flex-shrink: 0 !important;
+            background: white !important;
+            border: 2px solid var(--primary) !important;
+            text-align: center !important;
         }
         .stat-circle .val {
-            font-size: 1.2rem;
-            margin-bottom: 2px;
+            font-size: 1.1rem !important;
+            font-weight: 700 !important;
+            color: var(--primary) !important;
+            margin-bottom: 2px !important;
+            line-height: 1.1 !important;
         }
         .stat-circle .label {
-            font-size: 0.7rem;
-            word-wrap: break-word;
-            line-height: 1.1;
+            font-size: 0.68rem !important;
+            color: var(--text-gray) !important;
+            font-weight: 500 !important;
+            word-wrap: break-word !important;
+            line-height: 1.15 !important;
+            text-align: center !important;
         }
 
         /* Launcher Grid 2x2 */
