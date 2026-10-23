@@ -593,7 +593,46 @@
             }
 
             .checkout-grid {
-                gap: 20px;
+                display: flex;
+                flex-direction: column;
+                gap: 0;
+            }
+
+            /* Enable direct flex ordering for items within the form and summary on mobile */
+            .checkout-form-section,
+            #checkoutForm {
+                display: contents;
+            }
+
+            /* Error banner at top if triggered */
+            #checkoutError {
+                order: 0;
+                margin-bottom: 18px;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            /* 1. Contact Information */
+            .checkout-contact-card {
+                order: 1;
+                margin-bottom: 18px;
+            }
+
+            /* 2. Delivery Address */
+            .checkout-delivery-card {
+                order: 2;
+                margin-bottom: 18px;
+            }
+
+            /* 3. Order Summary (product list, coupon input, subtotal, discounts, delivery, grand total) */
+            .checkout-summary-section {
+                order: 3;
+                width: 100%;
+                margin-bottom: 0;
+            }
+
+            .checkout-summary-section .checkout-card {
+                margin-bottom: 18px;
             }
 
             .checkout-card {
@@ -623,8 +662,9 @@
                 font-size: 0.9rem;
             }
 
-            /* Guest account creation */
+            /* 4. Optional Account Creation (Guest Only) */
             #guestAccountCreationSection {
+                order: 4;
                 padding: 14px 12px;
                 margin-bottom: 20px;
             }
@@ -633,9 +673,26 @@
                 font-size: 0.88rem;
             }
 
+            /* 5. Pay button */
             #payButton {
+                order: 5;
                 padding: 13px 16px;
                 font-size: 1.05rem;
+                margin-bottom: 0;
+            }
+
+            /* 6. Security Note */
+            .checkout-security-note {
+                order: 6;
+                margin-top: 15px;
+                margin-bottom: 0;
+            }
+
+            /* 7. Legal Links */
+            .checkout-legal-links {
+                order: 7;
+                margin-top: 12px;
+                margin-bottom: 0;
             }
 
             /* Order Summary Items */
@@ -853,7 +910,7 @@ src="https://www.facebook.com/tr?id=1773052140362850&ev=PageView&noscript=1"
                 <form id="checkoutForm" onsubmit="handleCheckoutSubmit(event)">
                     
                     <!-- Contact Details -->
-                    <div class="checkout-card">
+                    <div class="checkout-card checkout-contact-card">
                         <h3 class="checkout-card-title"><i class="fas fa-envelope"></i> Contact Information</h3>
                         <div class="checkout-form-grid">
                             <div class="form-group checkout-col-full">
@@ -872,7 +929,7 @@ src="https://www.facebook.com/tr?id=1773052140362850&ev=PageView&noscript=1"
                     </div>
 
                     <!-- Delivery Details -->
-                    <div class="checkout-card">
+                    <div class="checkout-card checkout-delivery-card">
                         <h3 class="checkout-card-title"><i class="fas fa-truck"></i> Delivery Address</h3>
                         <div class="checkout-form-grid">
                             <div class="form-group checkout-col-full">
