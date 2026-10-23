@@ -163,15 +163,15 @@ function renderSummaryItems(items) {
         const imgUrl = item.image || '/logo.png';
 
         html += `
-            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--gray-100);">
-                <div style="width: 50px; height: 50px; background: var(--gray-100); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+            <div class="checkout-item-row" style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--gray-100); width: 100%; min-width: 0;">
+                <div class="checkout-item-thumb" style="width: 48px; height: 48px; background: var(--gray-100); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
                     <img src="${imgUrl}" alt="${item.name}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
                 </div>
-                <div style="flex-grow: 1;">
-                    <h4 style="font-size: 0.9rem; margin-bottom: 2px; color: var(--text-dark);">${item.name}</h4>
+                <div class="checkout-item-details" style="flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; word-break: break-word;">
+                    <h4 style="font-size: 0.9rem; margin-bottom: 2px; color: var(--text-dark); overflow-wrap: break-word; word-break: break-word; line-height: 1.3;">${item.name}</h4>
                     <p style="font-size: 0.8rem; color: var(--gray-500); margin: 0;">${item.weight} x ${item.quantity}</p>
                 </div>
-                <div style="font-weight: 600; font-size: 0.95rem; color: var(--deep-brown);">
+                <div class="checkout-item-price" style="font-weight: 600; font-size: 0.95rem; color: var(--deep-brown); flex-shrink: 0; white-space: nowrap; text-align: right; margin-left: 8px;">
                     ₹${itemTotal}
                 </div>
             </div>

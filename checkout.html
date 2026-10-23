@@ -19,6 +19,850 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Responsive Checkout Styles -->
+    <style>
+        /* Global safety for checkout page */
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .checkout-page {
+            padding: 120px 5% 60px;
+            max-width: 1200px;
+            margin: 0 auto;
+            min-height: 80vh;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .checkout-title {
+            font-family: 'Playfair Display', serif;
+            color: var(--deep-brown);
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--primary-gold);
+            padding-bottom: 10px;
+            display: inline-block;
+        }
+
+        .checkout-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 40px;
+            align-items: start;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .checkout-form-section,
+        .checkout-summary-section {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .checkout-card {
+            background: white;
+            padding: 25px;
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        .checkout-summary-card {
+            position: sticky;
+            top: 100px;
+        }
+
+        .checkout-card-title {
+            color: var(--deep-brown);
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .checkout-summary-title {
+            border-bottom: 1px solid var(--gray-200);
+            padding-bottom: 15px;
+        }
+
+        /* Form Fields */
+        .checkout-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .checkout-form-grid .form-group {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .checkout-form-grid .checkout-col-full {
+            grid-column: 1 / -1;
+        }
+
+        .checkout-form-grid label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+        }
+
+        .checkout-form-grid input,
+        .checkout-form-grid textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-sm);
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        .checkout-form-grid input:focus,
+        .checkout-form-grid textarea:focus {
+            outline: none;
+            border-color: var(--spice-red);
+        }
+
+        .checkout-form-grid textarea {
+            resize: vertical;
+        }
+
+        /* Guest Account Creation Section */
+        #guestAccountCreationSection {
+            margin-top: 10px;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #F8FAFC;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            box-sizing: border-box;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .checkout-checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 0.95rem;
+            gap: 10px;
+        }
+
+        .checkout-checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--spice-red);
+            flex-shrink: 0;
+            margin: 0;
+        }
+
+        #accountPasswordFields {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--gray-200);
+            width: 100%;
+            min-width: 0;
+        }
+
+        #accountPasswordFields p {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+            margin-bottom: 15px;
+        }
+
+        #accountPasswordFields .form-group {
+            margin-bottom: 15px;
+            width: 100%;
+            min-width: 0;
+        }
+
+        #accountPasswordFields label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+        }
+
+        #accountPasswordFields input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-sm);
+            font-family: 'Poppins', sans-serif;
+            box-sizing: border-box;
+        }
+
+        #checkoutSignupError {
+            display: none;
+            color: #C53030;
+            font-size: 0.85rem;
+            background: #FED7D7;
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 10px;
+            border: 1px solid #FC8181;
+        }
+
+        /* Pay Button */
+        #payButton {
+            width: 100%;
+            padding: 15px;
+            background: var(--spice-red);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            box-sizing: border-box;
+        }
+
+        #payButton:hover:not(:disabled) {
+            background: #b71c1c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(198, 40, 40, 0.25);
+        }
+
+        #payButton:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .checkout-security-note {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--gray-500);
+            margin-top: 15px;
+        }
+
+        .checkout-legal-links {
+            text-align: center;
+            margin-top: 12px;
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            line-height: 1.8;
+        }
+
+        .checkout-legal-links a {
+            color: var(--spice-red);
+            text-decoration: none;
+        }
+
+        .checkout-legal-links a:hover {
+            text-decoration: underline;
+        }
+
+        /* Order Summary Items */
+        #checkoutItemsList {
+            margin-bottom: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 8px;
+            box-sizing: border-box;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .checkout-item-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--gray-100);
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        .checkout-item-thumb {
+            width: 48px;
+            height: 48px;
+            background: var(--gray-100);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .checkout-item-thumb img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .checkout-item-details {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .checkout-item-details h4 {
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+            color: var(--text-dark);
+            line-height: 1.3;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .checkout-item-details p {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            margin: 0;
+        }
+
+        .checkout-item-price {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--deep-brown);
+            flex-shrink: 0;
+            white-space: nowrap;
+            text-align: right;
+            margin-left: 8px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Coupon Section */
+        #couponSection {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid var(--gray-200);
+            box-sizing: border-box;
+            width: 100%;
+            min-width: 0;
+        }
+
+        #couponSection h4 {
+            margin: 0 0 10px 0;
+            font-size: 0.95rem;
+            color: var(--text-dark);
+        }
+
+        #couponInputGroup {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        #couponCodeInput {
+            flex: 1 1 auto;
+            min-width: 0;
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+        }
+
+        #btnApplyCoupon {
+            flex-shrink: 0;
+            white-space: nowrap;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        #couponMessage {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            display: none;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        #appliedCouponContainer {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 6px;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        .applied-coupon-info {
+            min-width: 0;
+            flex: 1 1 auto;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .applied-coupon-code {
+            color: #166534;
+            font-weight: 600;
+        }
+
+        .applied-coupon-amount {
+            color: #15803d;
+            font-size: 0.85rem;
+        }
+
+        .applied-coupon-remove {
+            background: none;
+            border: none;
+            color: #dc2626;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+            white-space: nowrap;
+            font-family: 'Poppins', sans-serif;
+            padding: 4px 6px;
+        }
+
+        /* Order Totals */
+        .checkout-totals {
+            border-top: 1px dashed var(--gray-300);
+            padding-top: 20px;
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        .checkout-total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            color: var(--text-dark);
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        .checkout-total-label {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            line-height: 1.35;
+        }
+
+        .checkout-total-val {
+            flex-shrink: 0;
+            white-space: nowrap;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-weight: 500;
+            margin-left: auto;
+        }
+
+        .checkout-discount-row {
+            color: #48BB78;
+            font-weight: 500;
+        }
+
+        .checkout-coupon-row {
+            color: #166534;
+            font-weight: 600;
+        }
+
+        .checkout-grand-total {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid var(--gray-200);
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--spice-red);
+        }
+
+        .checkout-grand-total .checkout-total-val {
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        /* Header & Footer overflow safety */
+        #navbar {
+            width: 100%;
+            max-width: 100vw;
+            box-sizing: border-box;
+        }
+
+        .nav-container {
+            width: 100%;
+            max-width: 1200px;
+            box-sizing: border-box;
+        }
+
+        .logo-section {
+            min-width: 0;
+        }
+
+        .brand-text {
+            min-width: 0;
+        }
+
+        footer {
+            width: 100%;
+            max-width: 100vw;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        .footer-content {
+            width: 100%;
+            max-width: 1200px;
+            box-sizing: border-box;
+        }
+
+        .footer-links {
+            flex-wrap: wrap;
+        }
+
+        .footer-bottom p {
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        /* ============================================================
+           RESPONSIVE BREAKPOINTS
+           ============================================================ */
+
+        /* Tablet & Intermediate (< 900px) */
+        @media (max-width: 900px) {
+            .checkout-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .checkout-summary-section .checkout-card {
+                position: static;
+            }
+
+            .checkout-page {
+                padding: 95px 20px 50px;
+            }
+
+            .checkout-card {
+                padding: 22px;
+                margin-bottom: 24px;
+            }
+        }
+
+        /* Mobile Screens (<= 640px: specifically 430px, 390px, 375px, 360px) */
+        @media (max-width: 640px) {
+            .checkout-page {
+                padding: 75px 12px 35px;
+                width: 100%;
+            }
+
+            .checkout-title {
+                font-size: 1.35rem;
+                margin-bottom: 20px;
+                padding-bottom: 8px;
+            }
+
+            .checkout-grid {
+                display: flex;
+                flex-direction: column;
+                gap: 0;
+            }
+
+            /* Enable direct flex ordering for items within the form and summary on mobile */
+            .checkout-form-section,
+            #checkoutForm {
+                display: contents;
+            }
+
+            /* Error banner at top if triggered */
+            #checkoutError {
+                order: 0;
+                margin-bottom: 18px;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            /* 1. Contact Information */
+            .checkout-contact-card {
+                order: 1;
+                margin-bottom: 18px;
+            }
+
+            /* 2. Delivery Address */
+            .checkout-delivery-card {
+                order: 2;
+                margin-bottom: 18px;
+            }
+
+            /* 3. Order Summary (product list, coupon input, subtotal, discounts, delivery, grand total) */
+            .checkout-summary-section {
+                order: 3;
+                width: 100%;
+                margin-bottom: 0;
+            }
+
+            .checkout-summary-section .checkout-card {
+                margin-bottom: 18px;
+            }
+
+            .checkout-card {
+                padding: 16px 14px;
+                border-radius: var(--radius-sm);
+                margin-bottom: 18px;
+            }
+
+            .checkout-card-title {
+                font-size: 1.1rem;
+                margin-bottom: 16px;
+            }
+
+            /* Stack all form fields into single column on mobile */
+            .checkout-form-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .checkout-form-grid .form-group {
+                grid-column: 1 / -1;
+            }
+
+            .checkout-form-grid input,
+            .checkout-form-grid textarea {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+
+            /* 4. Optional Account Creation (Guest Only) */
+            #guestAccountCreationSection {
+                order: 4;
+                padding: 14px 12px;
+                margin-bottom: 20px;
+            }
+
+            .checkout-checkbox-label {
+                font-size: 0.88rem;
+            }
+
+            /* 5. Pay button */
+            #payButton {
+                order: 5;
+                padding: 13px 16px;
+                font-size: 1.05rem;
+                margin-bottom: 0;
+            }
+
+            /* 6. Security Note */
+            .checkout-security-note {
+                order: 6;
+                margin-top: 15px;
+                margin-bottom: 0;
+            }
+
+            /* 7. Legal Links */
+            .checkout-legal-links {
+                order: 7;
+                margin-top: 12px;
+                margin-bottom: 0;
+            }
+
+            /* Order Summary Items */
+            #checkoutItemsList {
+                max-height: 250px;
+                padding-right: 4px;
+                margin-bottom: 15px;
+            }
+
+            .checkout-item-row {
+                gap: 10px;
+                margin-bottom: 12px;
+                padding-bottom: 12px;
+            }
+
+            .checkout-item-thumb {
+                width: 44px;
+                height: 44px;
+            }
+
+            .checkout-item-details h4 {
+                font-size: 0.85rem;
+            }
+
+            .checkout-item-details p {
+                font-size: 0.75rem;
+            }
+
+            .checkout-item-price {
+                font-size: 0.9rem;
+                margin-left: 6px;
+            }
+
+            /* Coupon Section */
+            #couponSection {
+                padding: 12px 10px;
+                margin-bottom: 16px;
+            }
+
+            #couponSection h4 {
+                font-size: 0.88rem;
+                margin-bottom: 8px;
+            }
+
+            #couponInputGroup {
+                gap: 8px;
+            }
+
+            #couponCodeInput {
+                padding: 9px 10px;
+                font-size: 0.85rem;
+            }
+
+            #btnApplyCoupon {
+                padding: 9px 15px;
+                font-size: 0.85rem;
+            }
+
+            #appliedCouponContainer {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 8px 10px;
+            }
+
+            /* Order Totals */
+            .checkout-totals {
+                padding-top: 15px;
+            }
+
+            .checkout-total-row {
+                margin-bottom: 10px;
+                font-size: 0.9rem;
+                gap: 10px;
+            }
+
+            .checkout-grand-total {
+                font-size: 1.15rem;
+                margin-top: 12px;
+                padding-top: 12px;
+            }
+
+            .checkout-grand-total .checkout-total-val {
+                font-size: 1.15rem;
+            }
+
+            /* Header & Footer */
+            .nav-container {
+                padding: 8px 12px;
+            }
+
+            .logo-section img {
+                height: 36px;
+                width: 36px;
+            }
+
+            .brand-text h1 {
+                font-size: 0.9rem;
+            }
+
+            .brand-text span {
+                font-size: 0.58rem;
+            }
+
+            footer {
+                padding: 36px 14px 20px;
+            }
+
+            .footer-logo img {
+                height: 64px;
+                width: 64px;
+            }
+
+            .footer-logo h4 {
+                font-size: 1.3rem;
+            }
+
+            .footer-links {
+                gap: 10px 14px;
+                margin: 16px 0;
+            }
+
+            .footer-links a {
+                font-size: 0.82rem;
+            }
+
+            .footer-bottom {
+                padding-top: 16px;
+                margin-top: 16px;
+            }
+
+            .footer-bottom p {
+                font-size: 0.75rem;
+                line-height: 1.5;
+            }
+        }
+
+        /* Extra small devices (<= 375px e.g. iPhone SE, Galaxy S8) */
+        @media (max-width: 375px) {
+            .checkout-page {
+                padding: 70px 10px 30px;
+            }
+
+            .checkout-card {
+                padding: 14px 10px;
+            }
+
+            #couponSection {
+                padding: 10px 8px;
+            }
+
+            #couponCodeInput {
+                padding: 8px;
+                font-size: 0.82rem;
+            }
+
+            #btnApplyCoupon {
+                padding: 8px 12px;
+                font-size: 0.82rem;
+            }
+
+            .checkout-grand-total {
+                font-size: 1.1rem;
+            }
+
+            .checkout-grand-total .checkout-total-val {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <!-- Meta Pixel Code -->
 <script>
@@ -57,163 +901,148 @@ src="https://www.facebook.com/tr?id=1773052140362850&ev=PageView&noscript=1"
         </div>
     </nav>
 
-    <div class="checkout-page" style="padding: 120px 5% 60px; max-width: 1200px; margin: 0 auto; min-height: 80vh;">
-        <h2 style="font-family: 'Playfair Display', serif; color: var(--deep-brown); margin-bottom: 30px; border-bottom: 2px solid var(--primary-gold); padding-bottom: 10px; display: inline-block;">Secure Checkout</h2>
+    <div class="checkout-page">
+        <h2 class="checkout-title">Secure Checkout</h2>
         
-        <div class="checkout-grid" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 40px;">
+        <div class="checkout-grid">
             <!-- Left Side: Forms -->
             <div class="checkout-form-section">
                 <form id="checkoutForm" onsubmit="handleCheckoutSubmit(event)">
                     
                     <!-- Contact Details -->
-                    <div class="checkout-card" style="background: white; padding: 25px; border-radius: var(--radius-md); box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px;">
-                        <h3 style="color: var(--deep-brown); margin-bottom: 20px; font-size: 1.2rem;"><i class="fas fa-envelope"></i> Contact Information</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">Full Name *</label>
-                                <input type="text" id="checkoutName" required style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                    <div class="checkout-card checkout-contact-card">
+                        <h3 class="checkout-card-title"><i class="fas fa-envelope"></i> Contact Information</h3>
+                        <div class="checkout-form-grid">
+                            <div class="form-group checkout-col-full">
+                                <label>Full Name *</label>
+                                <input type="text" id="checkoutName" required>
                             </div>
                             <div class="form-group">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">Email Address *</label>
-                                <input type="email" id="checkoutEmail" required style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                                <label>Email Address *</label>
+                                <input type="email" id="checkoutEmail" required>
                             </div>
                             <div class="form-group">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">Phone Number *</label>
-                                <input type="tel" id="checkoutPhone" required pattern="[0-9]{10}" placeholder="10-digit number" style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                                <label>Phone Number *</label>
+                                <input type="tel" id="checkoutPhone" required pattern="[0-9]{10}" placeholder="10-digit number">
                             </div>
                         </div>
                     </div>
 
                     <!-- Delivery Details -->
-                    <div class="checkout-card" style="background: white; padding: 25px; border-radius: var(--radius-md); box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px;">
-                        <h3 style="color: var(--deep-brown); margin-bottom: 20px; font-size: 1.2rem;"><i class="fas fa-truck"></i> Delivery Address</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">Street Address *</label>
-                                <textarea id="checkoutAddress" required rows="2" style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif; resize: vertical;"></textarea>
+                    <div class="checkout-card checkout-delivery-card">
+                        <h3 class="checkout-card-title"><i class="fas fa-truck"></i> Delivery Address</h3>
+                        <div class="checkout-form-grid">
+                            <div class="form-group checkout-col-full">
+                                <label>Street Address *</label>
+                                <textarea id="checkoutAddress" required rows="2"></textarea>
                             </div>
                             <div class="form-group">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">City *</label>
-                                <input type="text" id="checkoutCity" required style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                                <label>City *</label>
+                                <input type="text" id="checkoutCity" required>
                             </div>
                             <div class="form-group">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">State *</label>
-                                <input type="text" id="checkoutState" required style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                                <label>State *</label>
+                                <input type="text" id="checkoutState" required>
                             </div>
                             <div class="form-group">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">Pincode *</label>
-                                <input type="text" id="checkoutPincode" required pattern="[0-9]{6}" placeholder="6-digit pincode" style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                                <label>Pincode *</label>
+                                <input type="text" id="checkoutPincode" required pattern="[0-9]{6}" placeholder="6-digit pincode">
                             </div>
                         </div>
                     </div>
 
                     <!-- Optional Account Creation (Guest Only) -->
-                    <div id="guestAccountCreationSection" style="margin-top: 10px; margin-bottom: 25px; padding: 20px; background: #F8FAFC; border: 1px solid var(--gray-200); border-radius: var(--radius-md);">
-                        <label style="display: flex; align-items: center; cursor: pointer; font-weight: 600; color: var(--text-dark); font-size: 0.95rem;">
-                            <input type="checkbox" id="createAccountCheckbox" onchange="toggleAccountFields()" style="margin-right: 10px; width: 18px; height: 18px; accent-color: var(--spice-red);">
-                            Create an account with these details
+                    <div id="guestAccountCreationSection">
+                        <label class="checkout-checkbox-label">
+                            <input type="checkbox" id="createAccountCheckbox" onchange="toggleAccountFields()">
+                            <span>Create an account with these details</span>
                         </label>
                         
-                        <div id="accountPasswordFields" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--gray-200);">
-                            <p style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 15px;">Track your orders and checkout faster next time.</p>
+                        <div id="accountPasswordFields">
+                            <p>Track your orders and checkout faster next time.</p>
                             
-                            <div class="form-group" style="margin-bottom: 15px;">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">Password *</label>
-                                <input type="password" id="checkoutPassword" placeholder="Min 6 characters" style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                            <div class="form-group">
+                                <label>Password *</label>
+                                <input type="password" id="checkoutPassword" placeholder="Min 6 characters">
                             </div>
                             
-                            <div class="form-group" style="margin-bottom: 15px;">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-dark); font-size: 0.9rem;">Confirm Password *</label>
-                                <input type="password" id="checkoutConfirmPassword" placeholder="Confirm your password" style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-family: 'Poppins', sans-serif;">
+                            <div class="form-group">
+                                <label>Confirm Password *</label>
+                                <input type="password" id="checkoutConfirmPassword" placeholder="Confirm your password">
                             </div>
 
-                            <div id="checkoutSignupError" style="display: none; color: #C53030; font-size: 0.85rem; background: #FED7D7; padding: 10px; border-radius: var(--radius-sm); margin-bottom: 10px; border: 1px solid #FC8181;"></div>
+                            <div id="checkoutSignupError"></div>
                         </div>
                     </div>
 
-                    <button type="submit" id="payButton" style="width: 100%; padding: 15px; background: var(--spice-red); color: white; border: none; border-radius: var(--radius-md); font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 1.1rem; cursor: pointer; transition: all 0.3s; display: flex; justify-content: center; align-items: center; gap: 10px;">
+                    <button type="submit" id="payButton">
                         <i class="fas fa-lock"></i> <span id="payButtonText">Pay Now</span>
                     </button>
-                    <p style="text-align: center; font-size: 0.85rem; color: var(--gray-500); margin-top: 15px;"><i class="fas fa-shield-alt"></i> Secure payment powered by Razorpay.</p>
-                    <div style="text-align: center; margin-top: 12px; font-size: 0.8rem; color: var(--gray-500); line-height: 1.8;">
+                    <p class="checkout-security-note"><i class="fas fa-shield-alt"></i> Secure payment powered by Razorpay.</p>
+                    <div class="checkout-legal-links">
                         By proceeding, you agree to our<br>
-                        <a href="terms-and-conditions.html" style="color: var(--spice-red); text-decoration: none;">Terms &amp; Conditions</a> · 
-                        <a href="privacy-policy.html" style="color: var(--spice-red); text-decoration: none;">Privacy Policy</a> · 
-                        <a href="shipping-policy.html" style="color: var(--spice-red); text-decoration: none;">Shipping Policy</a> · 
-                        <a href="cancellation-refund-policy.html" style="color: var(--spice-red); text-decoration: none;">Cancellation &amp; Refund</a>
+                        <a href="terms-and-conditions.html">Terms &amp; Conditions</a> · 
+                        <a href="privacy-policy.html">Privacy Policy</a> · 
+                        <a href="shipping-policy.html">Shipping Policy</a> · 
+                        <a href="cancellation-refund-policy.html">Cancellation &amp; Refund</a>
                     </div>
                 </form>
             </div>
 
             <!-- Right Side: Order Summary -->
             <div class="checkout-summary-section">
-                <div class="checkout-card" style="background: white; padding: 25px; border-radius: var(--radius-md); box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: sticky; top: 100px;">
-                    <h3 style="color: var(--deep-brown); margin-bottom: 20px; font-size: 1.2rem; border-bottom: 1px solid var(--gray-200); padding-bottom: 15px;">Order Summary</h3>
+                <div class="checkout-card checkout-summary-card">
+                    <h3 class="checkout-card-title checkout-summary-title">Order Summary</h3>
                     
-                    <div id="checkoutItemsList" style="margin-bottom: 20px; max-height: 300px; overflow-y: auto; padding-right: 10px;">
+                    <div id="checkoutItemsList">
                         <!-- JS injected items -->
                         <div style="text-align: center; color: var(--gray-500); padding: 20px 0;">Loading items...</div>
                     </div>
 
                     <!-- COUPON SECTION -->
-                    <div id="couponSection" style="margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--gray-200);">
-                        <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: var(--text-dark);">Have a coupon?</h4>
-                        <div id="couponInputGroup" style="display: flex; gap: 10px;">
-                            <input type="text" id="couponCodeInput" placeholder="Enter code" style="flex: 1; padding: 10px; border: 1px solid var(--gray-300); border-radius: 4px; text-transform: uppercase;" onkeyup="this.value = this.value.toUpperCase();">
-                            <button id="btnApplyCoupon" class="btn-primary" style="padding: 10px 20px; border-radius: 4px;" onclick="applyCoupon()">Apply</button>
+                    <div id="couponSection">
+                        <h4>Have a coupon?</h4>
+                        <div id="couponInputGroup">
+                            <input type="text" id="couponCodeInput" placeholder="Enter code" onkeyup="this.value = this.value.toUpperCase();">
+                            <button id="btnApplyCoupon" class="btn-primary" onclick="applyCoupon()">Apply</button>
                         </div>
-                        <div id="couponMessage" style="margin-top: 10px; font-size: 0.85rem; display: none;"></div>
+                        <div id="couponMessage"></div>
                         
-                        <div id="appliedCouponContainer" style="display: none; margin-top: 10px; padding: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; justify-content: space-between; align-items: center;">
-                            <div>
-                                <span style="color: #166534; font-weight: 600;"><i class="fas fa-check-circle"></i> <span id="displayCouponCode"></span></span>
-                                <div style="color: #15803d; font-size: 0.85rem;" id="displayCouponAmount"></div>
+                        <div id="appliedCouponContainer">
+                            <div class="applied-coupon-info">
+                                <span class="applied-coupon-code"><i class="fas fa-check-circle"></i> <span id="displayCouponCode"></span></span>
+                                <div class="applied-coupon-amount" id="displayCouponAmount"></div>
                             </div>
-                            <button onclick="removeCoupon()" style="background: none; border: none; color: #dc2626; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; gap: 4px;"><i class="fas fa-times"></i> Remove</button>
+                            <button type="button" class="applied-coupon-remove" onclick="removeCoupon()"><i class="fas fa-times"></i> Remove</button>
                         </div>
                     </div>
 
-                    <div class="checkout-totals" style="border-top: 1px dashed var(--gray-300); padding-top: 20px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.95rem; color: var(--text-dark);">
-                            <span>Subtotal</span>
-                            <span id="checkoutSubtotal">₹0</span>
+                    <div class="checkout-totals">
+                        <div class="checkout-total-row">
+                            <span class="checkout-total-label">Subtotal</span>
+                            <span class="checkout-total-val" id="checkoutSubtotal">₹0</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 0.95rem; color: var(--text-dark);">
-                            <span>Delivery Charges</span>
-                            <span id="checkoutDelivery">₹0</span>
+                        <div class="checkout-total-row">
+                            <span class="checkout-total-label">Delivery Charges</span>
+                            <span class="checkout-total-val" id="checkoutDelivery">₹0</span>
                         </div>
-                        <div id="checkoutDiscountRow" style="display: none; justify-content: space-between; margin-bottom: 15px; font-size: 0.95rem; color: #48BB78; font-weight: 500;">
-                            <span>Delivery Discount (Free Delivery)</span>
-                            <span id="checkoutDeliveryDiscount">-₹0</span>
+                        <div id="checkoutDiscountRow" class="checkout-total-row checkout-discount-row" style="display: none;">
+                            <span class="checkout-total-label">Delivery Discount (Free Delivery)</span>
+                            <span class="checkout-total-val" id="checkoutDeliveryDiscount">-₹0</span>
                         </div>
-                        <div id="checkoutCouponDiscountRow" style="display: none; justify-content: space-between; margin-bottom: 15px; font-size: 0.95rem; color: #166534; font-weight: 600;">
-                            <span>Coupon Discount</span>
-                            <span id="checkoutCouponDiscountValue">-₹0</span>
+                        <div id="checkoutCouponDiscountRow" class="checkout-total-row checkout-coupon-row" style="display: none;">
+                            <span class="checkout-total-label">Coupon Discount</span>
+                            <span class="checkout-total-val" id="checkoutCouponDiscountValue">-₹0</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--gray-200); font-weight: 700; font-size: 1.2rem; color: var(--spice-red);">
-                            <span>Grand Total</span>
-                            <span id="checkoutGrandTotal">₹0</span>
+                        <div class="checkout-total-row checkout-grand-total">
+                            <span class="checkout-total-label">Grand Total</span>
+                            <span class="checkout-total-val" id="checkoutGrandTotal">₹0</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Responsive CSS adjustments -->
-    <style>
-        @media (max-width: 900px) {
-            .checkout-grid {
-                grid-template-columns: 1fr !important;
-            }
-            .checkout-summary-section .checkout-card {
-                position: static !important;
-            }
-            .checkout-page {
-                padding-top: 100px !important;
-            }
-        }
-    </style>
 
     <!-- Footer -->
     <footer>
