@@ -13,11 +13,27 @@ export async function onRequestPost(context) {
             return jsonResponse(400, { success: false, message: 'Coupon code is required' }, corsHeaders);
         }
 
-        const supabaseUrl = context.env.SUPABASE_URL;
-        const supabaseKey = context.env.SUPABASE_SERVICE_ROLE_KEY;
+        const supabaseUrl = context.env ? context.env.SUPABASE_URL : undefined;
+        const supabaseKey = context.env ? context.env.SUPABASE_SERVICE_ROLE_KEY : undefined;
+
+        // Temporary Safe Diagnostics
+        const diagnostics = {
+            endpoint: 'validate-coupon',
+            has_env: Boolean(context.env),
+            has_SUPABASE_URL: Boolean(supabaseUrl),
+            has_SUPABASE_SERVICE_ROLE_KEY: Boolean(supabaseKey),
+            has_RAZORPAY_KEY_ID: Boolean(context.env && context.env.RAZORPAY_KEY_ID),
+            has_RAZORPAY_KEY_SECRET: Boolean(context.env && context.env.RAZORPAY_KEY_SECRET),
+            has_SUPABASE_KEY: Boolean(context.env && context.env.SUPABASE_KEY),
+            has_SUPABASE_SERVICE_KEY: Boolean(context.env && context.env.SUPABASE_SERVICE_KEY),
+            has_RAZORPAY_KEY: Boolean(context.env && context.env.RAZORPAY_KEY),
+            has_RAZORPAY_SECRET: Boolean(context.env && context.env.RAZORPAY_SECRET),
+        };
+        console.log('[Diagnostics:validate-coupon]', JSON.stringify(diagnostics));
 
         if (!supabaseUrl || !supabaseKey) {
-            return jsonResponse(500, { success: false, message: 'Server configuration error' }, corsHeaders);
+            console.error('Server configuration error: missing Supabase credentials', diagnostics);
+            return jsonResponse(500, { success: false, message: 'Server configuration error', diagnostics }, corsHeaders);
         }
 
         // 1. Fetch Coupon

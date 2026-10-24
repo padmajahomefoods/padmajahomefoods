@@ -29,14 +29,29 @@ export async function onRequestPost(context) {
             return jsonResponse(400, { success: false, message: 'Cart items are required' }, corsHeaders);
         }
 
-        const keyId = context.env.RAZORPAY_KEY_ID;
-        const keySecret = context.env.RAZORPAY_KEY_SECRET;
-        const supabaseUrl = context.env.SUPABASE_URL;
-        const supabaseKey = context.env.SUPABASE_SERVICE_ROLE_KEY;
+        const keyId = context.env ? context.env.RAZORPAY_KEY_ID : undefined;
+        const keySecret = context.env ? context.env.RAZORPAY_KEY_SECRET : undefined;
+        const supabaseUrl = context.env ? context.env.SUPABASE_URL : undefined;
+        const supabaseKey = context.env ? context.env.SUPABASE_SERVICE_ROLE_KEY : undefined;
+
+        // Temporary Safe Diagnostics
+        const diagnostics = {
+            endpoint: 'create-order',
+            has_env: Boolean(context.env),
+            has_SUPABASE_URL: Boolean(supabaseUrl),
+            has_SUPABASE_SERVICE_ROLE_KEY: Boolean(supabaseKey),
+            has_RAZORPAY_KEY_ID: Boolean(keyId),
+            has_RAZORPAY_KEY_SECRET: Boolean(keySecret),
+            has_SUPABASE_KEY: Boolean(context.env && context.env.SUPABASE_KEY),
+            has_SUPABASE_SERVICE_KEY: Boolean(context.env && context.env.SUPABASE_SERVICE_KEY),
+            has_RAZORPAY_KEY: Boolean(context.env && context.env.RAZORPAY_KEY),
+            has_RAZORPAY_SECRET: Boolean(context.env && context.env.RAZORPAY_SECRET),
+        };
+        console.log('[Diagnostics:create-order]', JSON.stringify(diagnostics));
 
         if (!keyId || !keySecret || !supabaseUrl || !supabaseKey) {
-            console.error('Server configuration error: missing required environment variables');
-            return jsonResponse(500, { success: false, message: 'Server configuration error' }, corsHeaders);
+            console.error('Server configuration error: missing required environment variables', diagnostics);
+            return jsonResponse(500, { success: false, message: 'Server configuration error', diagnostics }, corsHeaders);
         }
 
         // ============================================
