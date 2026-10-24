@@ -519,7 +519,7 @@ async function initProductPage() {
 
     document.getElementById('pdpTitle').textContent = product.name;
     document.getElementById('pdpSubtitle').textContent = product.desc;
-    document.getElementById('pdpImage').src = DB.getImageUrl(product.image);
+    document.getElementById('pdpImage').src = DB.getImageUrl(product.image) || 'food-placeholder.svg';
     document.getElementById('pdpImage').alt = product.name;
     document.getElementById('pdpBreadcrumbName').textContent = product.name;
     document.getElementById('pdpBreadcrumbCategory').textContent = catInfo ? catInfo.name : product.category;
@@ -644,7 +644,7 @@ function updatePDPButtons(product, weight, price) {
 function createProductCard(product, isPriority) {
     const defaultWeight = product.weights[0];
     const defaultPrice = getPriceForWeight(product, defaultWeight);
-    const imageUrl = DB.getImageUrl(product.image);
+    const imageUrl = DB.getImageUrl(product.image) || 'food-placeholder.svg';
 
     const badgeHtml = product.badge ?
         '<span class="badge badge-' + escapeProductHTML(product.badge) + '">' +
@@ -669,7 +669,7 @@ function createProductCard(product, isPriority) {
             <a href="product.html?id=${encodeURIComponent(product.id)}" class="product-card-link">
                 <div class="product-image">
                     <img src="${escapeProductHTML(imageUrl)}" alt="${safeProductName}" loading="${isPriority ? 'eager' : 'lazy'}" decoding="async" width="300" height="300"
-                        onerror="this.onerror=null;this.src='logo.png';this.style.objectFit='contain';this.style.padding='20px'">
+                        onerror="this.onerror=null;this.src='food-placeholder.svg';this.style.objectFit='contain';this.style.padding='0'">
                     <div class="product-badges">${badgeHtml}</div>
                 </div>
             </a>
@@ -806,10 +806,12 @@ async function renderShopPage() {
 function injectImagePreloads(products) {
     const firstFour = products.filter(p => p.available !== false).slice(0, 4);
     firstFour.forEach(p => {
+        const imgUrl = DB.getImageUrl(p.image);
+        if (!imgUrl || imgUrl === 'food-placeholder.svg') return;
         const link = document.createElement('link');
         link.rel = 'preload';
         link.as = 'image';
-        link.href = DB.getImageUrl(p.image);
+        link.href = imgUrl;
         document.head.appendChild(link);
     });
 }
