@@ -846,23 +846,28 @@ function updateCartUI() {
     cartItems.insertAdjacentHTML('afterbegin', progressHtml);
 }
 
-async function addToCart(btn, productName, basePrice) {
-    const card = btn.closest('.product-card');
-    const activeBtn = card.querySelector('.weight-btn.active');
-    const weight = activeBtn ? activeBtn.textContent : '250g';
+async function addToCart(btn, productIdentifier, basePrice) {
+    const card = btn ? btn.closest('.product-card') : null;
+    const activeBtn = card ? card.querySelector('.weight-btn.active') : null;
+    const weight = activeBtn ? activeBtn.textContent.trim() : '250g';
+
+    const targetId = (productIdentifier !== undefined && productIdentifier !== null && String(productIdentifier).trim() !== '')
+        ? String(productIdentifier)
+        : (card ? (card.getAttribute('data-product-id') || card.id) : null);
 
     const products = await DB.getProducts();
-    const product = products.find(p => p.name === productName);
-    const finalPrice = product ? getPriceForWeight(product, weight) : Math.round((basePrice * parseWeight(weight)) / 1000);
+    const product = products.find(p => (targetId && String(p.id) === targetId) || p.name === targetId);
+    const productName = product ? product.name : (card ? card.getAttribute('data-product') : targetId);
+    const finalPrice = product ? getPriceForWeight(product, weight) : Math.round(((basePrice || (product ? product.price1000 : 0)) * parseWeight(weight)) / 1000);
     const weightInGrams = parseWeight(weight);
 
     await CartService.addItem({
-        product_id: product ? product.id : undefined,
+        product_id: product ? product.id : (card ? (card.getAttribute('data-product-id') || card.id) : undefined),
         name: productName,
         weight: weight,
         weightInGrams: weightInGrams,
         price: finalPrice,
-        basePrice: basePrice,
+        basePrice: product ? (product.price1000 || basePrice) : basePrice,
         quantity: 1
     });
 
