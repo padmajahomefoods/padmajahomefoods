@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <defs>
+    <linearGradient id="phf-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCF9F5"/>
+      <stop offset="100%" stop-color="#F4EBE1"/>
+    </linearGradient>
+    <linearGradient id="phf-pot" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9C523E"/>
+      <stop offset="100%" stop-color="#733929"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Card -->
+  <rect width="300" height="300" rx="16" fill="url(#phf-bg)"/>
+  <rect x="8" y="8" width="284" height="284" rx="12" fill="none" stroke="#EADDCF" stroke-width="1.5" stroke-dasharray="4 4"/>
+  
+  <!-- Decorative Ring -->
+  <circle cx="150" cy="130" r="58" fill="#F0E5D8" stroke="#E3D2BF" stroke-width="2"/>
+  
+  <!-- Traditional Pot / Bowl -->
+  <!-- Pot Lid Handle -->
+  <circle cx="150" cy="98" r="4.5" fill="#C59B27"/>
+  <!-- Pot Lid -->
+  <path d="M126 114 C132 104, 168 104, 174 114 Z" fill="#C59B27"/>
+  <path d="M122 114 L178 114" stroke="#A67F19" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Pot Body -->
+  <path d="M118 122 C116 150, 130 168, 150 168 C170 168, 184 150, 182 122 Z" fill="url(#phf-pot)"/>
+  <!-- Pot Rim -->
+  <rect x="116" y="118" width="68" height="6" rx="3" fill="#8A4330"/>
+  <!-- Pot Highlights -->
+  <path d="M130 132 C128 146, 134 156, 142 160" stroke="#B86B55" stroke-width="2" stroke-linecap="round" fill="none"/>
+  
+  <!-- Spice / Leaf accent -->
+  <path d="M150 90 C150 82, 158 78, 162 76 C162 84, 156 88, 150 90 Z" fill="#3D7A42"/>
+  <path d="M148 89 C145 83, 140 80, 136 79 C138 86, 143 89, 148 89 Z" fill="#589B5D"/>
+
+  <!-- Brand Typography -->
+  <text x="150" y="218" font-family="'Playfair Display', Georgia, serif" font-size="14" font-weight="700" fill="#6B3A2A" text-anchor="middle" letter-spacing="1">PADMAJA HOME FOODS</text>
+  <text x="150" y="238" font-family="'Poppins', system-ui, -apple-system, sans-serif" font-size="10.5" font-weight="500" fill="#9E7D47" text-anchor="middle" letter-spacing="0.5">Authentic &amp; Handcrafted</text>
+</svg>
