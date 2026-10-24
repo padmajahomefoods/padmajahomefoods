@@ -50,7 +50,7 @@ function getPriceForWeight(product, weightStr) {
 // ============================================
 // HTML ESCAPE HELPER
 // ============================================
-function escapeHTML(str) {
+function escapeProductHTML(str) {
     return String(str || '').replace(/[&<>'"]/g, m => ({
         '&': '&amp;',
         '<': '&lt;',
@@ -329,12 +329,12 @@ async function searchProducts() {
 
     results.innerHTML = matches.map(p => {
         const imgUrl = DB.getImageUrl(p.image);
-        const safeCatId = escapeHTML(p.catId);
-        const safeId = escapeHTML(p.id);
-        const safeName = escapeHTML(p.name);
-        const safeCategory = escapeHTML(p.category);
+        const safeCatId = escapeProductHTML(p.catId);
+        const safeId = escapeProductHTML(p.id);
+        const safeName = escapeProductHTML(p.name);
+        const safeCategory = escapeProductHTML(p.category);
         return `<div class="search-result-item" onclick="goToProduct('${safeCatId}', '${safeId}')">
-            <img src="${escapeHTML(imgUrl)}" alt="${safeName}" class="search-result-img" onerror="this.style.display='none';this.parentElement.querySelector('.search-fallback').style.display='flex'">
+            <img src="${escapeProductHTML(imgUrl)}" alt="${safeName}" class="search-result-img" onerror="this.style.display='none';this.parentElement.querySelector('.search-fallback').style.display='flex'">
             <div class="search-fallback" style="display:none;width:40px;height:40px;background:var(--gray-100);border-radius:var(--radius-sm);align-items:center;justify-content:center;color:var(--gray-400);font-size:0.7rem;">IMG</div>
             <div>
                 <div class="search-result-name">${safeName}</div>
@@ -647,7 +647,7 @@ function createProductCard(product, isPriority) {
     const imageUrl = DB.getImageUrl(product.image);
 
     const badgeHtml = product.badge ?
-        '<span class="badge badge-' + escapeHTML(product.badge) + '">' +
+        '<span class="badge badge-' + escapeProductHTML(product.badge) + '">' +
         (product.badge === 'bestseller' ? 'Best Seller' :
          product.badge === 'popular' ? 'Popular' :
          product.badge === 'new' ? 'New' : 'Premium') +
@@ -656,19 +656,19 @@ function createProductCard(product, isPriority) {
     const weightButtons = product.weights.map((w, i) => {
         const grams = parseWeight(w);
         const active = i === 0 ? 'active' : '';
-        return '<button class="weight-btn ' + active + '" onclick="selectWeight(this, ' + grams + ')">' + escapeHTML(w) + '</button>';
+        return '<button class="weight-btn ' + active + '" onclick="selectWeight(this, ' + grams + ')">' + escapeProductHTML(w) + '</button>';
     }).join('');
 
-    const safeProductId = escapeHTML(product.id);
-    const safeProductName = escapeHTML(product.name);
-    const safeProductDesc = escapeHTML(product.desc);
-    const safeWeight = escapeHTML(defaultWeight);
+    const safeProductId = escapeProductHTML(product.id);
+    const safeProductName = escapeProductHTML(product.name);
+    const safeProductDesc = escapeProductHTML(product.desc);
+    const safeWeight = escapeProductHTML(defaultWeight);
 
     return `
         <div class="product-card" id="${safeProductId}" data-product-id="${safeProductId}" data-product="${safeProductName}" data-base-price="${product.price1000 || 0}">
             <a href="product.html?id=${encodeURIComponent(product.id)}" class="product-card-link">
                 <div class="product-image">
-                    <img src="${escapeHTML(imageUrl)}" alt="${safeProductName}" loading="${isPriority ? 'eager' : 'lazy'}" decoding="async" width="300" height="300"
+                    <img src="${escapeProductHTML(imageUrl)}" alt="${safeProductName}" loading="${isPriority ? 'eager' : 'lazy'}" decoding="async" width="300" height="300"
                         onerror="this.onerror=null;this.src='logo.png';this.style.objectFit='contain';this.style.padding='20px'">
                     <div class="product-badges">${badgeHtml}</div>
                 </div>
