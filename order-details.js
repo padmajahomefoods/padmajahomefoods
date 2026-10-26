@@ -103,10 +103,21 @@ async function initOrderDetails() {
             console.warn('Error fetching order items:', itemsErr);
             data.order_items = [];
         } else {
-            // Resolve missing images dynamically using product_id
+            // Resolve missing images dynamically using product_id, product_name, or slug fallback
             const resolvedItems = [];
+            let allProducts = null;
+            if (typeof DB !== 'undefined' && typeof DB.getProducts === 'function') {
+                try {
+                    allProducts = await DB.getProducts();
+                } catch (e) {
+                    allProducts = null;
+                }
+            }
+
             for (const item of (items || [])) {
                 let rawImage = item.image || item.image_url;
+
+                // 1. Try product_id
                 if (!rawImage && item.product_id && typeof DB !== 'undefined' && typeof DB.getProductById === 'function') {
                     try {
                         const product = await DB.getProductById(item.product_id);
@@ -114,10 +125,28 @@ async function initOrderDetails() {
                             rawImage = product.image;
                         }
                     } catch(e) {
-                        console.warn('Could not fetch product image for item', item.id);
+                        console.warn('Could not fetch product image by id for item', item.id);
                     }
                 }
-                
+
+                // 2. Fallback: exact case-insensitive product-name matching against DB.getProducts()
+                if (!rawImage && allProducts && Array.isArray(allProducts) && (item.product_name || item.name)) {
+                    const targetName = (item.product_name || item.name).trim().toLowerCase();
+                    let matched = allProducts.find(p => p.name && p.name.trim().toLowerCase() === targetName);
+
+                    // 3. Slug matching only as a fallback
+                    if (!matched) {
+                        const targetSlug = targetName.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                        if (targetSlug) {
+                            matched = allProducts.find(p => p.id && String(p.id).toLowerCase() === targetSlug);
+                        }
+                    }
+
+                    if (matched && matched.image) {
+                        rawImage = matched.image;
+                    }
+                }
+
                 if (rawImage) {
                     item.resolved_image_url = typeof DB !== 'undefined' && typeof DB.getImageUrl === 'function' ? DB.getImageUrl(rawImage) : rawImage;
                 }

@@ -1159,7 +1159,16 @@ async function loadOrdersTab() {
         html += '<div class="account-empty"><i class="fas fa-shopping-bag"></i><p>No orders yet.</p><a href="index.html" class="btn-primary" style="display:inline-flex;">Start Shopping</a></div>';
     } else {
         html += '<div class="orders-list">';
-        
+
+        let allProducts = null;
+        if (typeof DB !== 'undefined' && typeof DB.getProducts === 'function') {
+            try {
+                allProducts = await DB.getProducts();
+            } catch (e) {
+                allProducts = null;
+            }
+        }
+
         for (const order of orders) {
             const statusClass = 'status-' + order.status;
             const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
@@ -1167,15 +1176,15 @@ async function loadOrdersTab() {
             const total = Number(order.total_amount).toLocaleString('en-IN');
             const items = order.order_items || [];
             const itemCount = items.length;
-            
+
             let firstImage = '';
             let firstName = 'Products';
-            
+
             if (itemCount > 0) {
-                firstName = items[0].product_name;
+                firstName = items[0].product_name || items[0].name || 'Products';
                 let rawImage = items[0].image || items[0].image_url;
-                
-                // If no image on order_item, fetch from product table
+
+                // 1. If no image on order_item, try product_id
                 if (!rawImage && items[0].product_id) {
                     try {
                         const product = await DB.getProductById(items[0].product_id);
@@ -1183,18 +1192,38 @@ async function loadOrdersTab() {
                             rawImage = product.image;
                         }
                     } catch (e) {
-                        console.warn('Could not fetch product image', e);
+                        console.warn('Could not fetch product image by id', e);
                     }
                 }
-                
+
+                // 2. Fallback: exact case-insensitive product-name matching against DB.getProducts()
+                if (!rawImage && allProducts && Array.isArray(allProducts) && (items[0].product_name || items[0].name)) {
+                    const targetName = (items[0].product_name || items[0].name).trim().toLowerCase();
+                    let matched = allProducts.find(p => p.name && p.name.trim().toLowerCase() === targetName);
+
+                    // 3. Slug matching only as a fallback
+                    if (!matched) {
+                        const targetSlug = targetName.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                        if (targetSlug) {
+                            matched = allProducts.find(p => p.id && String(p.id).toLowerCase() === targetSlug);
+                        }
+                    }
+
+                    if (matched && matched.image) {
+                        rawImage = matched.image;
+                    }
+                }
+
                 if (rawImage) {
                     firstImage = typeof DB !== 'undefined' && typeof DB.getImageUrl === 'function' ? DB.getImageUrl(rawImage) : rawImage;
+                } else {
+                    firstImage = '/food-placeholder.svg';
                 }
             }
-            
+
             let imgHtml = '';
             if (firstImage) {
-                imgHtml = `<img src="${firstImage}" class="order-compact-img" alt="${escapeHTML(firstName)}" onerror="this.style.display='none'">`;
+                imgHtml = `<img src="${firstImage}" class="order-compact-img" alt="${escapeHTML(firstName)}" onerror="this.onerror=null; this.src='/food-placeholder.svg';">`;
             }
             
             html += `
