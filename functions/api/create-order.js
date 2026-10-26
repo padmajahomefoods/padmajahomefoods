@@ -21,24 +21,143 @@ export async function onRequestPost(context) {
         } = body;
 
         // Validate required fields
-        if (!amount || amount <= 0) {
-            return jsonResponse(400, { success: false, message: 'Invalid amount' }, corsHeaders);
+        if (!amount || Number(amount) <= 0) {
+            return jsonResponse(400, { success: false, message: 'Invalid order amount' }, corsHeaders);
         }
 
-        const keyId = context.env.RAZORPAY_KEY_ID;
-        const keySecret = context.env.RAZORPAY_KEY_SECRET;
-        const supabaseUrl = context.env.SUPABASE_URL;
-        const supabaseKey = context.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return jsonResponse(400, { success: false, message: 'Cart items are required' }, corsHeaders);
+        }
+
+        const keyId = context.env ? context.env.RAZORPAY_KEY_ID : undefined;
+        const keySecret = context.env ? context.env.RAZORPAY_KEY_SECRET : undefined;
+        const supabaseUrl = context.env ? context.env.SUPABASE_URL : undefined;
+        const supabaseKey = context.env ? context.env.SUPABASE_SERVICE_ROLE_KEY : undefined;
 
         if (!keyId || !keySecret || !supabaseUrl || !supabaseKey) {
-            console.error('Server configuration error');
+            console.error('Server configuration error: missing required environment variables');
             return jsonResponse(500, { success: false, message: 'Server configuration error' }, corsHeaders);
         }
 
-        let finalAmount = Number(amount);
-        let finalCouponDiscount = 0;
+        // ============================================
+        // 0. SERVER-SIDE AUTHORITATIVE CATALOG & PRICE VERIFICATION
+        // ============================================
+        const prodsRes = await fetch(`${supabaseUrl}/rest/v1/products?select=id,name,available,weights,price_100g,price_250,price_500,price_1000`, {
+            headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+        });
+        if (!prodsRes.ok) {
+            console.error('Failed to fetch products for price verification:', await prodsRes.text());
+            return jsonResponse(500, { success: false, message: 'Product catalog unavailable' }, corsHeaders);
+        }
+        const dbProducts = await prodsRes.json();
+        const productsById = new Map();
+        const productsByName = new Map();
+        for (const p of dbProducts) {
+            productsById.set(p.id, p);
+            if (p.name) productsByName.set(p.name.trim().toLowerCase(), p);
+        }
 
-        // 0. Server-Side Coupon Validation
+        let serverSubtotal = 0;
+        let serverTotalWeight = 0;
+        const verifiedItems = [];
+
+        for (const item of items) {
+            const rawQty = Number(item.quantity);
+            if (!Number.isInteger(rawQty) || rawQty < 1 || rawQty > 50) {
+                return jsonResponse(400, { success: false, message: 'Invalid item quantity' }, corsHeaders);
+            }
+
+            let product = null;
+            if (item.product_id && productsById.has(item.product_id)) {
+                product = productsById.get(item.product_id);
+            } else if (item.name && productsByName.has(item.name.trim().toLowerCase())) {
+                product = productsByName.get(item.name.trim().toLowerCase());
+            } else if (item.name && productsById.has(slugifyName(item.name))) {
+                product = productsById.get(slugifyName(item.name));
+            }
+
+            if (!product) {
+                console.error(`Product not found in database: ${item.name || item.product_id}`);
+                return jsonResponse(400, { success: false, message: `Product not found: ${item.name || item.product_id}` }, corsHeaders);
+            }
+
+            if (product.available === false) {
+                return jsonResponse(400, { success: false, message: `"${product.name}" is currently out of stock` }, corsHeaders);
+            }
+
+            const expectedUnitPrice = calculateItemUnitPrice(product, item.weight);
+            if (!expectedUnitPrice || expectedUnitPrice <= 0) {
+                return jsonResponse(400, { success: false, message: `Invalid pricing for item "${product.name}"` }, corsHeaders);
+            }
+
+            const grams = parseWeightInGrams(item.weight);
+            const lineTotal = expectedUnitPrice * rawQty;
+
+            serverSubtotal += lineTotal;
+            serverTotalWeight += (grams * rawQty);
+
+            verifiedItems.push({
+                product_id: product.id,
+                product_name: product.name,
+                weight: item.weight || '',
+                price: expectedUnitPrice,
+                quantity: rawQty,
+                total: lineTotal
+            });
+        }
+
+        // ============================================
+        // 1. SERVER-SIDE DELIVERY CHARGES CALCULATION
+        // ============================================
+        let deliveryThreshold = 1999;
+        let deliverySlabs = [
+            { maxWeight: 500, charge: 59 },
+            { maxWeight: 1000, charge: 89 },
+            { maxWeight: 2000, charge: 129 },
+            { maxWeight: 3000, charge: 169 }
+        ];
+        let maxSlabCharge = 249;
+
+        try {
+            const settingsRes = await fetch(`${supabaseUrl}/rest/v1/settings?key=eq.delivery&select=*`, {
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+            });
+            if (settingsRes.ok) {
+                const settingsData = await settingsRes.json();
+                if (settingsData && settingsData.length > 0) {
+                    const val = typeof settingsData[0].value === 'string'
+                        ? JSON.parse(settingsData[0].value)
+                        : settingsData[0].value;
+                    if (val) {
+                        if (val.free_delivery_threshold !== undefined) deliveryThreshold = Number(val.free_delivery_threshold);
+                        if (Array.isArray(val.weight_slabs)) deliverySlabs = val.weight_slabs;
+                        if (val.max_slab_charge !== undefined) maxSlabCharge = Number(val.max_slab_charge);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Could not load delivery settings from DB, using defaults', e);
+        }
+
+        let calculatedDeliveryCharge = maxSlabCharge;
+        for (const slab of deliverySlabs) {
+            if (serverTotalWeight <= slab.maxWeight) {
+                calculatedDeliveryCharge = slab.charge;
+                break;
+            }
+        }
+
+        let serverDeliveryCharge = calculatedDeliveryCharge;
+        let serverDeliveryDiscount = 0;
+        if (serverSubtotal >= deliveryThreshold) {
+            serverDeliveryDiscount = calculatedDeliveryCharge;
+            serverDeliveryCharge = 0;
+        }
+
+        // ============================================
+        // 2. SERVER-SIDE COUPON VALIDATION
+        // ============================================
+        let finalCouponDiscount = 0;
         if (coupon_code) {
             try {
                 const couponRes = await fetch(`${supabaseUrl}/rest/v1/coupons?code=eq.${encodeURIComponent(coupon_code.toUpperCase())}&select=*`, {
@@ -54,8 +173,9 @@ export async function onRequestPost(context) {
                 if (coupon.start_date && new Date(coupon.start_date) > now) return jsonResponse(400, { success: false, message: 'Coupon is not yet valid' }, corsHeaders);
                 if (coupon.expiry_date && new Date(coupon.expiry_date) < now) return jsonResponse(400, { success: false, message: 'Coupon has expired' }, corsHeaders);
                 
-                const st = Number(subtotal || 0);
-                if (coupon.minimum_order_value && st < coupon.minimum_order_value) return jsonResponse(400, { success: false, message: 'Minimum order requirement not met' }, corsHeaders);
+                if (coupon.minimum_order_value && serverSubtotal < coupon.minimum_order_value) {
+                    return jsonResponse(400, { success: false, message: `Minimum order requirement of ₹${coupon.minimum_order_value} not met` }, corsHeaders);
+                }
                 if (coupon.usage_limit !== null && coupon.used_count >= coupon.usage_limit) return jsonResponse(400, { success: false, message: 'Coupon usage limit reached' }, corsHeaders);
                 if (!user_id) return jsonResponse(401, { success: false, message: 'Please login to use a coupon' }, corsHeaders);
 
@@ -79,20 +199,13 @@ export async function onRequestPost(context) {
 
                 let calcDiscount = 0;
                 if (coupon.discount_type === 'percentage') {
-                    calcDiscount = (st * coupon.discount_value) / 100;
+                    calcDiscount = (serverSubtotal * coupon.discount_value) / 100;
                     if (coupon.maximum_discount !== null && calcDiscount > coupon.maximum_discount) calcDiscount = coupon.maximum_discount;
                 } else if (coupon.discount_type === 'fixed') {
                     calcDiscount = coupon.discount_value;
                 }
-                if (calcDiscount > st) calcDiscount = st;
+                if (calcDiscount > serverSubtotal) calcDiscount = serverSubtotal;
                 finalCouponDiscount = Math.round(calcDiscount);
-
-                const expectedTotal = st + Number(delivery_charge || 0) - Number(delivery_discount || 0) - finalCouponDiscount;
-                if (Math.abs(expectedTotal - Number(amount)) > 2) {
-                    console.error(`Amount mismatch: expected ${expectedTotal}, got ${amount}`);
-                    return jsonResponse(400, { success: false, message: 'Order amount mismatch due to coupon validation' }, corsHeaders);
-                }
-                finalAmount = expectedTotal;
 
             } catch (err) {
                 console.error("Coupon validation error in create-order:", err);
@@ -100,7 +213,21 @@ export async function onRequestPost(context) {
             }
         }
 
-        // 1. Lazy Cleanup of Old Pending Orders
+        // ============================================
+        // 3. AUTHORITATIVE FINAL AMOUNT & ANTI-TAMPERING CHECK
+        // ============================================
+        const serverGrandTotal = Math.max(0, serverSubtotal + serverDeliveryCharge - finalCouponDiscount);
+
+        // Security check: reject manipulated prices or inconsistent client totals
+        // Allow up to ₹2 tolerance for client vs server rounding edge cases
+        if (Math.abs(serverGrandTotal - Number(amount)) > 2) {
+            console.error(`Price tampering / total mismatch detected: client requested ${amount}, server computed ${serverGrandTotal}`);
+            return jsonResponse(400, { success: false, message: 'Order total mismatch. Please refresh checkout and try again.' }, corsHeaders);
+        }
+
+        const finalAmount = serverGrandTotal;
+
+        // 4. Lazy Cleanup of Old Pending Orders
         try {
             const cleanupDate = new Date(Date.now() - 30 * 60 * 1000).toISOString();
             await fetch(`${supabaseUrl}/rest/v1/orders?status=eq.pending&created_at=lt.${cleanupDate}`, {
@@ -116,7 +243,7 @@ export async function onRequestPost(context) {
             console.error('Lazy cleanup failed', e);
         }
 
-        // 2. Idempotency Check
+        // 5. Idempotency Check with Total Amount Verification
         if (pending_order_id && cart_hash) {
             try {
                 const orderQuery = await fetch(`${supabaseUrl}/rest/v1/orders?razorpay_order_id=eq.${pending_order_id}&status=eq.pending&select=*`, {
@@ -128,7 +255,10 @@ export async function onRequestPost(context) {
                     const existing = existingOrders[0];
                     const orderAgeMs = Date.now() - new Date(existing.created_at).getTime();
                     
-                    if (orderAgeMs < 30 * 60 * 1000 && existing.notes && existing.notes.includes(`CartHash:${cart_hash}`)) {
+                    if (orderAgeMs < 30 * 60 * 1000 &&
+                        existing.notes &&
+                        existing.notes.includes(`CartHash:${cart_hash}`) &&
+                        Number(existing.total_amount) === finalAmount) {
                         console.log("Reusing existing pending order:", existing.order_number);
                         return jsonResponse(200, {
                             success: true,
@@ -144,7 +274,7 @@ export async function onRequestPost(context) {
             }
         }
 
-        // 3. Create Razorpay order
+        // 6. Create Razorpay order (paise unit required by Razorpay)
         const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
             method: 'POST',
             headers: {
@@ -171,13 +301,13 @@ export async function onRequestPost(context) {
         const rzpOrder = await razorpayResponse.json();
         const orderNumber = 'PHF' + Date.now();
 
-        // 4. Insert Supabase Pending Order
+        // 7. Insert Supabase Pending Order (Rupees unit stored in database)
         let addressObj = delivery_address || '';
         if (typeof addressObj === 'string' && addressObj.length > 0) {
             addressObj = { full_address: addressObj };
         }
 
-        const orderNotes = `${customer_name || 'Guest'} | ${customer_email || ''} | ${customer_phone || ''} | Subtotal: ${subtotal || 0} | Delivery: ${delivery_charge || 0} | Discount: ${delivery_discount || 0} | Coupon: ${coupon_code || 'None'} | CartHash:${cart_hash}`;
+        const orderNotes = `${customer_name || 'Guest'} | ${customer_email || ''} | ${customer_phone || ''} | Subtotal: ${serverSubtotal} | Delivery: ${serverDeliveryCharge} | Discount: ${serverDeliveryDiscount} | Coupon: ${coupon_code || 'None'} | CartHash:${cart_hash}`;
 
         const orderPayload = {
             order_number: orderNumber,
@@ -215,43 +345,36 @@ export async function onRequestPost(context) {
 
         const [savedOrder] = await orderRes.json();
 
-        // 5. Insert Order Items
-        if (items && items.length > 0) {
-            const orderItems = items.map(item => {
-                const mapped = {
-                    order_id: savedOrder.id,
-                    product_name: item.name || item.product_name || '',
-                    weight: item.weight || '',
-                    price: item.price,
-                    quantity: item.quantity,
-                    total: item.price * item.quantity,
-                };
-                if (item.product_id && item.product_id !== '') {
-                    mapped.product_id = item.product_id;
-                }
-                return mapped;
-            });
+        // 8. Insert Order Items with Verified Authoritative Prices & Totals
+        const orderItems = verifiedItems.map(item => ({
+            order_id: savedOrder.id,
+            product_id: item.product_id,
+            product_name: item.product_name,
+            weight: item.weight,
+            price: item.price,
+            quantity: item.quantity,
+            total: item.total,
+        }));
 
-            const itemsRes = await fetch(`${supabaseUrl}/rest/v1/order_items`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': supabaseKey,
-                    'Authorization': `Bearer ${supabaseKey}`
-                },
-                body: JSON.stringify(orderItems)
-            });
+        const itemsRes = await fetch(`${supabaseUrl}/rest/v1/order_items`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`
+            },
+            body: JSON.stringify(orderItems)
+        });
 
-            if (!itemsRes.ok) {
-                const errText = await itemsRes.text();
-                console.error('Supabase items insert failed:', errText);
-                // Rollback order
-                await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${savedOrder.id}`, {
-                    method: 'DELETE',
-                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-                });
-                return jsonResponse(500, { success: false, message: 'Failed to save items', detail: errText }, corsHeaders);
-            }
+        if (!itemsRes.ok) {
+            const errText = await itemsRes.text();
+            console.error('Supabase items insert failed:', errText);
+            // Rollback order
+            await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${savedOrder.id}`, {
+                method: 'DELETE',
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+            });
+            return jsonResponse(500, { success: false, message: 'Failed to save items', detail: errText }, corsHeaders);
         }
 
         if (context.waitUntil) {
@@ -386,4 +509,35 @@ async function recoverPendingOrders(env) {
     } catch (e) {
         console.error('[Recovery] Error during background recovery:', e);
     }
+}
+
+// ============================================
+// AUTHORITATIVE CATALOG & PRICING HELPERS
+// ============================================
+
+function parseWeightInGrams(wStr) {
+    if (!wStr) return 1000;
+    const s = String(wStr).toLowerCase().replace(/\s+/g, '');
+    if (s.includes('kg')) {
+        return (parseFloat(s) || 1) * 1000;
+    }
+    return parseFloat(s) || 1000;
+}
+
+function calculateItemUnitPrice(product, weightStr) {
+    const w = String(weightStr || '').toLowerCase().replace('kg', 'Kg');
+    if (w === '100g' && product.price_100g) return Number(product.price_100g);
+    if (w === '250g' && product.price_250) return Number(product.price_250);
+    if (w === '500g' && product.price_500) return Number(product.price_500);
+    if ((w === '1kg' || w === '1Kg') && product.price_1000) return Number(product.price_1000);
+    const wGrams = parseWeightInGrams(weightStr);
+    const base = Number(product.price_1000 || 0);
+    return Math.round((base * wGrams) / 1000);
+}
+
+function slugifyName(name) {
+    return String(name || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
 }

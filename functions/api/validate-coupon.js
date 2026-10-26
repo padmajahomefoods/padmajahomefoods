@@ -13,10 +13,11 @@ export async function onRequestPost(context) {
             return jsonResponse(400, { success: false, message: 'Coupon code is required' }, corsHeaders);
         }
 
-        const supabaseUrl = context.env.SUPABASE_URL;
-        const supabaseKey = context.env.SUPABASE_SERVICE_ROLE_KEY;
+        const supabaseUrl = context.env ? context.env.SUPABASE_URL : undefined;
+        const supabaseKey = context.env ? context.env.SUPABASE_SERVICE_ROLE_KEY : undefined;
 
         if (!supabaseUrl || !supabaseKey) {
+            console.error('Server configuration error: missing Supabase credentials');
             return jsonResponse(500, { success: false, message: 'Server configuration error' }, corsHeaders);
         }
 

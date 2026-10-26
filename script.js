@@ -48,6 +48,19 @@ function getPriceForWeight(product, weightStr) {
 }
 
 // ============================================
+// HTML ESCAPE HELPER
+// ============================================
+function escapeProductHTML(str) {
+    return String(str || '').replace(/[&<>'"]/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+    })[m]);
+}
+
+// ============================================
 // LOCALSTORAGE (Cart only) — Delegated to CartService
 // ============================================
 
@@ -185,6 +198,7 @@ async function proceedToCheckoutWithCart() {
             const finalPrice = getPriceForWeight(p, pending.weight);
             const weightInGrams = parseWeight(pending.weight);
             await CartService.addItem({
+                product_id: p.id,
                 name: p.name,
                 weight: pending.weight,
                 weightInGrams: weightInGrams,
@@ -231,9 +245,10 @@ async function selectWeight(btn, weight) {
     allBtns.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 
+    const productId = card.getAttribute('data-product-id') || card.id;
     const productName = card.getAttribute('data-product');
     const products = await DB.getProducts();
-    const product = products.find(p => p.name === productName);
+    const product = products.find(p => (productId && String(p.id) === String(productId)) || p.name === productName);
     const priceDisplay = card.querySelector('.product-price');
     const weightText = weight >= 1000 ? '1Kg' : weight + 'g';
     const calculatedPrice = product ? getPriceForWeight(product, weightText) : 0;
@@ -241,9 +256,9 @@ async function selectWeight(btn, weight) {
     if (priceDisplay) priceDisplay.innerHTML = '\u20B9' + calculatedPrice + ' <span>/ ' + weightText + '</span>';
 }
 
-async function getDefaultWeight(productName) {
+async function getDefaultWeight(productNameOrId) {
     const products = await DB.getProducts();
-    const product = products.find(p => p.name === productName);
+    const product = products.find(p => String(p.id) === String(productNameOrId) || p.name === productNameOrId);
     if (!product || !product.weights || !product.weights.length) return '250g';
     return product.weights[0];
 }
@@ -314,12 +329,16 @@ async function searchProducts() {
 
     results.innerHTML = matches.map(p => {
         const imgUrl = DB.getImageUrl(p.image);
-        return `<div class="search-result-item" onclick="goToProduct('${p.catId}', '${p.id}')">
-            <img src="${imgUrl}" alt="${p.name}" class="search-result-img" onerror="this.style.display='none';this.parentElement.querySelector('.search-fallback').style.display='flex'">
+        const safeCatId = escapeProductHTML(p.catId);
+        const safeId = escapeProductHTML(p.id);
+        const safeName = escapeProductHTML(p.name);
+        const safeCategory = escapeProductHTML(p.category);
+        return `<div class="search-result-item" onclick="goToProduct('${safeCatId}', '${safeId}')">
+            <img src="${escapeProductHTML(imgUrl)}" alt="${safeName}" class="search-result-img" onerror="this.style.display='none';this.parentElement.querySelector('.search-fallback').style.display='flex'">
             <div class="search-fallback" style="display:none;width:40px;height:40px;background:var(--gray-100);border-radius:var(--radius-sm);align-items:center;justify-content:center;color:var(--gray-400);font-size:0.7rem;">IMG</div>
             <div>
-                <div class="search-result-name">${p.name}</div>
-                <div class="search-result-category">${p.category}</div>
+                <div class="search-result-name">${safeName}</div>
+                <div class="search-result-category">${safeCategory}</div>
             </div>
         </div>`;
     }).join('');
@@ -500,7 +519,7 @@ async function initProductPage() {
 
     document.getElementById('pdpTitle').textContent = product.name;
     document.getElementById('pdpSubtitle').textContent = product.desc;
-    document.getElementById('pdpImage').src = DB.getImageUrl(product.image);
+    document.getElementById('pdpImage').src = DB.getImageUrl(product.image) || 'food-placeholder.svg';
     document.getElementById('pdpImage').alt = product.name;
     document.getElementById('pdpBreadcrumbName').textContent = product.name;
     document.getElementById('pdpBreadcrumbCategory').textContent = catInfo ? catInfo.name : product.category;
@@ -625,10 +644,10 @@ function updatePDPButtons(product, weight, price) {
 function createProductCard(product, isPriority) {
     const defaultWeight = product.weights[0];
     const defaultPrice = getPriceForWeight(product, defaultWeight);
-    const imageUrl = DB.getImageUrl(product.image);
+    const imageUrl = DB.getImageUrl(product.image) || 'food-placeholder.svg';
 
     const badgeHtml = product.badge ?
-        '<span class="badge badge-' + product.badge + '">' +
+        '<span class="badge badge-' + escapeProductHTML(product.badge) + '">' +
         (product.badge === 'bestseller' ? 'Best Seller' :
          product.badge === 'popular' ? 'Popular' :
          product.badge === 'new' ? 'New' : 'Premium') +
@@ -637,15 +656,20 @@ function createProductCard(product, isPriority) {
     const weightButtons = product.weights.map((w, i) => {
         const grams = parseWeight(w);
         const active = i === 0 ? 'active' : '';
-        return '<button class="weight-btn ' + active + '" onclick="selectWeight(this, ' + grams + ')">' + w + '</button>';
+        return '<button class="weight-btn ' + active + '" onclick="selectWeight(this, ' + grams + ')">' + escapeProductHTML(w) + '</button>';
     }).join('');
 
+    const safeProductId = escapeProductHTML(product.id);
+    const safeProductName = escapeProductHTML(product.name);
+    const safeProductDesc = escapeProductHTML(product.desc);
+    const safeWeight = escapeProductHTML(defaultWeight);
+
     return `
-        <div class="product-card" id="${product.id}" data-product="${product.name}" data-base-price="${product.price1000 || 0}">
-            <a href="product.html?id=${product.id}" class="product-card-link">
+        <div class="product-card" id="${safeProductId}" data-product-id="${safeProductId}" data-product="${safeProductName}" data-base-price="${product.price1000 || 0}">
+            <a href="product.html?id=${encodeURIComponent(product.id)}" class="product-card-link">
                 <div class="product-image">
-                    <img src="${imageUrl}" alt="${product.name}" loading="${isPriority ? 'eager' : 'lazy'}" decoding="async" width="300" height="300"
-                        onerror="this.onerror=null;this.src='logo.png';this.style.objectFit='contain';this.style.padding='20px'">
+                    <img src="${escapeProductHTML(imageUrl)}" alt="${safeProductName}" loading="${isPriority ? 'eager' : 'lazy'}" decoding="async" width="300" height="300"
+                        onerror="this.onerror=null;this.src='food-placeholder.svg';this.style.objectFit='contain';this.style.padding='0'">
                     <div class="product-badges">${badgeHtml}</div>
                 </div>
             </a>
@@ -653,23 +677,23 @@ function createProductCard(product, isPriority) {
                 <i class="fas fa-share-alt"></i>
             </button>
             <div class="product-info">
-                <a href="product.html?id=${product.id}" class="product-card-link">
-                    <h4 class="product-name">${product.name}</h4>
-                    <p class="product-desc">${product.desc}</p>
+                <a href="product.html?id=${encodeURIComponent(product.id)}" class="product-card-link">
+                    <h4 class="product-name">${safeProductName}</h4>
+                    <p class="product-desc">${safeProductDesc}</p>
                     <div class="product-price-row">
-                        <div class="product-price">\u20B9${defaultPrice} <span>/ ${defaultWeight}</span></div>
+                        <div class="product-price">\u20B9${defaultPrice} <span>/ ${safeWeight}</span></div>
                     </div>
                 </a>
                 <div class="weight-options">${weightButtons}</div>
                 <div class="product-actions">
-                    <button class="btn-buy-now" onclick="event.preventDefault(); event.stopPropagation(); buyNow(this, '${product.id}', ${product.price1000 || 0})">
+                    <button class="btn-buy-now" onclick="event.preventDefault(); event.stopPropagation(); buyNow(this, '${safeProductId}', ${product.price1000 || 0})">
                         <i class="fas fa-bolt"></i> Buy Now
                     </button>
-                    <button class="btn-cart" onclick="addToCart(this, '${product.name}', ${product.price1000 || 0})">
+                    <button class="btn-cart" onclick="addToCart(this, '${safeProductId}', ${product.price1000 || 0})">
                         <i class="fas fa-cart-plus"></i> Add to Cart
                     </button>
                 </div>
-                <a href="product.html?id=${product.id}" class="quick-view-link">View Details \u2192</a>
+                <a href="product.html?id=${encodeURIComponent(product.id)}" class="quick-view-link">View Details \u2192</a>
             </div>
         </div>
     `;
@@ -782,10 +806,12 @@ async function renderShopPage() {
 function injectImagePreloads(products) {
     const firstFour = products.filter(p => p.available !== false).slice(0, 4);
     firstFour.forEach(p => {
+        const imgUrl = DB.getImageUrl(p.image);
+        if (!imgUrl || imgUrl === 'food-placeholder.svg') return;
         const link = document.createElement('link');
         link.rel = 'preload';
         link.as = 'image';
-        link.href = DB.getImageUrl(p.image);
+        link.href = imgUrl;
         document.head.appendChild(link);
     });
 }
