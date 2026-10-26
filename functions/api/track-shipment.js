@@ -156,8 +156,7 @@ class DTDCTrackingProvider {
                 url: targetUrl,
                 method: 'POST',
                 status_code: statusCode,
-                request_body: requestBody,
-                response_body: responseText
+                request_body: requestBody
             };
 
             if (!response.ok) {
@@ -165,7 +164,7 @@ class DTDCTrackingProvider {
                 return {
                     success: false,
                     error_type: (statusCode === 404 || statusCode === 400) ? 'INVALID_TRACKING' : 'API_UNAVAILABLE',
-                    message: `DTDC Tracking API error: HTTP ${statusCode}. Response: ${responseText.slice(0, 300)}`,
+                    message: `DTDC Tracking API error: HTTP ${statusCode}.`,
                     debug_info: debugInfo
                 };
             }
@@ -407,7 +406,7 @@ class NimbuspostTrackingProvider {
             console.log('[NimbuspostTrackingProvider] Status Code:', statusCode);
             console.log('[NimbuspostTrackingProvider] Response Body:', responseText);
 
-            const debugInfo = { url: targetUrl, method: 'GET', status_code: statusCode, response_body: responseText };
+            const debugInfo = { url: targetUrl, method: 'GET', status_code: statusCode };
 
             let rawData;
             try {
@@ -629,7 +628,7 @@ class DelhiveryTrackingProvider {
                 console.log('[DelhiveryTrackingProvider] Raw JSON Payload:', responseText.slice(0, 1500) + (responseText.length > 1500 ? '...' : ''));
             }
 
-            const debugInfo = { url: targetUrl, method: 'GET', status_code: statusCode, raw_json: responseText.slice(0, 5000) };
+            const debugInfo = { url: targetUrl, method: 'GET', status_code: statusCode };
 
             if (statusCode === 401 || statusCode === 403) {
                 return {

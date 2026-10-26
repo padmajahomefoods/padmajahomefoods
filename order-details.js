@@ -85,6 +85,13 @@ async function initOrderDetails() {
             return;
         }
 
+        // Defense-in-depth: Verify order ownership for authenticated user
+        if (data.user_id && user && data.user_id !== user.id) {
+            console.warn('Order ownership mismatch for order:', orderId);
+            showError('Order Not Found');
+            return;
+        }
+
         const { data: items, error: itemsErr } = await client
             .from(itemsTable)
             .select('*')
@@ -351,10 +358,10 @@ function renderProducts(items) {
         
         // Show placeholder if no image exists
         if (!itemImage || itemImage.trim() === '') {
-            itemImage = 'assets/logo.png';
+            itemImage = '/food-placeholder.svg';
         }
         
-        let imgHtml = `<img src="${itemImage}" alt="${escapeHTML(item.product_name || 'Product')}" class="od-item-img" onerror="this.src='assets/logo.png'">`;
+        let imgHtml = `<img src="${itemImage}" alt="${escapeHTML(item.product_name || 'Product')}" class="od-item-img" onerror="this.onerror=null; this.src='/food-placeholder.svg';">`;
         
         let safeName = escapeHTML(item.product_name || 'Product');
         let safeWeight = item.weight ? '| ' + escapeHTML(item.weight) : '';
