@@ -223,7 +223,7 @@ const CartService = {
             if (hasExistingItems) {
                 console.log('[CartService._migrateLocalToSupabase] Using merge_user_cart RPC...');
                 const itemsJson = JSON.stringify(this._localCart.map(item => ({
-                    product_id: this._slugify(item.name),
+                    product_id: item.product_id || item.id || this._slugify(item.name),
                     product_name: item.name,
                     weight: item.weight,
                     weightInGrams: item.weightInGrams || parseWeight(item.weight),
@@ -283,7 +283,7 @@ const CartService = {
         let failCount = 0;
 
         for (const item of items) {
-            const productId = this._slugify(item.name);
+            const productId = item.product_id || item.id || this._slugify(item.name);
             const weightInGrams = item.weightInGrams || parseWeight(item.weight);
             
             console.log('[CartService._upsertItemsIndividually] Processing:', item.name, '-', item.weight);
@@ -437,18 +437,27 @@ const CartService = {
             i => i.name === item.name && i.weight === item.weight
         );
 
+        const prodId = item.product_id || item.id;
+
         if (existing) {
             existing.quantity = Math.min(existing.quantity + (item.quantity || 1), this.MAX_QTY);
+            if (!existing.product_id && prodId) {
+                existing.product_id = prodId;
+            }
             console.log('[CartService._addToLocal] Updated existing:', item.name, 'new qty:', existing.quantity);
         } else {
-            this._localCart.push({
+            const entry = {
                 name: item.name,
                 weight: item.weight,
                 weightInGrams: item.weightInGrams || parseWeight(item.weight),
                 price: item.price,
                 basePrice: item.basePrice || item.price,
                 quantity: Math.min(item.quantity || 1, this.MAX_QTY)
-            });
+            };
+            if (prodId) {
+                entry.product_id = prodId;
+            }
+            this._localCart.push(entry);
             console.log('[CartService._addToLocal] Added new:', item.name);
         }
         this._saveLocalCart();
@@ -483,7 +492,7 @@ const CartService = {
                 return;
             }
 
-            const productId = this._slugify(item.name);
+            const productId = item.product_id || item.id || this._slugify(item.name);
             const weightInGrams = item.weightInGrams || parseWeight(item.weight);
 
             const { data: existing } = await client
@@ -661,7 +670,7 @@ const CartService = {
     },
 
     _rowToItem(row) {
-        return {
+        const item = {
             _dbId: row.id,
             name: row.product_name,
             weight: row.weight,
@@ -670,6 +679,10 @@ const CartService = {
             basePrice: row.base_price,
             quantity: row.quantity
         };
+        if (row.product_id) {
+            item.product_id = row.product_id;
+        }
+        return item;
     },
 
     _notifyUpdate() {
