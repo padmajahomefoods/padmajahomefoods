@@ -817,6 +817,45 @@ function injectImagePreloads(products) {
 }
 
 // ============================================
+// HOMEPAGE BEST SELLERS HYDRATION
+// ============================================
+async function initHomeBestSellers() {
+    const section = document.getElementById('bestsellers');
+    if (!section) return;
+
+    try {
+        const products = await DB.getProducts();
+        if (!products || !products.length) return;
+
+        const cards = section.querySelectorAll('.best-seller-card');
+        cards.forEach(card => {
+            const link = card.querySelector('a.best-seller-btn');
+            const prodId = card.getAttribute('data-product-id') || (link && link.href.match(/id=([^&]+)/)?.[1]);
+            if (!prodId) return;
+
+            const product = products.find(p => p.id === prodId || (p.name && p.name.toLowerCase() === prodId.toLowerCase()));
+            if (!product) return;
+
+            const img = card.querySelector('.best-seller-image img');
+            if (img) {
+                const resolvedUrl = DB.getImageUrl(product.image) || 'food-placeholder.svg';
+                img.onerror = function() {
+                    this.onerror = null;
+                    this.src = 'food-placeholder.svg';
+                    this.style.objectFit = 'contain';
+                    this.style.padding = '0';
+                };
+                if (resolvedUrl && img.src !== resolvedUrl) {
+                    img.src = resolvedUrl;
+                }
+            }
+        });
+    } catch (err) {
+        console.warn('[Home] Best sellers hydration deferred:', err);
+    }
+}
+
+// ============================================
 // INIT
 // ============================================
 document.addEventListener('DOMContentLoaded', async function() {
@@ -846,6 +885,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     } else if (path.includes('index.html') || path === '/' || path.endsWith('/')) {
         // Don't await — renderShopPage() handles its own loading internally
         renderShopPage();
+    }
+
+    if (document.getElementById('bestsellers')) {
+        initHomeBestSellers();
     }
 
     // Close search on outside click
