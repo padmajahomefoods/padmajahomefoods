@@ -2842,11 +2842,26 @@ input:focus-visible {
     box-shadow: 0 4px 16px rgba(220, 39, 67, 0.3);
 }
 
-.social-card-btn
+.social-card-btn.youtube-btn {
+    background: #FF0000;
+    color: #ffffff;
+    max-width: 240px;
+    white-space: nowrap;
+}
+
+.social-card-btn.youtube-btn i {
+    color: #ffffff;
+}
 
 .social-card-btn.youtube-btn:hover {
     transform: scale(1.03);
     box-shadow: 0 4px 16px rgba(255, 0, 0, 0.3);
+    color: #ffffff;
+}
+
+.social-card-btn.youtube-btn:focus-visible {
+    outline: 2px solid #FF0000;
+    outline-offset: 2px;
 }
 
 .social-card-btn.whatsapp-btn {
